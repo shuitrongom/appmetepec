@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="appmetepec.Views.AlertaNaranjaPage"
+             Title="Alerta"
+             BackgroundColor="#F6F8FA">
+    <ScrollView>
+        <VerticalStackLayout Padding="18" Spacing="14">
+            <Grid ColumnDefinitions="64,*" ColumnSpacing="12">
+                <Image Source="ic_alerta_on.png" HeightRequest="58" WidthRequest="58" Aspect="AspectFit" />
+                <VerticalStackLayout Grid.Column="1" Spacing="4">
+                    <Label Text="Alerta naranja" FontSize="24" FontAttributes="Bold" TextColor="#111827" />
+                    <Label Text="Registro y activacion de alerta." TextColor="#526070" />
+                </VerticalStackLayout>
+            </Grid>
+
+            <Border Stroke="#DDE3EA" BackgroundColor="White" Padding="14">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="8" />
+                </Border.StrokeShape>
+                <VerticalStackLayout Spacing="12">
+                    <Entry x:Name="NameEntry" Placeholder="Nombre" />
+                    <Entry x:Name="PhoneEntry" Placeholder="Telefono" Keyboard="Telephone" />
+                    <Entry x:Name="EmailEntry" Placeholder="Correo" Keyboard="Email" />
+                    <Editor x:Name="AddressEditor" Placeholder="Direccion" AutoSize="TextChanges" HeightRequest="90" />
+                    <Button Text="Usar ubicacion" Clicked="OnUseLocationClicked" BackgroundColor="#EEF2F6" TextColor="#111827" />
+                    <Label x:Name="CoordinatesLabel" TextColor="#526070" />
+                    <Button Text="Guardar datos" Clicked="OnSaveClicked" BackgroundColor="#111827" TextColor="White" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Button Text="Activar alerta" Clicked="OnActivateClicked" BackgroundColor="#F59E0B" TextColor="#111827" />
+            <ActivityIndicator x:Name="BusyIndicator" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

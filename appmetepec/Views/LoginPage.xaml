@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="appmetepec.Views.LoginPage"
+             Title="Registro"
+             Shell.NavBarIsVisible="False"
+             BackgroundColor="White"
+             BackgroundImageSource="bg5.png">
+    <ScrollView>
+        <VerticalStackLayout Padding="30,70,30,28" Spacing="26">
+            <Image Source="logo.png" HeightRequest="220" Aspect="AspectFit" HorizontalOptions="Center" />
+
+            <VerticalStackLayout Spacing="18" Margin="0,26,0,0">
+                <Entry x:Name="NameEntry" Placeholder="Nombre" FontSize="22" BackgroundColor="#F4FAFD" TextColor="#555" HorizontalTextAlignment="Center" HeightRequest="62" />
+                <Entry x:Name="EmailEntry" Placeholder="Correo Electronico" FontSize="22" BackgroundColor="#F4FAFD" TextColor="#555" Keyboard="Email" HorizontalTextAlignment="Center" HeightRequest="62" />
+                <Entry x:Name="PhoneEntry" Placeholder="Numero Movil" FontSize="22" BackgroundColor="#F4FAFD" TextColor="#555" Keyboard="Telephone" MaxLength="10" HorizontalTextAlignment="Center" HeightRequest="62" />
+            </VerticalStackLayout>
+
+            <Button Text="R E G I S T R A R"
+                    Clicked="OnRegisterClicked"
+                    BackgroundColor="#F89A1C"
+                    TextColor="White"
+                    FontSize="24"
+                    FontAttributes="Bold"
+                    WidthRequest="330"
+                    HeightRequest="72"
+                    HorizontalOptions="Center"
+                    Margin="0,20,0,0" />
+
+            <Label HorizontalTextAlignment="Center" FontSize="18" TextColor="#555">
+                <Label.FormattedText>
+                    <FormattedString>
+                        <Span Text="Al registrarte estas aceptando los terminos y&#10;condiciones descritos " />
+                        <Span Text="aqui" TextColor="#F89A1C" />
+                    </FormattedString>
+                </Label.FormattedText>
+                <Label.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnTermsTapped" />
+                </Label.GestureRecognizers>
+            </Label>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

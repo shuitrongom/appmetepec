@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="appmetepec.Views.ReportPage"
+             Title="Reporte"
+             Shell.NavBarIsVisible="False"
+             BackgroundColor="#555"
+             BackgroundImageSource="bg8.png">
+    <Grid RowDefinitions="Auto,*">
+        <Grid BackgroundColor="White" Padding="24,14" ColumnDefinitions="48,*,48">
+            <Label Text="‹" FontSize="46" TextColor="#28113E" VerticalTextAlignment="Center" HorizontalTextAlignment="Center">
+                <Label.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnBackTapped" />
+                </Label.GestureRecognizers>
+            </Label>
+            <Image Grid.Column="1" Source="logo.png" HeightRequest="72" WidthRequest="150" Aspect="AspectFit" HorizontalOptions="Center" />
+            <Image Grid.Column="2" Source="ic_alerta_on.png" HeightRequest="42" WidthRequest="42" />
+        </Grid>
+
+        <ScrollView Grid.Row="1">
+            <VerticalStackLayout Padding="34,20,34,26" Spacing="20">
+                <Grid ColumnDefinitions="90,*" ColumnSpacing="14" Margin="0,0,0,12">
+                    <Image x:Name="ReportIcon" HeightRequest="74" WidthRequest="74" Aspect="AspectFit" />
+                    <Label x:Name="TitleLabel" Grid.Column="1" FontSize="26" FontAttributes="Bold" TextColor="White" VerticalOptions="Center" />
+                </Grid>
+
+                <Label Text="Proporciona la siguiente informacion para darle seguimiento a tu reporte"
+                       FontSize="20"
+                       TextColor="White"
+                       HorizontalTextAlignment="Center"
+                       Margin="0,0,0,22" />
+                <Label x:Name="InstructionsLabel" TextColor="White" FontSize="15" IsVisible="False" />
+
+                <Entry x:Name="NameEntry" Placeholder="Nombre" BackgroundColor="White" TextColor="#333" HorizontalTextAlignment="Center" HeightRequest="48" />
+                <Entry x:Name="PhoneEntry" Placeholder="Telefono" Keyboard="Telephone" BackgroundColor="White" TextColor="#333" HorizontalTextAlignment="Center" HeightRequest="48" />
+                <Entry x:Name="EmailEntry" Placeholder="Correo" Keyboard="Email" BackgroundColor="White" TextColor="#333" HorizontalTextAlignment="Center" HeightRequest="48" />
+
+                <Grid>
+                    <Editor x:Name="AddressEditor" Placeholder="Direccion" AutoSize="TextChanges" HeightRequest="124" BackgroundColor="White" TextColor="#333" HorizontalTextAlignment="Center" />
+                    <Button Text="Elige tu direccion en el mapa" Clicked="OnUseLocationClicked" ImageSource="ic_marker.png" BackgroundColor="#A6CE39" TextColor="White" FontSize="12" WidthRequest="190" HeightRequest="48" HorizontalOptions="Start" VerticalOptions="End" />
+                </Grid>
+                <Label x:Name="CoordinatesLabel" TextColor="White" FontSize="12" />
+
+                <Editor x:Name="CommentsEditor" Placeholder="Observaciones o referencias" AutoSize="TextChanges" HeightRequest="96" BackgroundColor="White" TextColor="#333" HorizontalTextAlignment="Center" />
+
+                <Label Text="Agrega un testigo:" TextColor="White" FontSize="17" />
+                <HorizontalStackLayout Spacing="18">
+                    <Image Source="btn_camara.png" HeightRequest="72" WidthRequest="72">
+                        <Image.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnPickImageTapped" />
+                        </Image.GestureRecognizers>
+                    </Image>
+                    <Image Source="placeholder_imagepreview.png" HeightRequest="92" WidthRequest="92" />
+                </HorizontalStackLayout>
+                <Label x:Name="AttachmentLabel" TextColor="White" />
+
+                <Button x:Name="SendButton" Text="ENVIAR" Clicked="OnSendClicked" BackgroundColor="#F89A1C" TextColor="White" FontSize="24" FontAttributes="Bold" WidthRequest="260" HeightRequest="58" HorizontalOptions="Center" />
+                <ActivityIndicator x:Name="BusyIndicator" />
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+</ContentPage>

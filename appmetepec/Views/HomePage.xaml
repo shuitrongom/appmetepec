@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="appmetepec.Views.HomePage"
+             Title="Metepec *7311"
+             Shell.NavBarIsVisible="False"
+             BackgroundColor="White"
+             BackgroundImageSource="bg5.png">
+    <Grid RowDefinitions="Auto,*,92">
+        <VerticalStackLayout Grid.Row="0" Spacing="0" BackgroundColor="White">
+            <Grid Padding="24,16" ColumnDefinitions="*,Auto,*" ColumnSpacing="14">
+                <HorizontalStackLayout Spacing="8" VerticalOptions="Center">
+                    <Image Source="ic_trash.png" HeightRequest="42" WidthRequest="42" />
+                    <Label Text="RECOLECCION&#10;DE BASURA" FontSize="14" FontAttributes="Bold" TextColor="#555" VerticalOptions="Center" />
+                    <HorizontalStackLayout.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnRecoleccionTapped" />
+                    </HorizontalStackLayout.GestureRecognizers>
+                </HorizontalStackLayout>
+
+                <Image Grid.Column="1" Source="logo.png" HeightRequest="72" WidthRequest="146" Aspect="AspectFit" />
+
+                <HorizontalStackLayout Grid.Column="2" Spacing="8" HorizontalOptions="End" VerticalOptions="Center">
+                    <Label Text="ALERTA DE&#10;GENERO" FontSize="14" FontAttributes="Bold" TextColor="#555" HorizontalTextAlignment="End" VerticalOptions="Center" />
+                    <Image Source="ic_alerta_on.png" HeightRequest="42" WidthRequest="42" />
+                    <HorizontalStackLayout.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnAlertaTapped" />
+                    </HorizontalStackLayout.GestureRecognizers>
+                </HorizontalStackLayout>
+            </Grid>
+
+            <CarouselView x:Name="BannerCarousel"
+                          HeightRequest="86"
+                          IsBounceEnabled="True"
+                          Loop="True"
+                          PeekAreaInsets="0"
+                          HorizontalScrollBarVisibility="Never">
+                <CarouselView.ItemTemplate>
+                    <DataTemplate>
+                        <Grid HeightRequest="86" ColumnDefinitions="*,*" ColumnSpacing="0">
+                            <Grid BackgroundColor="{Binding LeftBackground}" Padding="14,0" ColumnDefinitions="62,*">
+                                <Image Source="{Binding LeftIcon}" HeightRequest="58" WidthRequest="58" VerticalOptions="Center" />
+                                <VerticalStackLayout Grid.Column="1" Spacing="0" VerticalOptions="Center">
+                                    <Label Text="{Binding LeftTitle}" FontSize="26" FontAttributes="Bold" TextColor="White" />
+                                    <Label Text="{Binding LeftSubtitle}" FontSize="15" FontAttributes="Bold" TextColor="White" />
+                                </VerticalStackLayout>
+                            </Grid>
+                            <Grid Grid.Column="1" BackgroundColor="{Binding RightBackground}" Padding="14,0" ColumnDefinitions="62,*">
+                                <Image Source="{Binding RightIcon}" HeightRequest="58" WidthRequest="58" VerticalOptions="Center" />
+                                <VerticalStackLayout Grid.Column="1" Spacing="0" VerticalOptions="Center">
+                                    <Label Text="{Binding RightTitle}" FontSize="26" FontAttributes="Bold" TextColor="White" />
+                                    <Label Text="{Binding RightSubtitle}" FontSize="15" FontAttributes="Bold" TextColor="White" />
+                                </VerticalStackLayout>
+                            </Grid>
+                        </Grid>
+                    </DataTemplate>
+                </CarouselView.ItemTemplate>
+            </CarouselView>
+        </VerticalStackLayout>
+
+        <RefreshView Grid.Row="1" Refreshing="OnRefreshing">
+            <ScrollView>
+                <Grid>
+                    <VerticalStackLayout x:Name="ReportsContent" Padding="28,26,28,20" Spacing="26">
+                        <VerticalStackLayout x:Name="CategoriesHost" Spacing="28" />
+                    </VerticalStackLayout>
+
+                    <VerticalStackLayout x:Name="NewsContent" Padding="28,26,28,20" Spacing="14" IsVisible="False">
+                        <Label Text="NOTICIAS" FontSize="28" FontAttributes="Bold" TextColor="#555" />
+                        <CollectionView x:Name="NewsView" SelectionMode="Single" SelectionChanged="OnNewsSelected">
+                            <CollectionView.EmptyView>
+                                <Label Text="Sin noticias cargadas." TextColor="#6B7280" />
+                            </CollectionView.EmptyView>
+                            <CollectionView.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Stroke="#E0E0E0" StrokeThickness="1" BackgroundColor="White" Padding="14" Margin="0,0,0,12">
+                                        <Border.StrokeShape>
+                                            <RoundRectangle CornerRadius="8" />
+                                        </Border.StrokeShape>
+                                        <Grid ColumnDefinitions="84,*" ColumnSpacing="12">
+                                            <Image Source="{Binding image}" HeightRequest="74" WidthRequest="74" Aspect="AspectFill" />
+                                            <VerticalStackLayout Grid.Column="1" Spacing="4">
+                                                <Label Text="{Binding title}" FontAttributes="Bold" TextColor="#333" />
+                                                <Label Text="{Binding subtitle}" TextColor="#666" LineBreakMode="TailTruncation" />
+                                            </VerticalStackLayout>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </CollectionView.ItemTemplate>
+                        </CollectionView>
+                    </VerticalStackLayout>
+                </Grid>
+            </ScrollView>
+        </RefreshView>
+
+        <Grid Grid.Row="2" ColumnDefinitions="*,*" BackgroundColor="#080808">
+            <VerticalStackLayout x:Name="ReportsTab" Padding="8" Spacing="4" BackgroundColor="#050505" HorizontalOptions="Fill">
+                <Image Source="ic_gerencia_cd.png" HeightRequest="30" WidthRequest="30" HorizontalOptions="Center" />
+                <Label Text="GERENCIA DE LA CIUDAD" FontSize="13" TextColor="#9F8AD0" HorizontalTextAlignment="Center" />
+                <VerticalStackLayout.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnReportsTabTapped" />
+                </VerticalStackLayout.GestureRecognizers>
+            </VerticalStackLayout>
+            <VerticalStackLayout x:Name="NewsTab" Grid.Column="1" Padding="8" Spacing="4" BackgroundColor="#1A1A1A" HorizontalOptions="Fill">
+                <Image Source="btn_noticias.png" HeightRequest="30" WidthRequest="30" HorizontalOptions="Center" />
+                <Label Text="NOTICIAS" FontSize="13" TextColor="White" HorizontalTextAlignment="Center" />
+                <VerticalStackLayout.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnNewsTabTapped" />
+                </VerticalStackLayout.GestureRecognizers>
+            </VerticalStackLayout>
+        </Grid>
+
+        <ActivityIndicator x:Name="BusyIndicator" Grid.RowSpan="3" IsVisible="False" HorizontalOptions="Center" VerticalOptions="Center" />
+    </Grid>
+</ContentPage>
