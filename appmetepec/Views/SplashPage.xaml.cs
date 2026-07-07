@@ -13,13 +13,6 @@ public partial class SplashPage : ContentPage
     protected override void OnAppearing()
     {
         base.OnAppearing();
-        _ = AnimateEntranceAsync();
-    }
-
-    private async Task AnimateEntranceAsync()
-    {
-        await Task.WhenAll(
-            LogoImage.FadeTo(1, 500, Easing.CubicOut),
-            AppNameLabel.FadeTo(1, 500, Easing.CubicOut));
+        _ = BackgroundImage.FadeTo(1, 400, Easing.CubicOut);
     }
 }

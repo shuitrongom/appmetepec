@@ -6,40 +6,27 @@
     xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
     xmlns:viewmodels="clr-namespace:appmetepec.ViewModels"
     x:DataType="viewmodels:SplashViewModel"
-    Shell.NavBarIsVisible="False"
-    BackgroundColor="{StaticResource MetepecGreen}">
+    Shell.NavBarIsVisible="False">
 
     <ContentPage.Behaviors>
         <toolkit:EventToCommandBehavior EventName="Loaded" Command="{Binding InitializeCommand}" />
     </ContentPage.Behaviors>
 
-    <Grid RowDefinitions="2*,Auto,Auto,*,Auto" Padding="24">
+    <Grid>
 
         <Image
-            x:Name="LogoImage"
-            Grid.Row="1"
-            Source="logo_w_1.png"
-            HeightRequest="140"
-            Aspect="AspectFit"
-            HorizontalOptions="Center"
-            Opacity="0" />
-
-        <Label
-            x:Name="AppNameLabel"
-            Grid.Row="2"
-            Text="Metepec *7311"
-            FontFamily="OpenSansSemibold"
-            FontSize="26"
-            TextColor="White"
-            HorizontalOptions="Center"
-            Margin="0,16,0,0"
+            x:Name="BackgroundImage"
+            Source="splash.png"
+            Aspect="AspectFill"
+            HorizontalOptions="Fill"
+            VerticalOptions="Fill"
             Opacity="0" />
 
         <ActivityIndicator
-            Grid.Row="4"
             IsRunning="{Binding IsBusy}"
             Color="White"
-            Margin="0,0,0,32" />
+            VerticalOptions="End"
+            Margin="0,0,0,40" />
 
     </Grid>
 </ContentPage>
