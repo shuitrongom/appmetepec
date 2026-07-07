@@ -33,7 +33,7 @@ public partial class LoginPage : ContentPage
         }
 
         _preferences.CurrentUser = new UserProfile(name, email, phone);
-        await Shell.Current.GoToAsync(nameof(HomePage));
+        await Shell.Current.GoToAsync($"//{nameof(HomePage)}");
     }
 
     private async void OnTermsClicked(object sender, EventArgs e)

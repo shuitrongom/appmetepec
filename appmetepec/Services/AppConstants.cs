@@ -14,4 +14,7 @@ public static class AppConstants
     public const string PrivacyUrl = "https://metepec7311.com/privacidad/";
     public const string SamUrl = "https://rebrand.ly/uqqh70m";
     public const string TwilioServiceUrl = "https://verify.twilio.com/v2/Services/VAe95228e82fe5721889956945b50a6fe3";
+
+    // Corre en paralelo con la inicializacion (no sumado, a diferencia del delay de 4s secuencial de Android)
+    public const int MinimumSplashDurationMs = 1800;
 }

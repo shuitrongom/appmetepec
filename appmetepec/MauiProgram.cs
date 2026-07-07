@@ -1,5 +1,7 @@
 using appmetepec.Services;
+using appmetepec.ViewModels;
 using appmetepec.Views;
+using CommunityToolkit.Maui;
 using Microsoft.Extensions.Logging;
 
 namespace appmetepec
@@ -11,6 +13,7 @@ namespace appmetepec
             var builder = MauiApp.CreateBuilder();
             builder
                 .UseMauiApp<App>()
+                .UseMauiCommunityToolkit()
                 .ConfigureFonts(fonts =>
                 {
                     fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
@@ -27,6 +30,8 @@ namespace appmetepec
             builder.Services.AddSingleton<MetepecApiService>();
             builder.Services.AddSingleton<NavigationState>();
 
+            builder.Services.AddTransient<SplashViewModel>();
+            builder.Services.AddTransient<SplashPage>();
             builder.Services.AddTransient<LoginPage>();
             builder.Services.AddTransient<HomePage>();
             builder.Services.AddTransient<ReportPage>();

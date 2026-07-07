@@ -8,7 +8,6 @@ namespace appmetepec
         {
             InitializeComponent();
 
-            Routing.RegisterRoute(nameof(HomePage), typeof(HomePage));
             Routing.RegisterRoute(nameof(ReportPage), typeof(ReportPage));
             Routing.RegisterRoute(nameof(ReportSuccessPage), typeof(ReportSuccessPage));
             Routing.RegisterRoute(nameof(NewsDetailPage), typeof(NewsDetailPage));

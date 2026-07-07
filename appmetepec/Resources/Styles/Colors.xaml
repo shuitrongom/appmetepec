@@ -28,6 +28,13 @@
     <Color x:Key="Gray900">#212121</Color>
     <Color x:Key="Gray950">#141414</Color>
 
+    <!-- Colores institucionales Metepec (ver CRAndroid res/values/colors.xml: colorPrimary / colorAccent) -->
+    <Color x:Key="MetepecGreen">#11E25D</Color>
+    <Color x:Key="MetepecBlue">#1E01C0</Color>
+
+    <SolidColorBrush x:Key="MetepecGreenBrush" Color="{StaticResource MetepecGreen}"/>
+    <SolidColorBrush x:Key="MetepecBlueBrush" Color="{StaticResource MetepecBlue}"/>
+
     <SolidColorBrush x:Key="PrimaryBrush" Color="{StaticResource Primary}"/>
     <SolidColorBrush x:Key="SecondaryBrush" Color="{StaticResource Secondary}"/>
     <SolidColorBrush x:Key="TertiaryBrush" Color="{StaticResource Tertiary}"/>
