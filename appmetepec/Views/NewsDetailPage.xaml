@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="appmetepec.Views.NewsDetailPage"
+             Title="Noticia"
+             BackgroundColor="#F6F8FA">
+    <ScrollView>
+        <VerticalStackLayout Padding="18" Spacing="12">
+            <Image x:Name="NewsImage" HeightRequest="220" Aspect="AspectFill" IsVisible="False" />
+            <Label x:Name="TitleLabel" FontSize="24" FontAttributes="Bold" TextColor="#111827" />
+            <Label x:Name="SubtitleLabel" TextColor="#526070" />
+            <Label x:Name="ContentLabel" TextColor="#1F2937" LineBreakMode="WordWrap" />
+            <Button x:Name="OpenUrlButton" Text="Abrir enlace" Clicked="OnOpenUrlClicked" BackgroundColor="#111827" TextColor="White" IsVisible="False" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

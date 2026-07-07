@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="appmetepec.Views.RecoleccionPage"
+             Title="Recoleccion"
+             BackgroundColor="#F6F8FA">
+    <Grid RowDefinitions="Auto,Auto,*" Padding="18" RowSpacing="14">
+        <Grid ColumnDefinitions="64,*" ColumnSpacing="12">
+            <Image Source="ic_recoleccion_resid.png" HeightRequest="58" WidthRequest="58" Aspect="AspectFit" />
+            <VerticalStackLayout Grid.Column="1" Spacing="4">
+                <Label Text="Recoleccion de residuos" FontSize="24" FontAttributes="Bold" TextColor="#111827" />
+                <Label Text="Consulta rutas cercanas con tu ubicacion." TextColor="#526070" />
+            </VerticalStackLayout>
+        </Grid>
+
+        <Border Grid.Row="1" Stroke="#DDE3EA" BackgroundColor="White" Padding="14">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="8" />
+            </Border.StrokeShape>
+            <VerticalStackLayout Spacing="12">
+                <Button Text="Buscar rutas cercanas" Clicked="OnFindRoutesClicked" BackgroundColor="#0F766E" TextColor="White" />
+                <Label x:Name="LocationLabel" TextColor="#526070" />
+                <Picker x:Name="RoutesPicker" Title="Selecciona una ruta" ItemDisplayBinding="{Binding name}" SelectedIndexChanged="OnRouteSelected" />
+                <ActivityIndicator x:Name="BusyIndicator" />
+            </VerticalStackLayout>
+        </Border>
+
+        <ScrollView Grid.Row="2">
+            <VerticalStackLayout Spacing="10">
+                <Label x:Name="RouteLabel" FontAttributes="Bold" TextColor="#111827" />
+                <Label x:Name="TruckLabel" TextColor="#1F2937" />
+                <Label x:Name="RouteCoordinatesLabel" TextColor="#526070" LineBreakMode="WordWrap" />
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+</ContentPage>
