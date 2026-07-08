@@ -219,6 +219,30 @@ public sealed class MetepecApiService
         return created?.Id ?? 0;
     }
 
+    public async Task<List<NewsLetter>> GetPublicacionesAsync(CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Get, AppConstants.MetepecBackendUrl + "/publicaciones");
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        var result = await ReadJsonAsync<List<BackendPublicacionDto>>(response, cancellationToken);
+
+        return (result ?? [])
+            .Where(item => item.Publicada && item.Activo)
+            .OrderByDescending(item => item.FechaPublicacion)
+            .Select(item => new NewsLetter
+            {
+                id = item.Id,
+                title = item.Titulo,
+                subtitle = item.Resumen,
+                shortContent = item.Resumen,
+                content = item.Contenido,
+                image = item.ImagenPrincipal
+            })
+            .ToList();
+    }
+
     private void AddBackendAuthorization(HttpRequestMessage message)
     {
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _preferences.JwtToken);

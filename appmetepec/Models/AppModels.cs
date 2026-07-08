@@ -456,3 +456,30 @@ public sealed class BackendCiudadanoDto
     [JsonPropertyName("id")]
     public int Id { get; set; }
 }
+
+public sealed class BackendPublicacionDto
+{
+    [JsonPropertyName("id")]
+    public int Id { get; set; }
+
+    [JsonPropertyName("titulo")]
+    public string Titulo { get; set; } = "";
+
+    [JsonPropertyName("resumen")]
+    public string? Resumen { get; set; }
+
+    [JsonPropertyName("contenido")]
+    public string Contenido { get; set; } = "";
+
+    [JsonPropertyName("imagenPrincipal")]
+    public string? ImagenPrincipal { get; set; }
+
+    [JsonPropertyName("publicada")]
+    public bool Publicada { get; set; }
+
+    [JsonPropertyName("activo")]
+    public bool Activo { get; set; }
+
+    [JsonPropertyName("fechaPublicacion")]
+    public DateTime? FechaPublicacion { get; set; }
+}

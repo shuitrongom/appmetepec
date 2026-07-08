@@ -140,9 +140,7 @@ public partial class HomePage : ContentPage
         try
         {
             BusyIndicator.IsRunning = BusyIndicator.IsVisible = true;
-            await _api.LoadZendeskCredentialsAsync();
-            var news = await _api.GetNewsAsync();
-            NewsView.ItemsSource = news?.Newsletters ?? [];
+            NewsView.ItemsSource = await _api.GetPublicacionesAsync();
         }
         catch
         {
