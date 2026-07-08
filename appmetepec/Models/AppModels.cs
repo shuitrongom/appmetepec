@@ -81,7 +81,8 @@ public sealed record ScreenReport(
     int IdStatus = 0,
     int IdArea = 0,
     int IdForm = 0,
-    string IconSource = "ic_otros.png");
+    string IconSource = "ic_otros.png",
+    int IdServicio = 0);
 
 public sealed record DependenciaCategoria(
     int IdDependencia,
@@ -355,4 +356,103 @@ public sealed class BackendRegisterRequest
 public sealed class ErrorResponse
 {
     public string? error { get; set; }
+}
+
+public sealed class BackendCreateTicketRequest
+{
+    [JsonPropertyName("idciudadano")]
+    public int Idciudadano { get; set; }
+
+    [JsonPropertyName("asunto")]
+    public string Asunto { get; set; } = "";
+
+    [JsonPropertyName("descripcion")]
+    public string? Descripcion { get; set; }
+
+    [JsonPropertyName("correoelectronico")]
+    public string? Correoelectronico { get; set; }
+
+    [JsonPropertyName("numerotelefonico")]
+    public string? Numerotelefonico { get; set; }
+
+    [JsonPropertyName("observacionesapp")]
+    public string? Observacionesapp { get; set; }
+
+    [JsonPropertyName("dependencia")]
+    public string? Dependencia { get; set; }
+
+    [JsonPropertyName("idservicio")]
+    public int Idservicio { get; set; }
+
+    [JsonPropertyName("idestatus")]
+    public int Idestatus { get; set; } = 1;
+
+    [JsonPropertyName("idCanalIngreso")]
+    public int IdCanalIngreso { get; set; } = 1;
+
+    [JsonPropertyName("ubicacion")]
+    public BackendTicketUbicacionRequest? Ubicacion { get; set; }
+
+    [JsonPropertyName("evidencias")]
+    public List<BackendEvidenciaItemRequest>? Evidencias { get; set; }
+}
+
+public sealed class BackendTicketUbicacionRequest
+{
+    [JsonPropertyName("direccionapp")]
+    public string? Direccionapp { get; set; }
+
+    [JsonPropertyName("coordenadas")]
+    public string? Coordenadas { get; set; }
+}
+
+public sealed class BackendEvidenciaItemRequest
+{
+    [JsonPropertyName("nombreArchivo")]
+    public string NombreArchivo { get; set; } = "";
+
+    [JsonPropertyName("rutaArchivo")]
+    public string RutaArchivo { get; set; } = "";
+
+    [JsonPropertyName("tipoMime")]
+    public string? TipoMime { get; set; }
+
+    [JsonPropertyName("tamanoBytes")]
+    public long? TamanoBytes { get; set; }
+
+    [JsonPropertyName("esEvidenciaInicial")]
+    public bool EsEvidenciaInicial { get; set; }
+}
+
+public sealed class BackendTicketDto
+{
+    [JsonPropertyName("id")]
+    public int Id { get; set; }
+}
+
+public sealed class BackendUploadResult
+{
+    [JsonPropertyName("nombreOriginal")]
+    public string NombreOriginal { get; set; } = "";
+
+    [JsonPropertyName("nombreFisico")]
+    public string NombreFisico { get; set; } = "";
+
+    [JsonPropertyName("extension")]
+    public string Extension { get; set; } = "";
+
+    [JsonPropertyName("mimeType")]
+    public string MimeType { get; set; } = "";
+
+    [JsonPropertyName("peso")]
+    public long Peso { get; set; }
+
+    [JsonPropertyName("ruta")]
+    public string Ruta { get; set; } = "";
+}
+
+public sealed class BackendCiudadanoDto
+{
+    [JsonPropertyName("id")]
+    public int Id { get; set; }
 }

@@ -128,6 +128,15 @@ public partial class RegisterPage : ContentPage
             _preferences.JwtToken = login.Token;
             _preferences.CurrentUser = new UserProfile(login.User.FullName, login.User.Email, login.User.PhoneNumber ?? "");
 
+            try
+            {
+                _preferences.CiudadanoId = await _api.GetMyCiudadanoAsync() ?? 0;
+            }
+            catch (Exception)
+            {
+                // No bloquea el registro; ReportPage vuelve a intentarlo antes de crear un ticket.
+            }
+
             await Shell.Current.GoToAsync($"//{nameof(HomePage)}");
         }
         catch (Exception ex)

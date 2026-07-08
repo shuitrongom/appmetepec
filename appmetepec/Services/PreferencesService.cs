@@ -60,11 +60,18 @@ public sealed class PreferencesService
         set => Preferences.Default.Set(nameof(JwtToken), value);
     }
 
+    public int CiudadanoId
+    {
+        get => Preferences.Default.Get(nameof(CiudadanoId), 0);
+        set => Preferences.Default.Set(nameof(CiudadanoId), value);
+    }
+
     public bool IsLoggedIn => !string.IsNullOrWhiteSpace(JwtToken);
 
     public void Logout()
     {
         Preferences.Default.Remove(nameof(JwtToken));
+        Preferences.Default.Remove(nameof(CiudadanoId));
         CurrentUser = new UserProfile("", "", "");
     }
 }

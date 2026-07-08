@@ -103,8 +103,57 @@ public partial class ReportPage : ContentPage
             BusyIndicator.IsRunning = BusyIndicator.IsVisible = true;
             _preferences.CurrentUser = new UserProfile(name, email, phone);
 
-            var id = await _api.CreateZendeskReportAsync(new ReportSubmission(_report, name, email, phone, address, _coordinates, comments, _attachment));
-            await Shell.Current.GoToAsync($"{nameof(ReportSuccessPage)}?reportId={id ?? 0}&isBache={_report.Title.Contains("bache", StringComparison.OrdinalIgnoreCase)}");
+            if (_preferences.CiudadanoId == 0)
+            {
+                _preferences.CiudadanoId = await _api.GetMyCiudadanoAsync() ?? 0;
+            }
+
+            if (_preferences.CiudadanoId == 0)
+            {
+                await DisplayAlert("No se pudo identificar tu cuenta", "Vuelve a iniciar sesion e intenta de nuevo.", "Aceptar");
+                return;
+            }
+
+            List<BackendEvidenciaItemRequest>? evidencias = null;
+            if (_attachment is not null)
+            {
+                var uploaded = await _api.UploadEvidenceAsync(_attachment);
+                if (uploaded is not null)
+                {
+                    evidencias =
+                    [
+                        new BackendEvidenciaItemRequest
+                        {
+                            NombreArchivo = uploaded.NombreOriginal,
+                            RutaArchivo = uploaded.Ruta,
+                            TipoMime = uploaded.MimeType,
+                            TamanoBytes = uploaded.Peso,
+                            EsEvidenciaInicial = true
+                        }
+                    ];
+                }
+            }
+
+            var request = new BackendCreateTicketRequest
+            {
+                Idciudadano = _preferences.CiudadanoId,
+                Asunto = _report.Title,
+                Descripcion = comments,
+                Observacionesapp = comments,
+                Correoelectronico = email,
+                Numerotelefonico = phone,
+                Dependencia = _report.Dependencia.DisplayName(),
+                Idservicio = _report.IdServicio,
+                Ubicacion = new BackendTicketUbicacionRequest
+                {
+                    Direccionapp = address,
+                    Coordenadas = _coordinates
+                },
+                Evidencias = evidencias
+            };
+
+            var ticketId = await _api.CreateTicketAsync(request);
+            await Shell.Current.GoToAsync($"{nameof(ReportSuccessPage)}?reportId={ticketId}&isBache={_report.Title.Contains("bache", StringComparison.OrdinalIgnoreCase)}");
         }
         catch (Exception ex)
         {

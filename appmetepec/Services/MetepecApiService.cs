@@ -163,6 +163,67 @@ public sealed class MetepecApiService
         return null;
     }
 
+    public async Task<int?> GetMyCiudadanoAsync(CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Get, AppConstants.MetepecBackendUrl + "/ciudadanos/me");
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        if (response.StatusCode is System.Net.HttpStatusCode.NotFound or System.Net.HttpStatusCode.Unauthorized)
+        {
+            return null;
+        }
+
+        response.EnsureSuccessStatusCode();
+        var result = await ReadJsonAsync<BackendCiudadanoDto>(response, cancellationToken);
+        return result?.Id;
+    }
+
+    public async Task<BackendUploadResult?> UploadEvidenceAsync(FileResult attachment, CancellationToken cancellationToken = default)
+    {
+        await using var stream = await attachment.OpenReadAsync();
+        using var content = new MultipartFormDataContent();
+        var fileContent = new StreamContent(stream);
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue(attachment.ContentType ?? "application/octet-stream");
+        content.Add(fileContent, "file", attachment.FileName);
+        content.Add(new StringContent("Ticket"), "modulo");
+
+        using var message = new HttpRequestMessage(HttpMethod.Post, AppConstants.MetepecBackendUrl + "/uploads")
+        {
+            Content = content
+        };
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        return await ReadJsonAsync<BackendUploadResult>(response, cancellationToken);
+    }
+
+    public async Task<int> CreateTicketAsync(BackendCreateTicketRequest request, CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Post, AppConstants.MetepecBackendUrl + "/tickets")
+        {
+            Content = JsonContent(request)
+        };
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
+        {
+            var body = await ReadJsonAsync<ErrorResponse>(response, cancellationToken);
+            throw new InvalidOperationException(body?.error ?? "No se pudo crear el reporte.");
+        }
+
+        response.EnsureSuccessStatusCode();
+        var created = await ReadJsonAsync<BackendTicketDto>(response, cancellationToken);
+        return created?.Id ?? 0;
+    }
+
+    private void AddBackendAuthorization(HttpRequestMessage message)
+    {
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _preferences.JwtToken);
+    }
+
     public async Task SendTwilioCodeAsync(string phoneNumber, CancellationToken cancellationToken = default)
     {
         using var message = new HttpRequestMessage(HttpMethod.Post, AppConstants.TwilioServiceUrl + "/Verifications")

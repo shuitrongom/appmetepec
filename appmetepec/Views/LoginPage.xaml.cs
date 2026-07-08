@@ -44,6 +44,14 @@ public partial class LoginPage : ContentPage
                 result.User.FullName,
                 result.User.Email,
                 result.User.PhoneNumber ?? "");
+            try
+            {
+                _preferences.CiudadanoId = await _api.GetMyCiudadanoAsync() ?? 0;
+            }
+            catch (Exception)
+            {
+                // No bloquea el login; ReportPage vuelve a intentarlo antes de crear un ticket.
+            }
 
             await Shell.Current.GoToAsync($"//{nameof(HomePage)}");
         }
