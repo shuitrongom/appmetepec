@@ -71,4 +71,9 @@ public partial class LoginPage : ContentPage
     {
         await Launcher.Default.OpenAsync(AppConstants.PrivacyUrl);
     }
+
+    private async void OnRegisterTapped(object sender, TappedEventArgs e)
+    {
+        await Shell.Current.GoToAsync(nameof(RegisterPage));
+    }
 }

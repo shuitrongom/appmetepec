@@ -78,6 +78,18 @@
                 </Label.GestureRecognizers>
             </Label>
 
+            <Label HorizontalTextAlignment="Center" FontSize="18" TextColor="#555" Margin="0,4,0,0">
+                <Label.FormattedText>
+                    <FormattedString>
+                        <Span Text="No tienes cuenta? " />
+                        <Span Text="Registrate" TextColor="#F89A1C" FontAttributes="Bold" />
+                    </FormattedString>
+                </Label.FormattedText>
+                <Label.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnRegisterTapped" />
+                </Label.GestureRecognizers>
+            </Label>
+
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

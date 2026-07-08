@@ -327,3 +327,32 @@ public sealed class BackendUserDto
     [JsonPropertyName("roles")]
     public IReadOnlyCollection<string> Roles { get; set; } = [];
 }
+
+public sealed class BackendRegisterRequest
+{
+    [JsonPropertyName("userName")]
+    public string UserName { get; set; } = "";
+
+    [JsonPropertyName("email")]
+    public string Email { get; set; } = "";
+
+    [JsonPropertyName("password")]
+    public string Password { get; set; } = "";
+
+    [JsonPropertyName("nombre")]
+    public string Nombre { get; set; } = "";
+
+    [JsonPropertyName("apaterno")]
+    public string Apaterno { get; set; } = "";
+
+    [JsonPropertyName("amaterno")]
+    public string? Amaterno { get; set; }
+
+    [JsonPropertyName("telefonomovil")]
+    public string? Telefonomovil { get; set; }
+}
+
+public sealed class ErrorResponse
+{
+    public string? error { get; set; }
+}

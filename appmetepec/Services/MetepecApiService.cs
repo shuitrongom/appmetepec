@@ -149,30 +149,58 @@ public sealed class MetepecApiService
         return await ReadJsonAsync<BackendLoginResponse>(response, cancellationToken);
     }
 
+    public async Task<string?> RegisterAsync(BackendRegisterRequest request, CancellationToken cancellationToken = default)
+    {
+        using var response = await _httpClient.PostAsync(AppConstants.MetepecBackendUrl + "/ciudadanos/registro", JsonContent(request), cancellationToken);
+
+        if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
+        {
+            var body = await ReadJsonAsync<ErrorResponse>(response, cancellationToken);
+            throw new InvalidOperationException(body?.error ?? "No se pudo completar el registro.");
+        }
+
+        response.EnsureSuccessStatusCode();
+        return null;
+    }
+
     public async Task SendTwilioCodeAsync(string phoneNumber, CancellationToken cancellationToken = default)
     {
-        var content = new FormUrlEncodedContent(new Dictionary<string, string>
+        using var message = new HttpRequestMessage(HttpMethod.Post, AppConstants.TwilioServiceUrl + "/Verifications")
         {
-            ["To"] = "+52" + phoneNumber,
-            ["Channel"] = "sms"
-        });
+            Content = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["To"] = "+52" + phoneNumber,
+                ["Channel"] = "sms"
+            })
+        };
+        AddTwilioAuthorization(message);
 
-        using var response = await _httpClient.PostAsync(AppConstants.TwilioServiceUrl + "/Verifications", content, cancellationToken);
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
         response.EnsureSuccessStatusCode();
     }
 
     public async Task<bool> VerifyTwilioCodeAsync(string phoneNumber, string code, CancellationToken cancellationToken = default)
     {
-        var content = new FormUrlEncodedContent(new Dictionary<string, string>
+        using var message = new HttpRequestMessage(HttpMethod.Post, AppConstants.TwilioServiceUrl + "/VerificationCheck")
         {
-            ["To"] = "+52" + phoneNumber,
-            ["Code"] = code
-        });
+            Content = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["To"] = "+52" + phoneNumber,
+                ["Code"] = code
+            })
+        };
+        AddTwilioAuthorization(message);
 
-        using var response = await _httpClient.PostAsync(AppConstants.TwilioServiceUrl + "/VerificationCheck", content, cancellationToken);
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
         response.EnsureSuccessStatusCode();
         var result = await ReadJsonAsync<TwilioVerifyResponse>(response, cancellationToken);
         return result?.valid == true;
+    }
+
+    private static void AddTwilioAuthorization(HttpRequestMessage message)
+    {
+        var credentials = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{AppConstants.TwilioAccountSid}:{AppConstants.TwilioAuthToken}"));
+        message.Headers.Authorization = new AuthenticationHeaderValue("Basic", credentials);
     }
 
     private async Task<string> EnsureRecoleccionTokenAsync(CancellationToken cancellationToken)
