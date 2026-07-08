@@ -53,4 +53,18 @@ public sealed class PreferencesService
         get => Preferences.Default.Get(nameof(NaranjaName), "");
         set => Preferences.Default.Set(nameof(NaranjaName), value);
     }
+
+    public string JwtToken
+    {
+        get => Preferences.Default.Get(nameof(JwtToken), "");
+        set => Preferences.Default.Set(nameof(JwtToken), value);
+    }
+
+    public bool IsLoggedIn => !string.IsNullOrWhiteSpace(JwtToken);
+
+    public void Logout()
+    {
+        Preferences.Default.Remove(nameof(JwtToken));
+        CurrentUser = new UserProfile("", "", "");
+    }
 }

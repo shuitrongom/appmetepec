@@ -132,6 +132,23 @@ public sealed class MetepecApiService
         return created?.request?.id;
     }
 
+    public async Task<BackendLoginResponse?> LoginAsync(string userNameOrEmail, string password, CancellationToken cancellationToken = default)
+    {
+        var content = JsonContent(new BackendLoginRequest
+        {
+            UserNameOrEmail = userNameOrEmail,
+            Password = password
+        });
+
+        using var response = await _httpClient.PostAsync(AppConstants.MetepecBackendUrl + "/seguridad/login", content, cancellationToken);
+
+        if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            return null;
+
+        response.EnsureSuccessStatusCode();
+        return await ReadJsonAsync<BackendLoginResponse>(response, cancellationToken);
+    }
+
     public async Task SendTwilioCodeAsync(string phoneNumber, CancellationToken cancellationToken = default)
     {
         var content = new FormUrlEncodedContent(new Dictionary<string, string>

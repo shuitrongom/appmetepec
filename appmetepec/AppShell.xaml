@@ -13,7 +13,7 @@
         Route="SplashPage" />
 
     <ShellContent
-        Title="Registro"
+        Title="Acceso"
         ContentTemplate="{DataTemplate views:LoginPage}"
         Route="LoginPage" />
 

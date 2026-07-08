@@ -33,8 +33,7 @@ public sealed partial class SplashViewModel : ObservableObject
                 LoadRemoteConfigSafeAsync(),
                 Task.Delay(AppConstants.MinimumSplashDurationMs));
 
-            var hasSession = !string.IsNullOrWhiteSpace(_preferences.CurrentUser.Name);
-            var route = hasSession ? nameof(HomePage) : nameof(LoginPage);
+            var route = _preferences.IsLoggedIn ? nameof(HomePage) : nameof(LoginPage);
             await Shell.Current.GoToAsync($"//{route}");
         }
         finally

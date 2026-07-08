@@ -283,3 +283,47 @@ public sealed class ZendeskUpload
 {
     public string? token { get; set; }
 }
+
+// ── Back-end Metepec (api/seguridad) ─────────────────────────────────────────
+
+public sealed class BackendLoginRequest
+{
+    [JsonPropertyName("userNameOrEmail")]
+    public string UserNameOrEmail { get; set; } = "";
+
+    [JsonPropertyName("password")]
+    public string Password { get; set; } = "";
+}
+
+public sealed class BackendLoginResponse
+{
+    [JsonPropertyName("token")]
+    public string Token { get; set; } = "";
+
+    [JsonPropertyName("expiresAt")]
+    public DateTime ExpiresAt { get; set; }
+
+    [JsonPropertyName("user")]
+    public BackendUserDto User { get; set; } = new();
+}
+
+public sealed class BackendUserDto
+{
+    [JsonPropertyName("id")]
+    public string Id { get; set; } = "";
+
+    [JsonPropertyName("username")]
+    public string Username { get; set; } = "";
+
+    [JsonPropertyName("email")]
+    public string Email { get; set; } = "";
+
+    [JsonPropertyName("fullName")]
+    public string FullName { get; set; } = "";
+
+    [JsonPropertyName("phoneNumber")]
+    public string? PhoneNumber { get; set; }
+
+    [JsonPropertyName("roles")]
+    public IReadOnlyCollection<string> Roles { get; set; } = [];
+}
