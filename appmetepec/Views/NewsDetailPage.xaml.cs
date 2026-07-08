@@ -43,4 +43,9 @@ public partial class NewsDetailPage : ContentPage
             await Launcher.Default.OpenAsync(_news.url);
         }
     }
+
+    private async void OnBackTapped(object sender, TappedEventArgs e)
+    {
+        await Shell.Current.GoToAsync("..");
+    }
 }

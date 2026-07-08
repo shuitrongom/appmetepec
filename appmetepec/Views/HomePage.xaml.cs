@@ -61,58 +61,49 @@ public partial class HomePage : ContentPage
 
         foreach (var category in categories)
         {
-            CategoriesHost.Children.Add(new Label
+            var categoryBlock = new VerticalStackLayout { Spacing = 10 };
+
+            categoryBlock.Children.Add(new Label
             {
                 Text = category.Nombre.ToUpperInvariant(),
-                FontSize = 28,
+                FontSize = 20,
                 FontAttributes = FontAttributes.Bold,
-                TextColor = Color.FromArgb("#555555"),
-                Margin = new Thickness(0, 0, 0, -8)
+                TextColor = Color.FromArgb("#555555")
             });
 
-            var grid = new Grid
+            var itemsRow = new HorizontalStackLayout { Spacing = 6 };
+
+            foreach (var report in category.Reportes)
             {
-                ColumnSpacing = 18,
-                RowSpacing = 20
-            };
-
-            grid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
-            grid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
-            grid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
-
-            for (var index = 0; index < category.Reportes.Count; index++)
-            {
-                var report = category.Reportes[index];
-                var row = index / 3;
-                var column = index % 3;
-
-                if (grid.RowDefinitions.Count <= row)
-                {
-                    grid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
-                }
-
-                var item = CreateReportItem(report);
-                grid.Add(item, column, row);
+                itemsRow.Children.Add(CreateReportItem(report));
             }
 
-            CategoriesHost.Children.Add(grid);
+            categoryBlock.Children.Add(new ScrollView
+            {
+                Orientation = ScrollOrientation.Horizontal,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Never,
+                Content = itemsRow
+            });
+
+            CategoriesHost.Children.Add(categoryBlock);
         }
     }
 
-    private View CreateReportItem(ScreenReport report)
+    private VerticalStackLayout CreateReportItem(ScreenReport report)
     {
         var layout = new VerticalStackLayout
         {
-            Spacing = 8,
-            HorizontalOptions = LayoutOptions.Fill,
+            Spacing = 4,
+            WidthRequest = 110,
+            HorizontalOptions = LayoutOptions.Center,
             BindingContext = report
         };
 
         layout.Children.Add(new Image
         {
             Source = report.IconSource,
-            HeightRequest = 118,
-            WidthRequest = 118,
+            HeightRequest = 100,
+            WidthRequest = 100,
             Aspect = Aspect.AspectFit,
             HorizontalOptions = LayoutOptions.Center
         });
@@ -120,7 +111,7 @@ public partial class HomePage : ContentPage
         layout.Children.Add(new Label
         {
             Text = report.Title,
-            FontSize = 16,
+            FontSize = 12,
             TextColor = Color.FromArgb("#555555"),
             HorizontalTextAlignment = TextAlignment.Center,
             LineBreakMode = LineBreakMode.WordWrap,
