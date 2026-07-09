@@ -41,31 +41,6 @@ public static class ZendeskDependenciaExtensions
     };
 }
 
-public enum ZendeskCustomField : long
-{
-    Dependencia = 4415375578651,
-    Tramite = 4415359706011,
-    Descripcion = 4415375599003,
-    CanalIngreso = 4415366554779,
-    Nombre = 4415375543963,
-    NumeroTelefono = 4415375557019,
-    CorreoElectronico = 4415366526619,
-    Direccion = 5009955887899,
-    Ubicacion = 4415375619611,
-    Boleta = 4415375616155,
-    Observaciones = 5025334635419,
-    Coordenadas = 4415359755547
-}
-
-public enum ZendeskNaranjaCustomField : long
-{
-    Nombre = 9702822013463,
-    Direccion = 9702848121623,
-    CorreoElectronico = 9702870738711,
-    NumeroTelefono = 9702895670167,
-    Coordenadas = 9702894264727
-}
-
 public sealed record ScreenReport(
     string Title,
     string Instructions,
@@ -91,16 +66,6 @@ public sealed record DependenciaCategoria(
 
 public sealed record UserProfile(string Name, string Email, string Phone);
 
-public sealed record ReportSubmission(
-    ScreenReport Report,
-    string Name,
-    string Email,
-    string Phone,
-    string Address,
-    string Coordinates,
-    string Comments,
-    FileResult? Attachment);
-
 public sealed class NewsLetterResponse
 {
     public List<NewsLetter>? Newsletters { get; set; }
@@ -116,25 +81,6 @@ public sealed class NewsLetter
     public string? content { get; set; }
     public string? image { get; set; }
     public string? url { get; set; }
-}
-
-public sealed class ZendeskCredentialsResponse
-{
-    public string? usuario { get; set; }
-    public string? token { get; set; }
-    public string? schedStartTime { get; set; }
-    public string? schedEndTime { get; set; }
-    public bool charge_property_tax { get; set; }
-    public int taxes_duration { get; set; }
-    public List<TaxesLink>? taxes_links { get; set; }
-}
-
-public sealed class TaxesLink
-{
-    public string? name { get; set; }
-    public string? img { get; set; }
-    public string? android { get; set; }
-    public int sort { get; set; }
 }
 
 public sealed class TokenRecoleccionResponse
@@ -209,80 +155,9 @@ public class GenericRecResponse
     public string? message { get; set; }
 }
 
-public sealed class ZendeskTicketList
-{
-    public List<ZendeskTicket> tickets { get; set; } = [];
-}
-
-public sealed class ZendeskTicket
-{
-    public int id { get; set; }
-}
-
 public sealed class TwilioVerifyResponse
 {
     public bool valid { get; set; }
-}
-
-public sealed class ZendeskCreateRequest
-{
-    [JsonPropertyName("request")]
-    public ZendeskRequest Request { get; set; } = new();
-}
-
-public sealed class ZendeskRequest
-{
-    [JsonPropertyName("subject")]
-    public string Subject { get; set; } = "";
-
-    [JsonPropertyName("comment")]
-    public ZendeskComment Comment { get; set; } = new();
-
-    [JsonPropertyName("tags")]
-    public List<string> Tags { get; set; } = [];
-
-    [JsonPropertyName("custom_fields")]
-    public List<ZendeskCustomFieldValue> CustomFields { get; set; } = [];
-}
-
-public sealed class ZendeskComment
-{
-    [JsonPropertyName("body")]
-    public string Body { get; set; } = "";
-
-    [JsonPropertyName("uploads")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public List<string>? Uploads { get; set; }
-}
-
-public sealed class ZendeskCustomFieldValue
-{
-    [JsonPropertyName("id")]
-    public long Id { get; set; }
-
-    [JsonPropertyName("value")]
-    public string Value { get; set; } = "";
-}
-
-public sealed class ZendeskRequestResponse
-{
-    public ZendeskCreatedRequest? request { get; set; }
-}
-
-public sealed class ZendeskCreatedRequest
-{
-    public long id { get; set; }
-    public long requester_id { get; set; }
-}
-
-public sealed class ZendeskUploadResponse
-{
-    public ZendeskUpload? upload { get; set; }
-}
-
-public sealed class ZendeskUpload
-{
-    public string? token { get; set; }
 }
 
 // ── Back-end Metepec (api/seguridad) ─────────────────────────────────────────

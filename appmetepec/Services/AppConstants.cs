@@ -3,10 +3,7 @@ namespace appmetepec.Services;
 public static class AppConstants
 {
     public const string AppName = "Metepec *7311";
-    public const string BaseZendeskUrl = "https://metepec.zendesk.com";
-    public const string BaseZendeskNaranjaUrl = "https://metepecnaranja.zendesk.com";
     public const string EnvConsultingUrl = "http://env_consulting_api.mobzilla.com/";
-    public const string ZendeskCredentialsUrl = "http://smidesk.mobzilla.com/zen_metepec.json";
     public const string ServerDtUrl = "http://api.mobzilla.com/index.aspx";
     public const string RecoleccionUrl = "https://recolecciongt.mx/api_external/";
     public const string MetepecApiUrl = "http://metepec-api.mobzilla.com";

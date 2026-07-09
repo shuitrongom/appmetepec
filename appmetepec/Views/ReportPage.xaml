@@ -50,7 +50,7 @@
                             <TapGestureRecognizer Tapped="OnPickImageTapped" />
                         </Image.GestureRecognizers>
                     </Image>
-                    <Image Source="placeholder_imagepreview.png" HeightRequest="70" WidthRequest="70" />
+                    <Image x:Name="PreviewImage" Source="placeholder_imagepreview.png" HeightRequest="70" WidthRequest="70" Aspect="AspectFill" />
                 </HorizontalStackLayout>
                 <Label x:Name="AttachmentLabel" TextColor="White" FontSize="12" />
 

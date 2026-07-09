@@ -24,8 +24,8 @@ namespace appmetepec
             builder.Logging.AddDebug();
 #endif
 
-            builder.Services.AddSingleton<HttpClient>();
             builder.Services.AddSingleton<PreferencesService>();
+            builder.Services.AddSingleton(sp => new HttpClient(new AuthExpiredHandler(sp.GetRequiredService<PreferencesService>())));
             builder.Services.AddSingleton<ReportCatalogService>();
             builder.Services.AddSingleton<MetepecApiService>();
             builder.Services.AddSingleton<NavigationState>();

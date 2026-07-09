@@ -61,16 +61,36 @@ public partial class ReportPage : ContentPage
         }
     }
 
-    private async void OnPickImageClicked(object sender, EventArgs e)
-    {
-        _attachment = await MediaPicker.Default.PickPhotoAsync();
-        AttachmentLabel.Text = _attachment?.FileName ?? "";
-    }
-
     private async void OnPickImageTapped(object sender, TappedEventArgs e)
     {
-        _attachment = await MediaPicker.Default.PickPhotoAsync();
-        AttachmentLabel.Text = _attachment?.FileName ?? "";
+        try
+        {
+            var options = MediaPicker.Default.IsCaptureSupported
+                ? new[] { "Tomar foto", "Elegir de la galeria" }
+                : new[] { "Elegir de la galeria" };
+
+            var choice = await DisplayActionSheet("Agrega un testigo", "Cancelar", null, options);
+
+            FileResult? result = choice switch
+            {
+                "Tomar foto" => await MediaPicker.Default.CapturePhotoAsync(),
+                "Elegir de la galeria" => await MediaPicker.Default.PickPhotoAsync(),
+                _ => null
+            };
+
+            if (result is null)
+            {
+                return;
+            }
+
+            _attachment = result;
+            AttachmentLabel.Text = _attachment.FileName;
+            PreviewImage.Source = ImageSource.FromFile(_attachment.FullPath);
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlert("No se pudo agregar el testigo", ex.Message, "Aceptar");
+        }
     }
 
     private async void OnBackTapped(object sender, TappedEventArgs e)

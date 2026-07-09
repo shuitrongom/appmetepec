@@ -140,10 +140,14 @@ public partial class HomePage : ContentPage
         try
         {
             BusyIndicator.IsRunning = BusyIndicator.IsVisible = true;
-            NewsView.ItemsSource = await _api.GetPublicacionesAsync();
+            var news = await _api.GetPublicacionesAsync();
+            System.Diagnostics.Debug.WriteLine($"[Noticias] {news.Count} publicaciones cargadas.");
+            NewsView.ItemsSource = news;
         }
-        catch
+        catch (Exception ex)
         {
+            var status = (ex as HttpRequestException)?.StatusCode;
+            System.Diagnostics.Debug.WriteLine($"[Noticias] Error al cargar publicaciones: {ex.GetType().Name} {status} - {ex.Message}");
             NewsView.ItemsSource = Array.Empty<NewsLetter>();
         }
         finally

@@ -28,5 +28,11 @@
 	</array>
 	<key>XSAppIconAssets</key>
 	<string>Assets.xcassets/appicon.appiconset</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Usamos la camara para agregar una foto como evidencia de tu reporte.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Usamos tu galeria para agregar una foto como evidencia de tu reporte.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Usamos tu ubicacion para completar la direccion de tu reporte.</string>
 </dict>
 </plist>
