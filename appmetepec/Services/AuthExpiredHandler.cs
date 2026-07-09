@@ -1,13 +1,12 @@
 using System.Net;
 using appmetepec.Views;
-using CommunityToolkit.Maui.Alerts;
 
 namespace appmetepec.Services;
 
 public sealed class AuthExpiredHandler : DelegatingHandler
 {
     private readonly PreferencesService _preferences;
-    private bool _redirecting;
+    private int _redirecting;
 
     public AuthExpiredHandler(PreferencesService preferences)
     {
@@ -22,21 +21,24 @@ public sealed class AuthExpiredHandler : DelegatingHandler
         var path = request.RequestUri?.AbsolutePath ?? "";
         var isAuthEndpoint = path.EndsWith("/seguridad/login") || path.EndsWith("/ciudadanos/registro");
 
-        if (response.StatusCode == HttpStatusCode.Unauthorized && !isAuthEndpoint && !_redirecting && _preferences.IsLoggedIn)
+        if (response.StatusCode == HttpStatusCode.Unauthorized && !isAuthEndpoint
+            && _preferences.IsLoggedIn && Interlocked.CompareExchange(ref _redirecting, 1, 0) == 0)
         {
-            _redirecting = true;
             _preferences.Logout();
 
             MainThread.BeginInvokeOnMainThread(async () =>
             {
                 try
                 {
-                    await Toast.Make("Tu sesion expiro, inicia sesion de nuevo.").Show(cancellationToken);
                     await Shell.Current.GoToAsync($"//{nameof(LoginPage)}");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[Auth] No se pudo navegar a LoginPage: {ex.Message}");
                 }
                 finally
                 {
-                    _redirecting = false;
+                    Interlocked.Exchange(ref _redirecting, 0);
                 }
             });
         }

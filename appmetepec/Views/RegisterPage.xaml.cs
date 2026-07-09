@@ -60,49 +60,25 @@ public partial class RegisterPage : ContentPage
             return;
         }
 
+        _phone = phone;
+
+        // NOTA: la verificacion por SMS (Twilio) queda deshabilitada temporalmente porque requiere
+        // credenciales de Twilio que no deben vivir en la app movil (ver AppConstants.TwilioAccountSid).
+        // Cuando se mueva la verificacion al backend, restaurar este flujo:
+        //   await _api.SendTwilioCodeAsync(_phone);
+        //   FormPanel.IsVisible = false;
+        //   CodePanel.IsVisible = true;
+        //   StartCodeTimer();
+        // y que OnVerifyClicked llame a CompleteRegistrationAsync() tras validar el codigo.
+        await CompleteRegistrationAsync();
+    }
+
+    private async Task CompleteRegistrationAsync()
+    {
         try
         {
             RegisterButton.IsEnabled = false;
             BusyIndicator.IsRunning = BusyIndicator.IsVisible = true;
-
-            _phone = phone;
-            await _api.SendTwilioCodeAsync(_phone);
-
-            FormPanel.IsVisible = false;
-            CodePanel.IsVisible = true;
-            StartCodeTimer();
-        }
-        catch (Exception ex)
-        {
-            await DisplayAlert("No se pudo enviar el codigo", ex.Message, "Aceptar");
-        }
-        finally
-        {
-            RegisterButton.IsEnabled = true;
-            BusyIndicator.IsRunning = BusyIndicator.IsVisible = false;
-        }
-    }
-
-    private async void OnVerifyClicked(object sender, EventArgs e)
-    {
-        var code = CodeEntry.Text?.Trim() ?? "";
-        if (string.IsNullOrWhiteSpace(code))
-        {
-            await DisplayAlert("Codigo requerido", "Captura el codigo que recibiste por SMS.", "Aceptar");
-            return;
-        }
-
-        try
-        {
-            VerifyButton.IsEnabled = false;
-            BusyIndicator.IsRunning = BusyIndicator.IsVisible = true;
-
-            var valid = await _api.VerifyTwilioCodeAsync(_phone, code);
-            if (!valid)
-            {
-                await DisplayAlert("Codigo incorrecto", "El codigo de verificacion es incorrecto.", "Aceptar");
-                return;
-            }
 
             var username = UsernameEntry.Text?.Trim() ?? "";
             var password = PasswordEntry.Text ?? "";
@@ -138,6 +114,40 @@ public partial class RegisterPage : ContentPage
             }
 
             await Shell.Current.GoToAsync($"//{nameof(HomePage)}");
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlert("No se pudo completar el registro", ex.Message, "Aceptar");
+        }
+        finally
+        {
+            RegisterButton.IsEnabled = true;
+            BusyIndicator.IsRunning = BusyIndicator.IsVisible = false;
+        }
+    }
+
+    private async void OnVerifyClicked(object sender, EventArgs e)
+    {
+        var code = CodeEntry.Text?.Trim() ?? "";
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            await DisplayAlert("Codigo requerido", "Captura el codigo que recibiste por SMS.", "Aceptar");
+            return;
+        }
+
+        try
+        {
+            VerifyButton.IsEnabled = false;
+            BusyIndicator.IsRunning = BusyIndicator.IsVisible = true;
+
+            var valid = await _api.VerifyTwilioCodeAsync(_phone, code);
+            if (!valid)
+            {
+                await DisplayAlert("Codigo incorrecto", "El codigo de verificacion es incorrecto.", "Aceptar");
+                return;
+            }
+
+            await CompleteRegistrationAsync();
         }
         catch (Exception ex)
         {
