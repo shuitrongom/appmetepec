@@ -154,6 +154,7 @@ public partial class ReportPage : ContentPage
                 }
             }
 
+            var (latitud, longitud) = ParseCoordinates(_coordinates);
             var request = new BackendCreateTicketRequest
             {
                 Idciudadano = _preferences.CiudadanoId,
@@ -167,9 +168,20 @@ public partial class ReportPage : ContentPage
                 Ubicacion = new BackendTicketUbicacionRequest
                 {
                     Direccionapp = address,
-                    Coordenadas = _coordinates
+                    Coordenadas = _coordinates,
+                    Latitud = latitud,
+                    Longitud = longitud
                 },
-                Evidencias = evidencias
+                Evidencias = evidencias,
+                Servicios = _report.IdServicio > 0
+                    ? [new BackendTicketServicioItemRequest { IdServicio = _report.IdServicio, EsPrincipal = true }]
+                    : null,
+                Observacion = new BackendTicketObservacionRequest
+                {
+                    IdTipoMensaje = 1,
+                    Observaciones = string.IsNullOrWhiteSpace(comments) ? _report.Title : comments,
+                    VisibleCiudadano = true
+                }
             };
 
             var ticketId = await _api.CreateTicketAsync(request);
@@ -184,5 +196,18 @@ public partial class ReportPage : ContentPage
             SendButton.IsEnabled = true;
             BusyIndicator.IsRunning = BusyIndicator.IsVisible = false;
         }
+    }
+
+    private static (decimal? Latitud, decimal? Longitud) ParseCoordinates(string coordinates)
+    {
+        var parts = coordinates.Split(',');
+        if (parts.Length == 2
+            && decimal.TryParse(parts[0].Trim(), System.Globalization.CultureInfo.InvariantCulture, out var lat)
+            && decimal.TryParse(parts[1].Trim(), System.Globalization.CultureInfo.InvariantCulture, out var lng))
+        {
+            return (lat, lng);
+        }
+
+        return (null, null);
     }
 }

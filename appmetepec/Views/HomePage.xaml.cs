@@ -244,6 +244,17 @@ public partial class HomePage : ContentPage
         NewsContent.IsVisible = true;
         ReportsTab.BackgroundColor = Color.FromArgb("#1A1A1A");
         NewsTab.BackgroundColor = Color.FromArgb("#050505");
+
+        // El CollectionView recibe su ItemsSource en OnAppearing mientras NewsContent sigue oculto
+        // (IsVisible=False), y MAUI no siempre relayoutea bien un CollectionView que estaba oculto
+        // cuando se le asignaron los datos. Reasignar el ItemsSource ahora que ya es visible fuerza
+        // el relayout sin volver a llamar a la API.
+        var items = NewsView.ItemsSource;
+        if (items is not null)
+        {
+            NewsView.ItemsSource = null;
+            NewsView.ItemsSource = items;
+        }
     }
 
     private sealed record BannerItem(

@@ -66,6 +66,7 @@ public partial class AlertaNaranjaPage : ContentPage
                 return;
             }
 
+            var (latitud, longitud) = ParseCoordinates(_coordinates);
             var request = new BackendCreateTicketRequest
             {
                 Idciudadano = _preferences.CiudadanoId,
@@ -79,7 +80,16 @@ public partial class AlertaNaranjaPage : ContentPage
                 Ubicacion = new BackendTicketUbicacionRequest
                 {
                     Direccionapp = AddressEditor.Text?.Trim() ?? "",
-                    Coordenadas = _coordinates
+                    Coordenadas = _coordinates,
+                    Latitud = latitud,
+                    Longitud = longitud
+                },
+                Servicios = [new BackendTicketServicioItemRequest { IdServicio = 36, EsPrincipal = true }],
+                Observacion = new BackendTicketObservacionRequest
+                {
+                    IdTipoMensaje = 1,
+                    Observaciones = "Alerta naranja activada desde la app.",
+                    VisibleCiudadano = true
                 }
             };
 
@@ -94,5 +104,18 @@ public partial class AlertaNaranjaPage : ContentPage
         {
             BusyIndicator.IsRunning = BusyIndicator.IsVisible = false;
         }
+    }
+
+    private static (decimal? Latitud, decimal? Longitud) ParseCoordinates(string coordinates)
+    {
+        var parts = coordinates.Split(',');
+        if (parts.Length == 2
+            && decimal.TryParse(parts[0].Trim(), System.Globalization.CultureInfo.InvariantCulture, out var lat)
+            && decimal.TryParse(parts[1].Trim(), System.Globalization.CultureInfo.InvariantCulture, out var lng))
+        {
+            return (lat, lng);
+        }
+
+        return (null, null);
     }
 }

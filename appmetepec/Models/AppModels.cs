@@ -270,12 +270,48 @@ public sealed class BackendCreateTicketRequest
 
     [JsonPropertyName("evidencias")]
     public List<BackendEvidenciaItemRequest>? Evidencias { get; set; }
+
+    [JsonPropertyName("servicios")]
+    public List<BackendTicketServicioItemRequest>? Servicios { get; set; }
+
+    [JsonPropertyName("observacion")]
+    public BackendTicketObservacionRequest? Observacion { get; set; }
+}
+
+public sealed class BackendTicketServicioItemRequest
+{
+    [JsonPropertyName("idServicio")]
+    public int IdServicio { get; set; }
+
+    [JsonPropertyName("esPrincipal")]
+    public bool EsPrincipal { get; set; }
+}
+
+public sealed class BackendTicketObservacionRequest
+{
+    [JsonPropertyName("idTipoMensaje")]
+    public int IdTipoMensaje { get; set; }
+
+    [JsonPropertyName("idusuarioemisor")]
+    public int? Idusuarioemisor { get; set; }
+
+    [JsonPropertyName("visibleCiudadano")]
+    public bool VisibleCiudadano { get; set; }
+
+    [JsonPropertyName("observaciones")]
+    public string Observaciones { get; set; } = "";
 }
 
 public sealed class BackendTicketUbicacionRequest
 {
     [JsonPropertyName("direccionapp")]
     public string? Direccionapp { get; set; }
+
+    [JsonPropertyName("latitud")]
+    public decimal? Latitud { get; set; }
+
+    [JsonPropertyName("longitud")]
+    public decimal? Longitud { get; set; }
 
     [JsonPropertyName("coordenadas")]
     public string? Coordenadas { get; set; }

@@ -40,7 +40,7 @@
 
 	<ItemGroup>
 		<!-- App Icon -->
-		<MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#512BD4" />
+		<MauiIcon Include="Resources\AppIcon\appicon.png" Color="#FFFFFF" />
 
 		<!-- Splash Screen (nativo del SO, solo icono mientras arranca el proceso) -->
 		<MauiSplashScreen Include="Resources\Images\logo.png" Color="#F89622" BaseSize="300,300" />
