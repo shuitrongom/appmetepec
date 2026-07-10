@@ -145,7 +145,7 @@ public sealed class MetepecApiService
         var fileContent = new StreamContent(stream);
         fileContent.Headers.ContentType = new MediaTypeHeaderValue(attachment.ContentType ?? "application/octet-stream");
         content.Add(fileContent, "file", attachment.FileName);
-        content.Add(new StringContent("Ticket"), "modulo");
+        content.Add(new StringContent("ticket"), "modulo");
 
         using var message = new HttpRequestMessage(HttpMethod.Post, AppConstants.MetepecBackendUrl + "/uploads")
         {
