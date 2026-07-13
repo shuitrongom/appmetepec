@@ -40,6 +40,8 @@ namespace appmetepec
             builder.Services.AddTransient<NewsDetailPage>();
             builder.Services.AddTransient<RecoleccionPage>();
             builder.Services.AddTransient<AlertaNaranjaPage>();
+            builder.Services.AddTransient<MyTicketsPage>();
+            builder.Services.AddTransient<TicketDetailPage>();
 
             return builder.Build();
         }

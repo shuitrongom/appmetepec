@@ -337,8 +337,37 @@ public sealed class BackendEvidenciaItemRequest
 
 public sealed class BackendTicketDto
 {
-    [JsonPropertyName("id")]
     public int Id { get; set; }
+    public string? Folio { get; set; }
+    public string Asunto { get; set; } = "";
+    public string? Descripcion { get; set; }
+    public string? Observacionesapp { get; set; }
+    public string? Descestatus { get; set; }
+    public string? Colorestatus { get; set; }
+    public string? Descservicio { get; set; }
+    public string? Dependencia { get; set; }
+    public DateTime Fechaalta { get; set; }
+}
+
+public sealed class BackendTicketObservacionDto
+{
+    public long Id { get; set; }
+    public string Observaciones { get; set; } = "";
+    public bool Visibleciudadano { get; set; }
+    public DateTime Fechaalta { get; set; }
+    public string? Desctipomensaje { get; set; }
+    public string? Descestatus { get; set; }
+    public string Usuarioregistra { get; set; } = "";
+    public List<BackendTicketObservacionEvidenciaDto>? Evidencias { get; set; }
+    public bool HasEvidencias => Evidencias is { Count: > 0 };
+}
+
+public sealed class BackendTicketObservacionEvidenciaDto
+{
+    public long Id { get; set; }
+    public string NombreArchivo { get; set; } = "";
+    public string RutaArchivo { get; set; } = "";
+    public string? TipoMime { get; set; }
 }
 
 public sealed class BackendUploadResult

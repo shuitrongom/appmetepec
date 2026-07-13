@@ -178,6 +178,27 @@ public sealed class MetepecApiService
         return created?.Id ?? 0;
     }
 
+    public async Task<List<BackendTicketDto>> GetMyTicketsAsync(CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Get, AppConstants.MetepecBackendUrl + "/tickets/mis-tickets");
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        return await ReadJsonAsync<List<BackendTicketDto>>(response, cancellationToken) ?? [];
+    }
+
+    public async Task<List<BackendTicketObservacionDto>> GetTicketObservacionesAsync(int idTicket, CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Get, AppConstants.MetepecBackendUrl + $"/ticket-observaciones/ticket/{idTicket}");
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        var result = await ReadJsonAsync<List<BackendTicketObservacionDto>>(response, cancellationToken) ?? [];
+        return result.OrderBy(item => item.Fechaalta).ToList();
+    }
+
     public async Task<List<NewsLetter>> GetPublicacionesAsync(CancellationToken cancellationToken = default)
     {
         using var message = new HttpRequestMessage(HttpMethod.Get, AppConstants.MetepecBackendUrl + "/publicaciones");
