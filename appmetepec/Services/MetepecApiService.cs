@@ -141,10 +141,15 @@ public sealed class MetepecApiService
     public async Task<BackendUploadResult?> UploadEvidenceAsync(FileResult attachment, CancellationToken cancellationToken = default)
     {
         await using var stream = await attachment.OpenReadAsync();
+        return await UploadEvidenceAsync(stream, attachment.FileName, attachment.ContentType, cancellationToken);
+    }
+
+    public async Task<BackendUploadResult?> UploadEvidenceAsync(Stream fileStream, string fileName, string? contentType, CancellationToken cancellationToken = default)
+    {
         using var content = new MultipartFormDataContent();
-        var fileContent = new StreamContent(stream);
-        fileContent.Headers.ContentType = new MediaTypeHeaderValue(attachment.ContentType ?? "application/octet-stream");
-        content.Add(fileContent, "file", attachment.FileName);
+        var fileContent = new StreamContent(fileStream);
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue(contentType ?? "application/octet-stream");
+        content.Add(fileContent, "file", fileName);
         content.Add(new StringContent("ticket"), "modulo");
 
         using var message = new HttpRequestMessage(HttpMethod.Post, AppConstants.MetepecBackendUrl + "/uploads")

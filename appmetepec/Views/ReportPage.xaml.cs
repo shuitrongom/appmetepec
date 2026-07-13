@@ -8,16 +8,18 @@ public partial class ReportPage : ContentPage
     private readonly PreferencesService _preferences;
     private readonly MetepecApiService _api;
     private readonly NavigationState _navigationState;
+    private readonly PendingTicketsService _pendingTickets;
     private ScreenReport? _report;
     private FileResult? _attachment;
     private string _coordinates = "";
 
-    public ReportPage(PreferencesService preferences, MetepecApiService api, NavigationState navigationState)
+    public ReportPage(PreferencesService preferences, MetepecApiService api, NavigationState navigationState, PendingTicketsService pendingTickets)
     {
         InitializeComponent();
         _preferences = preferences;
         _api = api;
         _navigationState = navigationState;
+        _pendingTickets = pendingTickets;
     }
 
     protected override void OnAppearing()
@@ -189,13 +191,57 @@ public partial class ReportPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlert("No se pudo enviar", ex.Message, "Aceptar");
+            var guardar = await DisplayAlert(
+                "No se pudo enviar",
+                $"{ex.Message}\n\n¿Quieres guardar este reporte para volver a intentarlo despues?",
+                "Guardar",
+                "Cancelar");
+
+            if (guardar)
+            {
+                await GuardarReportePendienteAsync(name, email, phone, address, comments, ex.Message);
+            }
         }
         finally
         {
             SendButton.IsEnabled = true;
             BusyIndicator.IsRunning = BusyIndicator.IsVisible = false;
         }
+    }
+
+    private async Task GuardarReportePendienteAsync(string name, string email, string phone, string address, string comments, string lastError)
+    {
+        if (_report is null)
+        {
+            return;
+        }
+
+        var submission = new PendingTicketSubmission
+        {
+            Title = _report.Title,
+            IdServicio = _report.IdServicio,
+            Dependencia = _report.Dependencia.DisplayName(),
+            Name = name,
+            Email = email,
+            Phone = phone,
+            Address = address,
+            Coordinates = _coordinates,
+            Comments = comments,
+            IsBache = _report.Title.Contains("bache", StringComparison.OrdinalIgnoreCase),
+            LastError = lastError
+        };
+
+        if (_attachment is not null)
+        {
+            submission.LocalPhotoPath = await _pendingTickets.SavePhotoAsync(_attachment);
+        }
+
+        await _pendingTickets.SaveAsync(submission);
+        await DisplayAlert(
+            "Reporte guardado",
+            "Lo encontraras en \"Mis reportes\" para reintentar el envio cuando tengas conexion.",
+            "Aceptar");
+        await Shell.Current.GoToAsync("..");
     }
 
     private static (decimal? Latitud, decimal? Longitud) ParseCoordinates(string coordinates)

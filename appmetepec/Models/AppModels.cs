@@ -66,6 +66,24 @@ public sealed record DependenciaCategoria(
 
 public sealed record UserProfile(string Name, string Email, string Phone);
 
+public sealed class PendingTicketSubmission
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    public DateTime SavedAt { get; set; } = DateTime.Now;
+    public string Title { get; set; } = "";
+    public int IdServicio { get; set; }
+    public string Dependencia { get; set; } = "";
+    public string Name { get; set; } = "";
+    public string Email { get; set; } = "";
+    public string Phone { get; set; } = "";
+    public string Address { get; set; } = "";
+    public string Coordinates { get; set; } = "";
+    public string Comments { get; set; } = "";
+    public string? LocalPhotoPath { get; set; }
+    public bool IsBache { get; set; }
+    public string? LastError { get; set; }
+}
+
 public sealed class NewsLetterResponse
 {
     public List<NewsLetter>? Newsletters { get; set; }

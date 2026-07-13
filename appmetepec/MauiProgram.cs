@@ -29,6 +29,7 @@ namespace appmetepec
             builder.Services.AddSingleton<ReportCatalogService>();
             builder.Services.AddSingleton<MetepecApiService>();
             builder.Services.AddSingleton<NavigationState>();
+            builder.Services.AddSingleton<PendingTicketsService>();
 
             builder.Services.AddTransient<SplashViewModel>();
             builder.Services.AddTransient<SplashPage>();
