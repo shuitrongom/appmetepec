@@ -24,7 +24,6 @@ public partial class ReportSuccessPage : ContentPage
 
     private async void OnHomeClicked(object sender, EventArgs e)
     {
-        await Shell.Current.Navigation.PopToRootAsync();
-        await Shell.Current.GoToAsync(nameof(HomePage));
+        await Shell.Current.GoToAsync($"//{nameof(HomePage)}");
     }
 }

@@ -3,34 +3,25 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="appmetepec.Views.AlertaNaranjaPage"
              Title="Alerta"
-             BackgroundColor="#F6F8FA">
+             BackgroundColor="#545553"
+             BackgroundImageSource="bg8.png">
     <ScrollView>
-        <VerticalStackLayout Padding="18" Spacing="14">
-            <Grid ColumnDefinitions="64,*" ColumnSpacing="12">
-                <Image Source="ic_alerta_on.png" HeightRequest="58" WidthRequest="58" Aspect="AspectFit" />
-                <VerticalStackLayout Grid.Column="1" Spacing="4">
-                    <Label Text="Alerta naranja" FontSize="24" FontAttributes="Bold" TextColor="#111827" />
-                    <Label Text="Registro y activacion de alerta." TextColor="#526070" />
-                </VerticalStackLayout>
-            </Grid>
+        <VerticalStackLayout Spacing="0">
+            <Image Source="logo.png" HeightRequest="50" WidthRequest="100" Aspect="AspectFit" Margin="25,12,25,0" />
+            <Image Source="ic_alerta_on.png" HeightRequest="110" WidthRequest="110" HorizontalOptions="Center" Margin="0,16,0,0" />
+            <Label Text="ALERTA DE GENERO" FontSize="20" FontAttributes="Bold" TextColor="#F48021" BackgroundColor="White" Padding="15" HorizontalTextAlignment="Center" Margin="0,16,0,16" />
 
-            <Border Stroke="#DDE3EA" BackgroundColor="White" Padding="14">
-                <Border.StrokeShape>
-                    <RoundRectangle CornerRadius="8" />
-                </Border.StrokeShape>
-                <VerticalStackLayout Spacing="12">
-                    <Entry x:Name="NameEntry" Placeholder="Nombre" />
-                    <Entry x:Name="PhoneEntry" Placeholder="Telefono" Keyboard="Telephone" />
-                    <Entry x:Name="EmailEntry" Placeholder="Correo" Keyboard="Email" />
-                    <Editor x:Name="AddressEditor" Placeholder="Direccion" AutoSize="TextChanges" HeightRequest="90" />
-                    <Button Text="Usar ubicacion" Clicked="OnUseLocationClicked" BackgroundColor="#EEF2F6" TextColor="#111827" />
-                    <Label x:Name="CoordinatesLabel" TextColor="#526070" />
-                    <Button Text="Guardar datos" Clicked="OnSaveClicked" BackgroundColor="#111827" TextColor="White" />
-                </VerticalStackLayout>
-            </Border>
-
-            <Button Text="Activar alerta" Clicked="OnActivateClicked" BackgroundColor="#F59E0B" TextColor="#111827" />
-            <ActivityIndicator x:Name="BusyIndicator" />
+            <VerticalStackLayout Padding="20,0,20,26" Spacing="10">
+                <Entry x:Name="NameEntry" Placeholder="Nombre" FontSize="15" BackgroundColor="White" TextColor="#333" HorizontalTextAlignment="Center" HeightRequest="46" />
+                <Entry x:Name="PhoneEntry" Placeholder="Telefono" Keyboard="Telephone" FontSize="15" BackgroundColor="White" TextColor="#333" HorizontalTextAlignment="Center" HeightRequest="46" />
+                <Entry x:Name="EmailEntry" Placeholder="Correo" Keyboard="Email" FontSize="15" BackgroundColor="White" TextColor="#333" HorizontalTextAlignment="Center" HeightRequest="46" />
+                <Editor x:Name="AddressEditor" Placeholder="Direccion" FontSize="15" AutoSize="TextChanges" HeightRequest="80" BackgroundColor="White" TextColor="#333" HorizontalTextAlignment="Center" />
+                <Button Text="USAR UBICACION" Clicked="OnUseLocationClicked" BackgroundColor="#A6CE39" TextColor="White" FontSize="12" FontAttributes="Bold" />
+                <Label x:Name="CoordinatesLabel" TextColor="White" FontSize="12" />
+                <Button Text="REGISTRAR Y ALERTAR" Clicked="OnSaveClicked" BackgroundColor="#F48021" TextColor="White" FontSize="18" FontAttributes="Bold" Margin="0,10,0,0" />
+                <Button Text="ACTIVAR ALERTA" Clicked="OnActivateClicked" BackgroundColor="#F89622" TextColor="White" FontSize="20" FontAttributes="Bold" />
+                <ActivityIndicator x:Name="BusyIndicator" />
+            </VerticalStackLayout>
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

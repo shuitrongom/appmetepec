@@ -20,20 +20,6 @@ public sealed class MetepecApiService
         _preferences = preferences;
     }
 
-    public async Task LoadZendeskCredentialsAsync(CancellationToken cancellationToken = default)
-    {
-        var credentials = await GetJsonAsync<ZendeskCredentialsResponse>(AppConstants.ZendeskCredentialsUrl, cancellationToken);
-        if (credentials is null)
-        {
-            return;
-        }
-
-        _preferences.ZendeskUser = credentials.usuario ?? "";
-        _preferences.ZendeskToken = credentials.token ?? "";
-        _preferences.SchedStartTime = credentials.schedStartTime ?? _preferences.SchedStartTime;
-        _preferences.SchedEndTime = credentials.schedEndTime ?? _preferences.SchedEndTime;
-    }
-
     public Task<NewsLetterResponse?> GetNewsAsync(CancellationToken cancellationToken = default)
     {
         const string url = AppConstants.EnvConsultingUrl +
@@ -105,57 +91,186 @@ public sealed class MetepecApiService
         return result?.success == true ? result.data : null;
     }
 
-    public async Task<long?> CreateZendeskReportAsync(ReportSubmission submission, CancellationToken cancellationToken = default)
+    public async Task<BackendLoginResponse?> LoginAsync(string userNameOrEmail, string password, CancellationToken cancellationToken = default)
     {
-        await LoadZendeskCredentialsIfNeededAsync(cancellationToken);
-
-        var uploads = new List<string>();
-        if (submission.Attachment is not null)
+        var content = JsonContent(new BackendLoginRequest
         {
-            var token = await UploadZendeskAttachmentAsync(submission.Attachment, cancellationToken);
-            if (!string.IsNullOrWhiteSpace(token))
-            {
-                uploads.Add(token);
-            }
+            UserNameOrEmail = userNameOrEmail,
+            Password = password
+        });
+
+        using var response = await _httpClient.PostAsync(AppConstants.MetepecBackendUrl + "/seguridad/login", content, cancellationToken);
+
+        if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            return null;
+
+        response.EnsureSuccessStatusCode();
+        return await ReadJsonAsync<BackendLoginResponse>(response, cancellationToken);
+    }
+
+    public async Task<string?> RegisterAsync(BackendRegisterRequest request, CancellationToken cancellationToken = default)
+    {
+        using var response = await _httpClient.PostAsync(AppConstants.MetepecBackendUrl + "/ciudadanos/registro", JsonContent(request), cancellationToken);
+
+        if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
+        {
+            var body = await ReadJsonAsync<ErrorResponse>(response, cancellationToken);
+            throw new InvalidOperationException(body?.error ?? "No se pudo completar el registro.");
         }
 
-        var request = BuildZendeskRequest(submission, uploads);
-        var message = new HttpRequestMessage(HttpMethod.Post, AppConstants.BaseZendeskUrl + "/api/v2/requests.json")
+        response.EnsureSuccessStatusCode();
+        return null;
+    }
+
+    public async Task<int?> GetMyCiudadanoAsync(CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Get, AppConstants.MetepecBackendUrl + "/ciudadanos/me");
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        if (response.StatusCode is System.Net.HttpStatusCode.NotFound or System.Net.HttpStatusCode.Unauthorized)
         {
-            Content = JsonContent(request)
+            return null;
+        }
+
+        response.EnsureSuccessStatusCode();
+        var result = await ReadJsonAsync<BackendCiudadanoDto>(response, cancellationToken);
+        return result?.Id;
+    }
+
+    public async Task<BackendUploadResult?> UploadEvidenceAsync(FileResult attachment, CancellationToken cancellationToken = default)
+    {
+        await using var stream = await attachment.OpenReadAsync();
+        return await UploadEvidenceAsync(stream, attachment.FileName, attachment.ContentType, cancellationToken);
+    }
+
+    public async Task<BackendUploadResult?> UploadEvidenceAsync(Stream fileStream, string fileName, string? contentType, CancellationToken cancellationToken = default)
+    {
+        using var content = new MultipartFormDataContent();
+        var fileContent = new StreamContent(fileStream);
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue(contentType ?? "application/octet-stream");
+        content.Add(fileContent, "file", fileName);
+        content.Add(new StringContent("ticket"), "modulo");
+
+        using var message = new HttpRequestMessage(HttpMethod.Post, AppConstants.MetepecBackendUrl + "/uploads")
+        {
+            Content = content
         };
-        AddZendeskAuthorization(message);
+        AddBackendAuthorization(message);
 
         using var response = await _httpClient.SendAsync(message, cancellationToken);
         response.EnsureSuccessStatusCode();
-        var created = await ReadJsonAsync<ZendeskRequestResponse>(response, cancellationToken);
-        return created?.request?.id;
+        return await ReadJsonAsync<BackendUploadResult>(response, cancellationToken);
+    }
+
+    public async Task<int> CreateTicketAsync(BackendCreateTicketRequest request, CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Post, AppConstants.MetepecBackendUrl + "/tickets")
+        {
+            Content = JsonContent(request)
+        };
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
+        {
+            var body = await ReadJsonAsync<ErrorResponse>(response, cancellationToken);
+            throw new InvalidOperationException(body?.error ?? "No se pudo crear el reporte.");
+        }
+
+        response.EnsureSuccessStatusCode();
+        var created = await ReadJsonAsync<BackendTicketDto>(response, cancellationToken);
+        return created?.Id ?? 0;
+    }
+
+    public async Task<List<BackendTicketDto>> GetMyTicketsAsync(CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Get, AppConstants.MetepecBackendUrl + "/tickets/mis-tickets");
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        return await ReadJsonAsync<List<BackendTicketDto>>(response, cancellationToken) ?? [];
+    }
+
+    public async Task<List<BackendTicketObservacionDto>> GetTicketObservacionesAsync(int idTicket, CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Get, AppConstants.MetepecBackendUrl + $"/ticket-observaciones/ticket/{idTicket}");
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        var result = await ReadJsonAsync<List<BackendTicketObservacionDto>>(response, cancellationToken) ?? [];
+        return result.OrderBy(item => item.Fechaalta).ToList();
+    }
+
+    public async Task<List<NewsLetter>> GetPublicacionesAsync(CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Get, AppConstants.MetepecBackendUrl + "/publicaciones");
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        var result = await ReadJsonAsync<List<BackendPublicacionDto>>(response, cancellationToken);
+
+        return (result ?? [])
+            .Where(item => item.Publicada && item.Activo)
+            .OrderByDescending(item => item.FechaPublicacion)
+            .Select(item => new NewsLetter
+            {
+                id = item.Id,
+                title = item.Titulo,
+                subtitle = item.Resumen,
+                shortContent = item.Resumen,
+                content = item.Contenido,
+                image = item.ImagenPrincipal
+            })
+            .ToList();
+    }
+
+    private void AddBackendAuthorization(HttpRequestMessage message)
+    {
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _preferences.JwtToken);
     }
 
     public async Task SendTwilioCodeAsync(string phoneNumber, CancellationToken cancellationToken = default)
     {
-        var content = new FormUrlEncodedContent(new Dictionary<string, string>
+        using var message = new HttpRequestMessage(HttpMethod.Post, AppConstants.TwilioServiceUrl + "/Verifications")
         {
-            ["To"] = "+52" + phoneNumber,
-            ["Channel"] = "sms"
-        });
+            Content = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["To"] = "+52" + phoneNumber,
+                ["Channel"] = "sms"
+            })
+        };
+        AddTwilioAuthorization(message);
 
-        using var response = await _httpClient.PostAsync(AppConstants.TwilioServiceUrl + "/Verifications", content, cancellationToken);
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
         response.EnsureSuccessStatusCode();
     }
 
     public async Task<bool> VerifyTwilioCodeAsync(string phoneNumber, string code, CancellationToken cancellationToken = default)
     {
-        var content = new FormUrlEncodedContent(new Dictionary<string, string>
+        using var message = new HttpRequestMessage(HttpMethod.Post, AppConstants.TwilioServiceUrl + "/VerificationCheck")
         {
-            ["To"] = "+52" + phoneNumber,
-            ["Code"] = code
-        });
+            Content = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["To"] = "+52" + phoneNumber,
+                ["Code"] = code
+            })
+        };
+        AddTwilioAuthorization(message);
 
-        using var response = await _httpClient.PostAsync(AppConstants.TwilioServiceUrl + "/VerificationCheck", content, cancellationToken);
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
         response.EnsureSuccessStatusCode();
         var result = await ReadJsonAsync<TwilioVerifyResponse>(response, cancellationToken);
         return result?.valid == true;
+    }
+
+    private static void AddTwilioAuthorization(HttpRequestMessage message)
+    {
+        var credentials = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{AppConstants.TwilioAccountSid}:{AppConstants.TwilioAuthToken}"));
+        message.Headers.Authorization = new AuthenticationHeaderValue("Basic", credentials);
     }
 
     private async Task<string> EnsureRecoleccionTokenAsync(CancellationToken cancellationToken)
@@ -167,84 +282,6 @@ public sealed class MetepecApiService
 
         return await GetRecoleccionTokenAsync(cancellationToken) ?? "";
     }
-
-    private async Task LoadZendeskCredentialsIfNeededAsync(CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrWhiteSpace(_preferences.ZendeskUser) || string.IsNullOrWhiteSpace(_preferences.ZendeskToken))
-        {
-            await LoadZendeskCredentialsAsync(cancellationToken);
-        }
-    }
-
-    private async Task<string?> UploadZendeskAttachmentAsync(FileResult file, CancellationToken cancellationToken)
-    {
-        await LoadZendeskCredentialsIfNeededAsync(cancellationToken);
-        await using var stream = await file.OpenReadAsync();
-        var request = new HttpRequestMessage(HttpMethod.Post,
-            $"{AppConstants.BaseZendeskUrl}/api/v2/uploads.json?filename={Uri.EscapeDataString(file.FileName)}")
-        {
-            Content = new StreamContent(stream)
-        };
-        request.Content.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType ?? "application/octet-stream");
-        AddZendeskAuthorization(request);
-
-        using var response = await _httpClient.SendAsync(request, cancellationToken);
-        response.EnsureSuccessStatusCode();
-        var upload = await ReadJsonAsync<ZendeskUploadResponse>(response, cancellationToken);
-        return upload?.upload?.token;
-    }
-
-    private ZendeskCreateRequest BuildZendeskRequest(ReportSubmission submission, List<string> uploads)
-    {
-        var tags = new[]
-        {
-            submission.Report.Dependencia.DisplayName(),
-            submission.Report.Title
-        }.Select(ToTag).ToList();
-
-        var fields = new List<ZendeskCustomFieldValue>
-        {
-            Field(ZendeskCustomField.Tramite, "Reporte"),
-            Field(ZendeskCustomField.CanalIngreso, "MAUI App"),
-            Field(ZendeskCustomField.Nombre, submission.Name),
-            Field(ZendeskCustomField.NumeroTelefono, submission.Phone),
-            Field(ZendeskCustomField.CorreoElectronico, submission.Email),
-            Field(ZendeskCustomField.Direccion, submission.Address),
-            Field(ZendeskCustomField.Ubicacion, ""),
-            Field(ZendeskCustomField.Coordenadas, submission.Coordinates),
-            Field(ZendeskCustomField.Boleta, ""),
-            Field(ZendeskCustomField.Observaciones, submission.Comments)
-        };
-
-        return new ZendeskCreateRequest
-        {
-            Request = new ZendeskRequest
-            {
-                Subject = $"{ZendeskDependencia.GerenciaCiudad.DisplayName()} - {submission.Report.Title}",
-                Comment = new ZendeskComment
-                {
-                    Body = string.IsNullOrWhiteSpace(submission.Comments) ? submission.Report.Title : submission.Comments,
-                    Uploads = uploads.Count > 0 ? uploads : null
-                },
-                Tags = tags,
-                CustomFields = fields
-            }
-        };
-    }
-
-    private void AddZendeskAuthorization(HttpRequestMessage request)
-    {
-        var auth = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{_preferences.ZendeskUser}@mobzilla.com/token:{_preferences.ZendeskToken}"));
-        request.Headers.Authorization = new AuthenticationHeaderValue("Basic", auth);
-    }
-
-    private static ZendeskCustomFieldValue Field(ZendeskCustomField field, string value) => new()
-    {
-        Id = (long)field,
-        Value = value
-    };
-
-    private static string ToTag(string value) => value.ToLowerInvariant().Replace(" ", "_").Replace(",", "_");
 
     private static StringContent JsonContent<T>(T value) =>
         new(JsonSerializer.Serialize(value, JsonOptions), Encoding.UTF8, "application/json");

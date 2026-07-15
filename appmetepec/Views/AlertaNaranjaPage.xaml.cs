@@ -51,22 +51,50 @@ public partial class AlertaNaranjaPage : ContentPage
 
     private async void OnActivateClicked(object sender, EventArgs e)
     {
-        var report = new ScreenReport("ALERTA DE GENERO", "", true, true, false, false, ZendeskDependencia.GerenciaCiudad);
-        var submission = new ReportSubmission(
-            report,
-            NameEntry.Text?.Trim() ?? "",
-            EmailEntry.Text?.Trim() ?? "",
-            PhoneEntry.Text?.Trim() ?? "",
-            AddressEditor.Text?.Trim() ?? "",
-            _coordinates,
-            "Alerta naranja activada desde la app MAUI.",
-            null);
-
         try
         {
             BusyIndicator.IsRunning = BusyIndicator.IsVisible = true;
-            var id = await _api.CreateZendeskReportAsync(submission);
-            await DisplayAlert("Alerta enviada", $"Las autoridades locales se pondran en contacto a la brevedad.\nFolio: {id}", "Aceptar");
+
+            if (_preferences.CiudadanoId == 0)
+            {
+                _preferences.CiudadanoId = await _api.GetMyCiudadanoAsync() ?? 0;
+            }
+
+            if (_preferences.CiudadanoId == 0)
+            {
+                await DisplayAlert("No se pudo identificar tu cuenta", "Vuelve a iniciar sesion e intenta de nuevo.", "Aceptar");
+                return;
+            }
+
+            var (latitud, longitud) = ParseCoordinates(_coordinates);
+            var request = new BackendCreateTicketRequest
+            {
+                Idciudadano = _preferences.CiudadanoId,
+                Asunto = "ALERTA DE GENERO",
+                Descripcion = "Alerta naranja activada desde la app.",
+                Observacionesapp = "Alerta naranja activada desde la app.",
+                Correoelectronico = EmailEntry.Text?.Trim() ?? "",
+                Numerotelefonico = PhoneEntry.Text?.Trim() ?? "",
+                Dependencia = ZendeskDependencia.GerenciaCiudad.DisplayName(),
+                Idservicio = 36,
+                Ubicacion = new BackendTicketUbicacionRequest
+                {
+                    Direccionapp = AddressEditor.Text?.Trim() ?? "",
+                    Coordenadas = _coordinates,
+                    Latitud = latitud,
+                    Longitud = longitud
+                },
+                Servicios = [new BackendTicketServicioItemRequest { IdServicio = 36, EsPrincipal = true }],
+                Observacion = new BackendTicketObservacionRequest
+                {
+                    IdTipoMensaje = 1,
+                    Observaciones = "Alerta naranja activada desde la app.",
+                    VisibleCiudadano = true
+                }
+            };
+
+            var ticketId = await _api.CreateTicketAsync(request);
+            await DisplayAlert("Alerta enviada", $"Las autoridades locales se pondran en contacto a la brevedad.\nFolio: {ticketId}", "Aceptar");
         }
         catch (Exception ex)
         {
@@ -76,5 +104,18 @@ public partial class AlertaNaranjaPage : ContentPage
         {
             BusyIndicator.IsRunning = BusyIndicator.IsVisible = false;
         }
+    }
+
+    private static (decimal? Latitud, decimal? Longitud) ParseCoordinates(string coordinates)
+    {
+        var parts = coordinates.Split(',');
+        if (parts.Length == 2
+            && decimal.TryParse(parts[0].Trim(), System.Globalization.CultureInfo.InvariantCulture, out var lat)
+            && decimal.TryParse(parts[1].Trim(), System.Globalization.CultureInfo.InvariantCulture, out var lng))
+        {
+            return (lat, lng);
+        }
+
+        return (null, null);
     }
 }

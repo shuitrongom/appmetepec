@@ -8,14 +8,17 @@ public partial class HomePage : ContentPage
     private readonly ReportCatalogService _catalog;
     private readonly MetepecApiService _api;
     private readonly NavigationState _navigationState;
+    private readonly PreferencesService _preferences;
     private bool _bannerTimerStarted;
+    private bool _isDrawerOpen;
 
-    public HomePage(ReportCatalogService catalog, MetepecApiService api, NavigationState navigationState)
+    public HomePage(ReportCatalogService catalog, MetepecApiService api, NavigationState navigationState, PreferencesService preferences)
     {
         InitializeComponent();
         _catalog = catalog;
         _api = api;
         _navigationState = navigationState;
+        _preferences = preferences;
         BannerCarousel.ItemsSource = BuildBanners();
     }
 
@@ -89,7 +92,7 @@ public partial class HomePage : ContentPage
         }
     }
 
-    private View CreateReportItem(ScreenReport report)
+    private VerticalStackLayout CreateReportItem(ScreenReport report)
     {
         var layout = new VerticalStackLayout
         {
@@ -140,12 +143,14 @@ public partial class HomePage : ContentPage
         try
         {
             BusyIndicator.IsRunning = BusyIndicator.IsVisible = true;
-            await _api.LoadZendeskCredentialsAsync();
-            var news = await _api.GetNewsAsync();
-            NewsView.ItemsSource = news?.Newsletters ?? [];
+            var news = await _api.GetPublicacionesAsync();
+            System.Diagnostics.Debug.WriteLine($"[Noticias] {news.Count} publicaciones cargadas.");
+            NewsView.ItemsSource = news;
         }
-        catch
+        catch (Exception ex)
         {
+            var status = (ex as HttpRequestException)?.StatusCode;
+            System.Diagnostics.Debug.WriteLine($"[Noticias] Error al cargar publicaciones: {ex.GetType().Name} {status} - {ex.Message}");
             NewsView.ItemsSource = Array.Empty<NewsLetter>();
         }
         finally
@@ -218,14 +223,98 @@ public partial class HomePage : ContentPage
         await Shell.Current.GoToAsync(nameof(AlertaNaranjaPage));
     }
 
-    private async void OnRecoleccionTapped(object sender, TappedEventArgs e)
-    {
-        await Shell.Current.GoToAsync(nameof(RecoleccionPage));
-    }
-
     private async void OnAlertaTapped(object sender, TappedEventArgs e)
     {
         await Shell.Current.GoToAsync(nameof(AlertaNaranjaPage));
+    }
+
+    private async void OnMenuTapped(object sender, TappedEventArgs e)
+    {
+        try
+        {
+            if (_isDrawerOpen)
+            {
+                await CloseDrawerAsync();
+            }
+            else
+            {
+                await OpenDrawerAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Menu] Error al abrir/cerrar el drawer: {ex}");
+            await DisplayAlert("Menu", ex.Message, "Aceptar");
+        }
+    }
+
+    private async void OnDrawerBackdropTapped(object sender, TappedEventArgs e)
+    {
+        await CloseDrawerAsync();
+    }
+
+    private async Task OpenDrawerAsync()
+    {
+        _isDrawerOpen = true;
+        DrawerUserLabel.Text = string.IsNullOrWhiteSpace(_preferences.CurrentUser.Name)
+            ? "Metepec *7311"
+            : _preferences.CurrentUser.Name;
+        DrawerBackdrop.IsVisible = true;
+        DrawerBackdrop.Opacity = 0;
+        await Task.WhenAll(
+            DrawerBackdrop.FadeTo(1, 200),
+            DrawerPanel.TranslateTo(0, 0, 220, Easing.CubicOut));
+    }
+
+    private async Task CloseDrawerAsync()
+    {
+        _isDrawerOpen = false;
+        await Task.WhenAll(
+            DrawerBackdrop.FadeTo(0, 180),
+            DrawerPanel.TranslateTo(-272, 0, 200, Easing.CubicIn));
+        DrawerBackdrop.IsVisible = false;
+    }
+
+    private async void OnDrawerHomeTapped(object sender, TappedEventArgs e)
+    {
+        await CloseDrawerAsync();
+    }
+
+    private async void OnDrawerMyTicketsTapped(object sender, TappedEventArgs e)
+    {
+        await CloseDrawerAsync();
+        await Shell.Current.GoToAsync(nameof(MyTicketsPage));
+    }
+
+    private async void OnDrawerRecoleccionTapped(object sender, TappedEventArgs e)
+    {
+        await CloseDrawerAsync();
+        await Shell.Current.GoToAsync(nameof(RecoleccionPage));
+    }
+
+    private async void OnDrawerAlertaTapped(object sender, TappedEventArgs e)
+    {
+        await CloseDrawerAsync();
+        await Shell.Current.GoToAsync(nameof(AlertaNaranjaPage));
+    }
+
+    private async void OnDrawerNoticiasTapped(object sender, TappedEventArgs e)
+    {
+        await CloseDrawerAsync();
+        OnNewsTabTapped(sender, e);
+    }
+
+    private async void OnDrawerLogoutTapped(object sender, TappedEventArgs e)
+    {
+        await CloseDrawerAsync();
+        var confirm = await DisplayAlert("Cerrar sesion", "Se cerrara tu sesion actual.", "Cerrar sesion", "Cancelar");
+        if (!confirm)
+        {
+            return;
+        }
+
+        _preferences.Logout();
+        await Shell.Current.GoToAsync($"//{nameof(LoginPage)}");
     }
 
     private void OnReportsTabTapped(object sender, TappedEventArgs e)
@@ -242,6 +331,17 @@ public partial class HomePage : ContentPage
         NewsContent.IsVisible = true;
         ReportsTab.BackgroundColor = Color.FromArgb("#1A1A1A");
         NewsTab.BackgroundColor = Color.FromArgb("#050505");
+
+        // El CollectionView recibe su ItemsSource en OnAppearing mientras NewsContent sigue oculto
+        // (IsVisible=False), y MAUI no siempre relayoutea bien un CollectionView que estaba oculto
+        // cuando se le asignaron los datos. Reasignar el ItemsSource ahora que ya es visible fuerza
+        // el relayout sin volver a llamar a la API.
+        var items = NewsView.ItemsSource;
+        if (items is not null)
+        {
+            NewsView.ItemsSource = null;
+            NewsView.ItemsSource = items;
+        }
     }
 
     private sealed record BannerItem(

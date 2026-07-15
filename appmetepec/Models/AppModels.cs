@@ -41,31 +41,6 @@ public static class ZendeskDependenciaExtensions
     };
 }
 
-public enum ZendeskCustomField : long
-{
-    Dependencia = 4415375578651,
-    Tramite = 4415359706011,
-    Descripcion = 4415375599003,
-    CanalIngreso = 4415366554779,
-    Nombre = 4415375543963,
-    NumeroTelefono = 4415375557019,
-    CorreoElectronico = 4415366526619,
-    Direccion = 5009955887899,
-    Ubicacion = 4415375619611,
-    Boleta = 4415375616155,
-    Observaciones = 5025334635419,
-    Coordenadas = 4415359755547
-}
-
-public enum ZendeskNaranjaCustomField : long
-{
-    Nombre = 9702822013463,
-    Direccion = 9702848121623,
-    CorreoElectronico = 9702870738711,
-    NumeroTelefono = 9702895670167,
-    Coordenadas = 9702894264727
-}
-
 public sealed record ScreenReport(
     string Title,
     string Instructions,
@@ -81,7 +56,8 @@ public sealed record ScreenReport(
     int IdStatus = 0,
     int IdArea = 0,
     int IdForm = 0,
-    string IconSource = "ic_otros.png");
+    string IconSource = "ic_otros.png",
+    int IdServicio = 0);
 
 public sealed record DependenciaCategoria(
     int IdDependencia,
@@ -90,15 +66,23 @@ public sealed record DependenciaCategoria(
 
 public sealed record UserProfile(string Name, string Email, string Phone);
 
-public sealed record ReportSubmission(
-    ScreenReport Report,
-    string Name,
-    string Email,
-    string Phone,
-    string Address,
-    string Coordinates,
-    string Comments,
-    FileResult? Attachment);
+public sealed class PendingTicketSubmission
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    public DateTime SavedAt { get; set; } = DateTime.Now;
+    public string Title { get; set; } = "";
+    public int IdServicio { get; set; }
+    public string Dependencia { get; set; } = "";
+    public string Name { get; set; } = "";
+    public string Email { get; set; } = "";
+    public string Phone { get; set; } = "";
+    public string Address { get; set; } = "";
+    public string Coordinates { get; set; } = "";
+    public string Comments { get; set; } = "";
+    public string? LocalPhotoPath { get; set; }
+    public bool IsBache { get; set; }
+    public string? LastError { get; set; }
+}
 
 public sealed class NewsLetterResponse
 {
@@ -115,25 +99,6 @@ public sealed class NewsLetter
     public string? content { get; set; }
     public string? image { get; set; }
     public string? url { get; set; }
-}
-
-public sealed class ZendeskCredentialsResponse
-{
-    public string? usuario { get; set; }
-    public string? token { get; set; }
-    public string? schedStartTime { get; set; }
-    public string? schedEndTime { get; set; }
-    public bool charge_property_tax { get; set; }
-    public int taxes_duration { get; set; }
-    public List<TaxesLink>? taxes_links { get; set; }
-}
-
-public sealed class TaxesLink
-{
-    public string? name { get; set; }
-    public string? img { get; set; }
-    public string? android { get; set; }
-    public int sort { get; set; }
 }
 
 public sealed class TokenRecoleccionResponse
@@ -208,78 +173,271 @@ public class GenericRecResponse
     public string? message { get; set; }
 }
 
-public sealed class ZendeskTicketList
-{
-    public List<ZendeskTicket> tickets { get; set; } = [];
-}
-
-public sealed class ZendeskTicket
-{
-    public int id { get; set; }
-}
-
 public sealed class TwilioVerifyResponse
 {
     public bool valid { get; set; }
 }
 
-public sealed class ZendeskCreateRequest
+// ── Back-end Metepec (api/seguridad) ─────────────────────────────────────────
+
+public sealed class BackendLoginRequest
 {
-    [JsonPropertyName("request")]
-    public ZendeskRequest Request { get; set; } = new();
+    [JsonPropertyName("userNameOrEmail")]
+    public string UserNameOrEmail { get; set; } = "";
+
+    [JsonPropertyName("password")]
+    public string Password { get; set; } = "";
 }
 
-public sealed class ZendeskRequest
+public sealed class BackendLoginResponse
 {
-    [JsonPropertyName("subject")]
-    public string Subject { get; set; } = "";
+    [JsonPropertyName("token")]
+    public string Token { get; set; } = "";
 
-    [JsonPropertyName("comment")]
-    public ZendeskComment Comment { get; set; } = new();
+    [JsonPropertyName("expiresAt")]
+    public DateTime ExpiresAt { get; set; }
 
-    [JsonPropertyName("tags")]
-    public List<string> Tags { get; set; } = [];
-
-    [JsonPropertyName("custom_fields")]
-    public List<ZendeskCustomFieldValue> CustomFields { get; set; } = [];
+    [JsonPropertyName("user")]
+    public BackendUserDto User { get; set; } = new();
 }
 
-public sealed class ZendeskComment
-{
-    [JsonPropertyName("body")]
-    public string Body { get; set; } = "";
-
-    [JsonPropertyName("uploads")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public List<string>? Uploads { get; set; }
-}
-
-public sealed class ZendeskCustomFieldValue
+public sealed class BackendUserDto
 {
     [JsonPropertyName("id")]
+    public string Id { get; set; } = "";
+
+    [JsonPropertyName("username")]
+    public string Username { get; set; } = "";
+
+    [JsonPropertyName("email")]
+    public string Email { get; set; } = "";
+
+    [JsonPropertyName("fullName")]
+    public string FullName { get; set; } = "";
+
+    [JsonPropertyName("phoneNumber")]
+    public string? PhoneNumber { get; set; }
+
+    [JsonPropertyName("roles")]
+    public IReadOnlyCollection<string> Roles { get; set; } = [];
+}
+
+public sealed class BackendRegisterRequest
+{
+    [JsonPropertyName("userName")]
+    public string UserName { get; set; } = "";
+
+    [JsonPropertyName("email")]
+    public string Email { get; set; } = "";
+
+    [JsonPropertyName("password")]
+    public string Password { get; set; } = "";
+
+    [JsonPropertyName("nombre")]
+    public string Nombre { get; set; } = "";
+
+    [JsonPropertyName("apaterno")]
+    public string Apaterno { get; set; } = "";
+
+    [JsonPropertyName("amaterno")]
+    public string? Amaterno { get; set; }
+
+    [JsonPropertyName("telefonomovil")]
+    public string? Telefonomovil { get; set; }
+}
+
+public sealed class ErrorResponse
+{
+    public string? error { get; set; }
+}
+
+public sealed class BackendCreateTicketRequest
+{
+    [JsonPropertyName("idciudadano")]
+    public int Idciudadano { get; set; }
+
+    [JsonPropertyName("asunto")]
+    public string Asunto { get; set; } = "";
+
+    [JsonPropertyName("descripcion")]
+    public string? Descripcion { get; set; }
+
+    [JsonPropertyName("correoelectronico")]
+    public string? Correoelectronico { get; set; }
+
+    [JsonPropertyName("numerotelefonico")]
+    public string? Numerotelefonico { get; set; }
+
+    [JsonPropertyName("observacionesapp")]
+    public string? Observacionesapp { get; set; }
+
+    [JsonPropertyName("dependencia")]
+    public string? Dependencia { get; set; }
+
+    [JsonPropertyName("idservicio")]
+    public int Idservicio { get; set; }
+
+    [JsonPropertyName("idestatus")]
+    public int Idestatus { get; set; } = 1;
+
+    [JsonPropertyName("idCanalIngreso")]
+    public int IdCanalIngreso { get; set; } = 1;
+
+    [JsonPropertyName("ubicacion")]
+    public BackendTicketUbicacionRequest? Ubicacion { get; set; }
+
+    [JsonPropertyName("evidencias")]
+    public List<BackendEvidenciaItemRequest>? Evidencias { get; set; }
+
+    [JsonPropertyName("servicios")]
+    public List<BackendTicketServicioItemRequest>? Servicios { get; set; }
+
+    [JsonPropertyName("observacion")]
+    public BackendTicketObservacionRequest? Observacion { get; set; }
+}
+
+public sealed class BackendTicketServicioItemRequest
+{
+    [JsonPropertyName("idServicio")]
+    public int IdServicio { get; set; }
+
+    [JsonPropertyName("esPrincipal")]
+    public bool EsPrincipal { get; set; }
+}
+
+public sealed class BackendTicketObservacionRequest
+{
+    [JsonPropertyName("idTipoMensaje")]
+    public int IdTipoMensaje { get; set; }
+
+    [JsonPropertyName("idusuarioemisor")]
+    public int? Idusuarioemisor { get; set; }
+
+    [JsonPropertyName("visibleCiudadano")]
+    public bool VisibleCiudadano { get; set; }
+
+    [JsonPropertyName("observaciones")]
+    public string Observaciones { get; set; } = "";
+}
+
+public sealed class BackendTicketUbicacionRequest
+{
+    [JsonPropertyName("direccionapp")]
+    public string? Direccionapp { get; set; }
+
+    [JsonPropertyName("latitud")]
+    public decimal? Latitud { get; set; }
+
+    [JsonPropertyName("longitud")]
+    public decimal? Longitud { get; set; }
+
+    [JsonPropertyName("coordenadas")]
+    public string? Coordenadas { get; set; }
+}
+
+public sealed class BackendEvidenciaItemRequest
+{
+    [JsonPropertyName("nombreArchivo")]
+    public string NombreArchivo { get; set; } = "";
+
+    [JsonPropertyName("rutaArchivo")]
+    public string RutaArchivo { get; set; } = "";
+
+    [JsonPropertyName("tipoMime")]
+    public string? TipoMime { get; set; }
+
+    [JsonPropertyName("tamanoBytes")]
+    public long? TamanoBytes { get; set; }
+
+    [JsonPropertyName("esEvidenciaInicial")]
+    public bool EsEvidenciaInicial { get; set; }
+}
+
+public sealed class BackendTicketDto
+{
+    public int Id { get; set; }
+    public string? Folio { get; set; }
+    public string Asunto { get; set; } = "";
+    public string? Descripcion { get; set; }
+    public string? Observacionesapp { get; set; }
+    public string? Descestatus { get; set; }
+    public string? Colorestatus { get; set; }
+    public string? Descservicio { get; set; }
+    public string? Dependencia { get; set; }
+    public DateTime Fechaalta { get; set; }
+}
+
+public sealed class BackendTicketObservacionDto
+{
     public long Id { get; set; }
-
-    [JsonPropertyName("value")]
-    public string Value { get; set; } = "";
+    public string Observaciones { get; set; } = "";
+    public bool Visibleciudadano { get; set; }
+    public DateTime Fechaalta { get; set; }
+    public string? Desctipomensaje { get; set; }
+    public string? Descestatus { get; set; }
+    public string Usuarioregistra { get; set; } = "";
+    public List<BackendTicketObservacionEvidenciaDto>? Evidencias { get; set; }
+    public bool HasEvidencias => Evidencias is { Count: > 0 };
 }
 
-public sealed class ZendeskRequestResponse
+public sealed class BackendTicketObservacionEvidenciaDto
 {
-    public ZendeskCreatedRequest? request { get; set; }
+    public long Id { get; set; }
+    public string NombreArchivo { get; set; } = "";
+    public string RutaArchivo { get; set; } = "";
+    public string? TipoMime { get; set; }
 }
 
-public sealed class ZendeskCreatedRequest
+public sealed class BackendUploadResult
 {
-    public long id { get; set; }
-    public long requester_id { get; set; }
+    [JsonPropertyName("nombreOriginal")]
+    public string NombreOriginal { get; set; } = "";
+
+    [JsonPropertyName("nombreFisico")]
+    public string NombreFisico { get; set; } = "";
+
+    [JsonPropertyName("extension")]
+    public string Extension { get; set; } = "";
+
+    [JsonPropertyName("mimeType")]
+    public string MimeType { get; set; } = "";
+
+    [JsonPropertyName("peso")]
+    public long Peso { get; set; }
+
+    [JsonPropertyName("ruta")]
+    public string Ruta { get; set; } = "";
 }
 
-public sealed class ZendeskUploadResponse
+public sealed class BackendCiudadanoDto
 {
-    public ZendeskUpload? upload { get; set; }
+    [JsonPropertyName("id")]
+    public int Id { get; set; }
 }
 
-public sealed class ZendeskUpload
+public sealed class BackendPublicacionDto
 {
-    public string? token { get; set; }
+    [JsonPropertyName("id")]
+    public int Id { get; set; }
+
+    [JsonPropertyName("titulo")]
+    public string Titulo { get; set; } = "";
+
+    [JsonPropertyName("resumen")]
+    public string? Resumen { get; set; }
+
+    [JsonPropertyName("contenido")]
+    public string Contenido { get; set; } = "";
+
+    [JsonPropertyName("imagenPrincipal")]
+    public string? ImagenPrincipal { get; set; }
+
+    [JsonPropertyName("publicada")]
+    public bool Publicada { get; set; }
+
+    [JsonPropertyName("activo")]
+    public bool Activo { get; set; }
+
+    [JsonPropertyName("fechaPublicacion")]
+    public DateTime? FechaPublicacion { get; set; }
 }
