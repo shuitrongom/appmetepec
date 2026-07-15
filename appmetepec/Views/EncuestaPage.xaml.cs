@@ -31,7 +31,7 @@ public partial class EncuestaPage : ContentPage
         base.OnAppearing();
 
         _ticket = _navigationState.SelectedTicket;
-        if (_ticket is null)
+        if (_ticket is null && _preferences.CiudadanoId <= 0)
         {
             await Shell.Current.GoToAsync("..");
             return;
@@ -46,7 +46,8 @@ public partial class EncuestaPage : ContentPage
         {
             BusyIndicator.IsRunning = BusyIndicator.IsVisible = true;
 
-            _tipoEncuesta = await _api.GetTipoEncuestaByClaveAsync(AppConstants.ClaveEncuestaSolucionTicket);
+            var clave = _navigationState.EncuestaClave ?? AppConstants.ClaveEncuestaSolucionTicket;
+            _tipoEncuesta = await _api.GetTipoEncuestaByClaveAsync(clave);
             if (_tipoEncuesta is null)
             {
                 await DisplayAlert("Encuesta no disponible", "No se encontro configurada la encuesta de solucion de reportes.", "Aceptar");
@@ -175,7 +176,7 @@ public partial class EncuestaPage : ContentPage
 
     private async void OnEnviarClicked(object sender, EventArgs e)
     {
-        if (_ticket is null || _tipoEncuesta is null)
+        if (_tipoEncuesta is null)
         {
             return;
         }
@@ -215,9 +216,9 @@ public partial class EncuestaPage : ContentPage
             var request = new BackendSubmitEncuestaRequest
             {
                 IdTipoEncuesta = _tipoEncuesta.Id,
-                IdTicket = _ticket.Id,
-                IdCiudadano = _preferences.CiudadanoId > 0 ? _preferences.CiudadanoId : _ticket.Idciudadano,
-                Canal = "RESOLUCION",
+                IdTicket = _ticket?.Id,
+                IdCiudadano = _preferences.CiudadanoId > 0 ? _preferences.CiudadanoId : _ticket?.Idciudadano,
+                Canal = _ticket is null ? "APP_MOVIL" : "RESOLUCION",
                 CalificacionGeneral = _calificaciones.Values.Count > 0 ? _calificaciones.Values.First() : null,
                 Comentario = string.IsNullOrWhiteSpace(ComentarioEditor.Text) ? null : ComentarioEditor.Text.Trim(),
                 Respuestas = respuestas

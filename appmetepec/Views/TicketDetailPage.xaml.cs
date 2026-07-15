@@ -68,6 +68,7 @@ public partial class TicketDetailPage : ContentPage
 
             if (deseaContestar)
             {
+                _navigationState.EncuestaClave = AppConstants.ClaveEncuestaSolucionTicket;
                 await Shell.Current.GoToAsync(nameof(EncuestaPage));
             }
         }

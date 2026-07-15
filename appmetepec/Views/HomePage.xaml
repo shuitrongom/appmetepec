@@ -15,7 +15,7 @@
                     </Label.GestureRecognizers>
                 </Label>
 
-                <Image Grid.Column="1" Source="logo.png" HeightRequest="50" WidthRequest="100" Aspect="AspectFit" />
+                <Image x:Name="LogoImage" Grid.Column="1" Source="logo.png" HeightRequest="50" WidthRequest="100" Aspect="AspectFit" />
 
                 <HorizontalStackLayout Grid.Column="2" Spacing="6" HorizontalOptions="End" VerticalOptions="Center">
                     <Label Text="ALERTA DE&#10;GENERO" FontSize="10" FontAttributes="Bold" TextColor="#555" HorizontalTextAlignment="End" VerticalOptions="Center" />

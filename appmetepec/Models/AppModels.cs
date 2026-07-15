@@ -455,6 +455,9 @@ public sealed class BackendCiudadanoDto
 {
     [JsonPropertyName("id")]
     public int Id { get; set; }
+
+    [JsonPropertyName("fechaPrimerAcceso")]
+    public DateTime? FechaPrimerAcceso { get; set; }
 }
 
 public sealed class BackendPublicacionDto
