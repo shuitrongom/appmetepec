@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage
+    x:Class="appmetepec.Views.SplashPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+    xmlns:viewmodels="clr-namespace:appmetepec.ViewModels"
+    x:DataType="viewmodels:SplashViewModel"
+    Shell.NavBarIsVisible="False">
+
+    <ContentPage.Behaviors>
+        <toolkit:EventToCommandBehavior EventName="Loaded" Command="{Binding InitializeCommand}" />
+    </ContentPage.Behaviors>
+
+    <Grid>
+
+        <Image
+            x:Name="BackgroundImage"
+            Source="splash.png"
+            Aspect="AspectFill"
+            HorizontalOptions="Fill"
+            VerticalOptions="Fill"
+            Opacity="0" />
+
+        <ActivityIndicator
+            IsRunning="{Binding IsBusy}"
+            Color="White"
+            VerticalOptions="End"
+            Margin="0,0,0,40" />
+
+    </Grid>
+</ContentPage>

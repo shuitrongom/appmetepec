@@ -6,22 +6,22 @@
              Shell.NavBarIsVisible="False"
              BackgroundColor="White"
              BackgroundImageSource="bg5.png">
-    <Grid RowDefinitions="Auto,*,92">
+    <Grid RowDefinitions="Auto,*,75">
         <VerticalStackLayout Grid.Row="0" Spacing="0" BackgroundColor="White">
-            <Grid Padding="24,16" ColumnDefinitions="*,Auto,*" ColumnSpacing="14">
-                <HorizontalStackLayout Spacing="8" VerticalOptions="Center">
-                    <Image Source="ic_trash.png" HeightRequest="42" WidthRequest="42" />
-                    <Label Text="RECOLECCION&#10;DE BASURA" FontSize="14" FontAttributes="Bold" TextColor="#555" VerticalOptions="Center" />
+            <Grid Padding="25,12" ColumnDefinitions="*,Auto,*" ColumnSpacing="10">
+                <HorizontalStackLayout Spacing="6" VerticalOptions="Center">
+                    <Image Source="ic_trash.png" HeightRequest="30" WidthRequest="30" />
+                    <Label Text="RECOLECCION&#10;DE BASURA" FontSize="10" FontAttributes="Bold" TextColor="#555" VerticalOptions="Center" />
                     <HorizontalStackLayout.GestureRecognizers>
                         <TapGestureRecognizer Tapped="OnRecoleccionTapped" />
                     </HorizontalStackLayout.GestureRecognizers>
                 </HorizontalStackLayout>
 
-                <Image Grid.Column="1" Source="logo.png" HeightRequest="72" WidthRequest="146" Aspect="AspectFit" />
+                <Image Grid.Column="1" Source="logo.png" HeightRequest="50" WidthRequest="100" Aspect="AspectFit" />
 
-                <HorizontalStackLayout Grid.Column="2" Spacing="8" HorizontalOptions="End" VerticalOptions="Center">
-                    <Label Text="ALERTA DE&#10;GENERO" FontSize="14" FontAttributes="Bold" TextColor="#555" HorizontalTextAlignment="End" VerticalOptions="Center" />
-                    <Image Source="ic_alerta_on.png" HeightRequest="42" WidthRequest="42" />
+                <HorizontalStackLayout Grid.Column="2" Spacing="6" HorizontalOptions="End" VerticalOptions="Center">
+                    <Label Text="ALERTA DE&#10;GENERO" FontSize="10" FontAttributes="Bold" TextColor="#555" HorizontalTextAlignment="End" VerticalOptions="Center" />
+                    <Image Source="ic_alerta_on.png" HeightRequest="30" WidthRequest="30" />
                     <HorizontalStackLayout.GestureRecognizers>
                         <TapGestureRecognizer Tapped="OnAlertaTapped" />
                     </HorizontalStackLayout.GestureRecognizers>
@@ -29,26 +29,26 @@
             </Grid>
 
             <CarouselView x:Name="BannerCarousel"
-                          HeightRequest="86"
+                          HeightRequest="64"
                           IsBounceEnabled="True"
                           Loop="True"
                           PeekAreaInsets="0"
                           HorizontalScrollBarVisibility="Never">
                 <CarouselView.ItemTemplate>
                     <DataTemplate>
-                        <Grid HeightRequest="86" ColumnDefinitions="*,*" ColumnSpacing="0">
-                            <Grid BackgroundColor="{Binding LeftBackground}" Padding="14,0" ColumnDefinitions="62,*">
-                                <Image Source="{Binding LeftIcon}" HeightRequest="58" WidthRequest="58" VerticalOptions="Center" />
+                        <Grid HeightRequest="64" ColumnDefinitions="*,*" ColumnSpacing="0">
+                            <Grid BackgroundColor="{Binding LeftBackground}" Padding="14,0" ColumnDefinitions="42,*">
+                                <Image Source="{Binding LeftIcon}" HeightRequest="42" WidthRequest="42" VerticalOptions="Center" />
                                 <VerticalStackLayout Grid.Column="1" Spacing="0" VerticalOptions="Center">
-                                    <Label Text="{Binding LeftTitle}" FontSize="26" FontAttributes="Bold" TextColor="White" />
-                                    <Label Text="{Binding LeftSubtitle}" FontSize="15" FontAttributes="Bold" TextColor="White" />
+                                    <Label Text="{Binding LeftTitle}" FontSize="19" FontAttributes="Bold" TextColor="White" />
+                                    <Label Text="{Binding LeftSubtitle}" FontSize="11" FontAttributes="Bold" TextColor="White" />
                                 </VerticalStackLayout>
                             </Grid>
-                            <Grid Grid.Column="1" BackgroundColor="{Binding RightBackground}" Padding="14,0" ColumnDefinitions="62,*">
-                                <Image Source="{Binding RightIcon}" HeightRequest="58" WidthRequest="58" VerticalOptions="Center" />
+                            <Grid Grid.Column="1" BackgroundColor="{Binding RightBackground}" Padding="14,0" ColumnDefinitions="42,*">
+                                <Image Source="{Binding RightIcon}" HeightRequest="42" WidthRequest="42" VerticalOptions="Center" />
                                 <VerticalStackLayout Grid.Column="1" Spacing="0" VerticalOptions="Center">
-                                    <Label Text="{Binding RightTitle}" FontSize="26" FontAttributes="Bold" TextColor="White" />
-                                    <Label Text="{Binding RightSubtitle}" FontSize="15" FontAttributes="Bold" TextColor="White" />
+                                    <Label Text="{Binding RightTitle}" FontSize="19" FontAttributes="Bold" TextColor="White" />
+                                    <Label Text="{Binding RightSubtitle}" FontSize="11" FontAttributes="Bold" TextColor="White" />
                                 </VerticalStackLayout>
                             </Grid>
                         </Grid>
@@ -93,16 +93,16 @@
         </RefreshView>
 
         <Grid Grid.Row="2" ColumnDefinitions="*,*" BackgroundColor="#080808">
-            <VerticalStackLayout x:Name="ReportsTab" Padding="8" Spacing="4" BackgroundColor="#050505" HorizontalOptions="Fill">
-                <Image Source="ic_gerencia_cd.png" HeightRequest="30" WidthRequest="30" HorizontalOptions="Center" />
-                <Label Text="GERENCIA DE LA CIUDAD" FontSize="13" TextColor="#9F8AD0" HorizontalTextAlignment="Center" />
+            <VerticalStackLayout x:Name="ReportsTab" Padding="8" Spacing="4" BackgroundColor="#050505" HorizontalOptions="Fill" VerticalOptions="Center">
+                <Image Source="ic_gerencia_cd.png" HeightRequest="25" WidthRequest="25" HorizontalOptions="Center" />
+                <Label Text="GERENCIA DE LA CIUDAD" FontSize="10" FontAttributes="Bold" TextColor="#9F8AD0" HorizontalTextAlignment="Center" />
                 <VerticalStackLayout.GestureRecognizers>
                     <TapGestureRecognizer Tapped="OnReportsTabTapped" />
                 </VerticalStackLayout.GestureRecognizers>
             </VerticalStackLayout>
-            <VerticalStackLayout x:Name="NewsTab" Grid.Column="1" Padding="8" Spacing="4" BackgroundColor="#1A1A1A" HorizontalOptions="Fill">
-                <Image Source="btn_noticias.png" HeightRequest="30" WidthRequest="30" HorizontalOptions="Center" />
-                <Label Text="NOTICIAS" FontSize="13" TextColor="White" HorizontalTextAlignment="Center" />
+            <VerticalStackLayout x:Name="NewsTab" Grid.Column="1" Padding="8" Spacing="4" BackgroundColor="#1A1A1A" HorizontalOptions="Fill" VerticalOptions="Center">
+                <Image Source="btn_noticias.png" HeightRequest="25" WidthRequest="25" HorizontalOptions="Center" />
+                <Label Text="NOTICIAS" FontSize="10" FontAttributes="Bold" TextColor="White" HorizontalTextAlignment="Center" />
                 <VerticalStackLayout.GestureRecognizers>
                     <TapGestureRecognizer Tapped="OnNewsTabTapped" />
                 </VerticalStackLayout.GestureRecognizers>
