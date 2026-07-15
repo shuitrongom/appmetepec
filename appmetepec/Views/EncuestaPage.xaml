@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="appmetepec.Views.EncuestaPage"
+             Title="Encuesta"
+             Shell.NavBarIsVisible="False"
+             BackgroundColor="#555"
+             BackgroundImageSource="bg8.png">
+    <Grid RowDefinitions="Auto,*">
+        <Grid BackgroundColor="White" Padding="25,12" ColumnDefinitions="40,*,40">
+            <Label Text="‹" FontSize="30" TextColor="#28113E" VerticalTextAlignment="Center" HorizontalTextAlignment="Center">
+                <Label.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnCancelarTapped" />
+                </Label.GestureRecognizers>
+            </Label>
+            <Image Grid.Column="1" Source="logo.png" HeightRequest="50" WidthRequest="100" Aspect="AspectFit" HorizontalOptions="Center" />
+        </Grid>
+
+        <ScrollView Grid.Row="1">
+            <VerticalStackLayout Padding="20" Spacing="16">
+                <ActivityIndicator x:Name="BusyIndicator" Color="White" />
+
+                <Border Stroke="#DDD" StrokeThickness="1" BackgroundColor="White" Padding="16">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="8" />
+                    </Border.StrokeShape>
+                    <VerticalStackLayout Spacing="4">
+                        <Label x:Name="TituloLabel" FontAttributes="Bold" FontSize="17" TextColor="#28113E" Text="Encuesta de satisfaccion" />
+                        <Label Text="Tu opinion nos ayuda a mejorar el servicio." FontSize="12" TextColor="#8A9BA8" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <VerticalStackLayout x:Name="PreguntasContainer" Spacing="18" />
+
+                <VerticalStackLayout Spacing="6">
+                    <Label Text="Comentarios adicionales (opcional)" FontSize="13" TextColor="White" />
+                    <Editor x:Name="ComentarioEditor" BackgroundColor="White" AutoSize="TextChanges" HeightRequest="90" />
+                </VerticalStackLayout>
+
+                <Button Text="Enviar encuesta" Clicked="OnEnviarClicked" BackgroundColor="#F89A1C" TextColor="White" FontAttributes="Bold" HeightRequest="48" />
+                <Button Text="Ahora no" Clicked="OnCancelarClicked" BackgroundColor="Transparent" TextColor="White" />
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+</ContentPage>

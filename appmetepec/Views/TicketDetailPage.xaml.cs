@@ -36,6 +36,45 @@ public partial class TicketDetailPage : ContentPage
             : $"{_ticket.Folio}  •  {_ticket.Fechaalta:dd/MM/yyyy HH:mm}";
 
         await LoadObservacionesAsync(_ticket.Id);
+        await VerificarEncuestaPendienteAsync();
+    }
+
+    private async Task VerificarEncuestaPendienteAsync()
+    {
+        if (_ticket is null ||
+            !string.Equals(_ticket.Claveestatus, AppConstants.ClaveEstatusResuelto, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        try
+        {
+            var tipoEncuesta = await _api.GetTipoEncuestaByClaveAsync(AppConstants.ClaveEncuestaSolucionTicket);
+            if (tipoEncuesta is null)
+            {
+                return;
+            }
+
+            var yaContestada = await _api.ExisteEncuestaTicketAsync(_ticket.Id, tipoEncuesta.Id);
+            if (yaContestada)
+            {
+                return;
+            }
+
+            var deseaContestar = await DisplayAlert(
+                "Encuesta de satisfaccion",
+                "Tu reporte ya fue resuelto. ¿Deseas contestar una breve encuesta sobre la solucion?",
+                "Si", "Ahora no");
+
+            if (deseaContestar)
+            {
+                await Shell.Current.GoToAsync(nameof(EncuestaPage));
+            }
+        }
+        catch
+        {
+            // No bloquea la vista del ticket si falla la verificacion de encuesta.
+        }
     }
 
     private async Task LoadObservacionesAsync(int idTicket)

@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
@@ -226,6 +227,59 @@ public sealed class MetepecApiService
                 image = item.ImagenPrincipal
             })
             .ToList();
+    }
+
+    public async Task<BackendTipoEncuestaDto?> GetTipoEncuestaByClaveAsync(string clave, CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Get, AppConstants.MetepecBackendUrl + $"/tipos-encuesta/clave/{clave}");
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        response.EnsureSuccessStatusCode();
+        return await ReadJsonAsync<BackendTipoEncuestaDto>(response, cancellationToken);
+    }
+
+    public async Task<List<BackendEncuestaPreguntaDto>> GetEncuestaPreguntasAsync(int idTipoEncuesta, CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Get, AppConstants.MetepecBackendUrl + $"/encuesta-preguntas?idTipoEncuesta={idTipoEncuesta}");
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        var result = await ReadJsonAsync<List<BackendEncuestaPreguntaDto>>(response, cancellationToken) ?? [];
+        return result.OrderBy(item => item.Orden).ToList();
+    }
+
+    public async Task<bool> ExisteEncuestaTicketAsync(int idTicket, int idTipoEncuesta, CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Get, AppConstants.MetepecBackendUrl + $"/encuestas/ticket/{idTicket}?idTipoEncuesta={idTipoEncuesta}");
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return false;
+        }
+
+        response.EnsureSuccessStatusCode();
+        return true;
+    }
+
+    public async Task SubmitEncuestaAsync(BackendSubmitEncuestaRequest request, CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Post, AppConstants.MetepecBackendUrl + "/encuestas")
+        {
+            Content = JsonContent(request)
+        };
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        response.EnsureSuccessStatusCode();
     }
 
     private void AddBackendAuthorization(HttpRequestMessage message)

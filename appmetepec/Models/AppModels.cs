@@ -362,9 +362,51 @@ public sealed class BackendTicketDto
     public string? Observacionesapp { get; set; }
     public string? Descestatus { get; set; }
     public string? Colorestatus { get; set; }
+    public string? Claveestatus { get; set; }
     public string? Descservicio { get; set; }
     public string? Dependencia { get; set; }
+    public int Idciudadano { get; set; }
     public DateTime Fechaalta { get; set; }
+}
+
+public sealed class BackendTipoEncuestaDto
+{
+    public int Id { get; set; }
+    public string Clave { get; set; } = "";
+    public string Nombre { get; set; } = "";
+}
+
+public sealed class BackendEncuestaPreguntaDto
+{
+    public int Id { get; set; }
+    public int IdTipoEncuesta { get; set; }
+    public string Pregunta { get; set; } = "";
+    public string TipoRespuesta { get; set; } = "";
+    public int Orden { get; set; }
+}
+
+public sealed class BackendEncuestaDto
+{
+    public int Id { get; set; }
+}
+
+public sealed class BackendEncuestaRespuestaItemRequest
+{
+    public int IdPregunta { get; set; }
+    public string? RespuestaTexto { get; set; }
+    public int? RespuestaNumero { get; set; }
+    public bool? RespuestaBool { get; set; }
+}
+
+public sealed class BackendSubmitEncuestaRequest
+{
+    public int IdTipoEncuesta { get; set; }
+    public int? IdTicket { get; set; }
+    public int? IdCiudadano { get; set; }
+    public string Canal { get; set; } = "RESOLUCION";
+    public int? CalificacionGeneral { get; set; }
+    public string? Comentario { get; set; }
+    public List<BackendEncuestaRespuestaItemRequest> Respuestas { get; set; } = new();
 }
 
 public sealed class BackendTicketObservacionDto
