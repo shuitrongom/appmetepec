@@ -419,8 +419,10 @@ public sealed class BackendTicketObservacionDto
     public string? Clavetipomensaje { get; set; }
     public string? Descestatus { get; set; }
     public string Usuarioregistra { get; set; } = "";
+    public string? NombreUsuarioregistra { get; set; }
     public List<BackendTicketObservacionEvidenciaDto>? Evidencias { get; set; }
     public bool HasEvidencias => Evidencias is { Count: > 0 };
+    public string NombreMostrar => string.IsNullOrWhiteSpace(NombreUsuarioregistra) ? "Atención Metepec" : NombreUsuarioregistra;
 }
 
 public sealed class BackendTicketObservacionEvidenciaDto
