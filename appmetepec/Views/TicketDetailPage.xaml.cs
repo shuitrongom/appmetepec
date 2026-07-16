@@ -5,9 +5,13 @@ namespace appmetepec.Views;
 
 public partial class TicketDetailPage : ContentPage
 {
+    private static readonly TimeSpan EsperaEncuestaPendiente = TimeSpan.FromMinutes(2);
+
     private readonly MetepecApiService _api;
     private readonly NavigationState _navigationState;
     private BackendTicketDto? _ticket;
+    private bool _paginaVisible;
+    private bool _encuestaPromptMostrado;
 
     public TicketDetailPage(MetepecApiService api, NavigationState navigationState)
     {
@@ -19,6 +23,7 @@ public partial class TicketDetailPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        _paginaVisible = true;
         _ticket = _navigationState.SelectedTicket;
         if (_ticket is null)
         {
@@ -36,15 +41,57 @@ public partial class TicketDetailPage : ContentPage
             : $"{_ticket.Folio}  •  {_ticket.Fechaalta:dd/MM/yyyy HH:mm}";
 
         await LoadObservacionesAsync(_ticket.Id);
-        await VerificarEncuestaPendienteAsync();
+        IniciarTemporizadorEncuestaPendiente();
     }
 
-    private async Task VerificarEncuestaPendienteAsync()
+    protected override void OnDisappearing()
     {
+        base.OnDisappearing();
+        _paginaVisible = false;
+    }
+
+    protected override bool OnBackButtonPressed()
+    {
+        _ = SalirConEncuestaPendienteAsync();
+        return true;
+    }
+
+    // Ya no se muestra la encuesta al entrar al detalle: se espera EsperaEncuestaPendiente
+    // mientras el ciudadano sigue en la pantalla, o se dispara antes al intentar regresar
+    // (boton de la app o boton fisico de Android), lo que ocurra primero.
+    private void IniciarTemporizadorEncuestaPendiente()
+    {
+        Dispatcher.StartTimer(EsperaEncuestaPendiente, () =>
+        {
+            if (_paginaVisible)
+            {
+                _ = VerificarEncuestaPendienteAsync();
+            }
+
+            return false;
+        });
+    }
+
+    private async Task SalirConEncuestaPendienteAsync()
+    {
+        var abrioEncuesta = await VerificarEncuestaPendienteAsync();
+        if (!abrioEncuesta)
+        {
+            await Shell.Current.GoToAsync("..");
+        }
+    }
+
+    private async Task<bool> VerificarEncuestaPendienteAsync()
+    {
+        if (_encuestaPromptMostrado)
+        {
+            return false;
+        }
+
         if (_ticket is null ||
             !string.Equals(_ticket.Claveestatus, AppConstants.ClaveEstatusResuelto, StringComparison.OrdinalIgnoreCase))
         {
-            return;
+            return false;
         }
 
         try
@@ -52,29 +99,35 @@ public partial class TicketDetailPage : ContentPage
             var tipoEncuesta = await _api.GetTipoEncuestaByClaveAsync(AppConstants.ClaveEncuestaSolucionTicket);
             if (tipoEncuesta is null)
             {
-                return;
+                return false;
             }
 
             var yaContestada = await _api.ExisteEncuestaTicketAsync(_ticket.Id, tipoEncuesta.Id);
             if (yaContestada)
             {
-                return;
+                return false;
             }
+
+            _encuestaPromptMostrado = true;
 
             var deseaContestar = await DisplayAlert(
                 "Encuesta de satisfaccion",
                 "Tu reporte ya fue resuelto. ¿Deseas contestar una breve encuesta sobre la solucion?",
                 "Si", "Ahora no");
 
-            if (deseaContestar)
+            if (!deseaContestar)
             {
-                _navigationState.EncuestaClave = AppConstants.ClaveEncuestaSolucionTicket;
-                await Shell.Current.GoToAsync(nameof(EncuestaPage));
+                return false;
             }
+
+            _navigationState.EncuestaClave = AppConstants.ClaveEncuestaSolucionTicket;
+            await Shell.Current.GoToAsync(nameof(EncuestaPage));
+            return true;
         }
         catch
         {
             // No bloquea la vista del ticket si falla la verificacion de encuesta.
+            return false;
         }
     }
 
@@ -83,7 +136,10 @@ public partial class TicketDetailPage : ContentPage
         try
         {
             BusyIndicator.IsRunning = BusyIndicator.IsVisible = true;
-            ObservacionesView.ItemsSource = await _api.GetTicketObservacionesAsync(idTicket);
+            var observaciones = await _api.GetTicketObservacionesAsync(idTicket);
+            ObservacionesView.ItemsSource = observaciones
+                .Where(obs => string.Equals(obs.Clavetipomensaje, AppConstants.ClaveRespuestaPublica, StringComparison.OrdinalIgnoreCase))
+                .ToList();
         }
         catch (Exception ex)
         {
@@ -98,7 +154,7 @@ public partial class TicketDetailPage : ContentPage
 
     private async void OnBackTapped(object sender, TappedEventArgs e)
     {
-        await Shell.Current.GoToAsync("..");
+        await SalirConEncuestaPendienteAsync();
     }
 
     private static Color? TryParseColor(string? hex)

@@ -17,6 +17,7 @@ public static class AppConstants
     public const string MetepecBackendUrl = "http://dess-ti.ddns.net:8069/api";
 
     public const string ClaveEstatusResuelto = "RESUELTO";
+    public const string ClaveRespuestaPublica = "RPUBLICA";
     public const string ClaveEncuestaSolucionTicket = "ENCUESTA_SOLUCION_TICKET";
     public const string ClaveEncuestaExperienciaApp = "ENCUESTA_EXPERIENCIA_APP";
     public const int DiasMinimosEncuestaExperienciaApp = 8;

@@ -416,6 +416,7 @@ public sealed class BackendTicketObservacionDto
     public bool Visibleciudadano { get; set; }
     public DateTime Fechaalta { get; set; }
     public string? Desctipomensaje { get; set; }
+    public string? Clavetipomensaje { get; set; }
     public string? Descestatus { get; set; }
     public string Usuarioregistra { get; set; } = "";
     public List<BackendTicketObservacionEvidenciaDto>? Evidencias { get; set; }
