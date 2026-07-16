@@ -126,9 +126,9 @@
                 ZIndex="100">
             <ScrollView>
                 <VerticalStackLayout Spacing="0">
-                    <VerticalStackLayout BackgroundColor="#000336" Padding="22,60,22,22" Spacing="10">
+                    <VerticalStackLayout BackgroundColor="#FFFFFF" Padding="80,40,22,22" Spacing="10">
                         <Image Source="logo.png" HeightRequest="46" WidthRequest="92" Aspect="AspectFit" HorizontalOptions="Start" />
-                        <Label x:Name="DrawerUserLabel" Text="Metepec *7311" FontSize="15" FontAttributes="Bold" TextColor="White" />
+                        <Label x:Name="DrawerUserLabel" Text="Metepec *7311" FontSize="15" FontAttributes="Bold" TextColor="#000000" />
                     </VerticalStackLayout>
 
                     <VerticalStackLayout Padding="0,10" Spacing="2">
