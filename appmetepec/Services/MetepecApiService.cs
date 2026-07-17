@@ -234,6 +234,16 @@ public sealed class MetepecApiService
             .ToList();
     }
 
+    public async Task<List<BackendPrioridadDto>> GetPrioridadesAsync(CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Get, AppConstants.MetepecBackendUrl + "/prioridades");
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        return await ReadJsonAsync<List<BackendPrioridadDto>>(response, cancellationToken) ?? [];
+    }
+
     public async Task<BackendTipoEncuestaDto?> GetTipoEncuestaByClaveAsync(string clave, CancellationToken cancellationToken = default)
     {
         using var message = new HttpRequestMessage(HttpMethod.Get, AppConstants.MetepecBackendUrl + $"/tipos-encuesta/clave/{clave}");

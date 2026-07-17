@@ -280,6 +280,11 @@ public sealed class BackendCreateTicketRequest
     [JsonPropertyName("idestatus")]
     public int Idestatus { get; set; } = 1;
 
+    // No se expone selector de prioridad en la app: el ciudadano no la elige,
+    // se manda fija en "Normal" (Id 2 en el catalogo Prioridad).
+    [JsonPropertyName("idprioridad")]
+    public int Idprioridad { get; set; } = 2;
+
     [JsonPropertyName("idCanalIngreso")]
     public int IdCanalIngreso { get; set; } = 1;
 
@@ -294,6 +299,18 @@ public sealed class BackendCreateTicketRequest
 
     [JsonPropertyName("observacion")]
     public BackendTicketObservacionRequest? Observacion { get; set; }
+}
+
+public sealed class BackendPrioridadDto
+{
+    [JsonPropertyName("id")]
+    public int Id { get; set; }
+
+    [JsonPropertyName("nombre")]
+    public string Nombre { get; set; } = "";
+
+    [JsonPropertyName("esDefault")]
+    public bool EsDefault { get; set; }
 }
 
 public sealed class BackendTicketServicioItemRequest

@@ -156,10 +156,26 @@ public partial class ReportPage : ContentPage
                 }
             }
 
+            var idPrioridad = 2; // Normal: fallback si falla la consulta del catalogo
+            try
+            {
+                var prioridades = await _api.GetPrioridadesAsync();
+                var porDefecto = prioridades.FirstOrDefault(p => p.EsDefault);
+                if (porDefecto is not null)
+                {
+                    idPrioridad = porDefecto.Id;
+                }
+            }
+            catch
+            {
+                // Sin bloquear el envio del reporte si el catalogo de prioridades no responde.
+            }
+
             var (latitud, longitud) = ParseCoordinates(_coordinates);
             var request = new BackendCreateTicketRequest
             {
                 Idciudadano = _preferences.CiudadanoId,
+                Idprioridad = idPrioridad,
                 Asunto = _report.Title,
                 Descripcion = comments,
                 Observacionesapp = comments,
