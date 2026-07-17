@@ -244,6 +244,21 @@ public sealed class MetepecApiService
         return await ReadJsonAsync<List<BackendPrioridadDto>>(response, cancellationToken) ?? [];
     }
 
+    public async Task<BackendCanalIngresoDto?> GetCanalIngresoByClaveAsync(string clave, CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Get, AppConstants.MetepecBackendUrl + $"/canal-ingresos/clave/{clave}");
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        response.EnsureSuccessStatusCode();
+        return await ReadJsonAsync<BackendCanalIngresoDto>(response, cancellationToken);
+    }
+
     public async Task<BackendTipoEncuestaDto?> GetTipoEncuestaByClaveAsync(string clave, CancellationToken cancellationToken = default)
     {
         using var message = new HttpRequestMessage(HttpMethod.Get, AppConstants.MetepecBackendUrl + $"/tipos-encuesta/clave/{clave}");

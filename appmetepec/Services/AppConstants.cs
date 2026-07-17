@@ -20,6 +20,7 @@ public static class AppConstants
     public const string ClaveRespuestaPublica = "RPUBLICA";
     public const string ClaveEncuestaSolucionTicket = "ENCUESTA_SOLUCION_TICKET";
     public const string ClaveEncuestaExperienciaApp = "ENCUESTA_EXPERIENCIA_APP";
+    public const string ClaveCanalIngresoApp = "APP";
     public const int DiasMinimosEncuestaExperienciaApp = 8;
     public const int DiasCooldownEncuestaExperienciaApp = 8;
 

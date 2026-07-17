@@ -104,10 +104,25 @@ public partial class MyTicketsPage : ContentPage
                 }
             }
 
+            var idCanalIngreso = 1; // APP: fallback si falla la consulta del catalogo
+            try
+            {
+                var canalIngreso = await _api.GetCanalIngresoByClaveAsync(AppConstants.ClaveCanalIngresoApp);
+                if (canalIngreso is not null)
+                {
+                    idCanalIngreso = canalIngreso.Id;
+                }
+            }
+            catch
+            {
+                // Sin bloquear el reintento del ticket si el catalogo de canal de ingreso no responde.
+            }
+
             var (latitud, longitud) = ParseCoordinates(pending.Coordinates);
             var request = new BackendCreateTicketRequest
             {
                 Idciudadano = _preferences.CiudadanoId,
+                IdCanalIngreso = idCanalIngreso,
                 Asunto = pending.Title,
                 Descripcion = pending.Comments,
                 Observacionesapp = pending.Comments,

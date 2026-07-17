@@ -286,7 +286,7 @@ public sealed class BackendCreateTicketRequest
     public int Idprioridad { get; set; } = 2;
 
     [JsonPropertyName("idCanalIngreso")]
-    public int IdCanalIngreso { get; set; } = 1;
+    public int IdCanalIngreso { get; set; }
 
     [JsonPropertyName("ubicacion")]
     public BackendTicketUbicacionRequest? Ubicacion { get; set; }
@@ -387,6 +387,13 @@ public sealed class BackendTicketDto
 }
 
 public sealed class BackendTipoEncuestaDto
+{
+    public int Id { get; set; }
+    public string Clave { get; set; } = "";
+    public string Nombre { get; set; } = "";
+}
+
+public sealed class BackendCanalIngresoDto
 {
     public int Id { get; set; }
     public string Clave { get; set; } = "";
