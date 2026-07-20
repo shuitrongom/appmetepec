@@ -156,10 +156,41 @@ public partial class ReportPage : ContentPage
                 }
             }
 
+            var idPrioridad = 2; // Normal: fallback si falla la consulta del catalogo
+            try
+            {
+                var prioridades = await _api.GetPrioridadesAsync();
+                var porDefecto = prioridades.FirstOrDefault(p => p.EsDefault);
+                if (porDefecto is not null)
+                {
+                    idPrioridad = porDefecto.Id;
+                }
+            }
+            catch
+            {
+                // Sin bloquear el envio del reporte si el catalogo de prioridades no responde.
+            }
+
+            var idCanalIngreso = 1; // APP: fallback si falla la consulta del catalogo
+            try
+            {
+                var canalIngreso = await _api.GetCanalIngresoByClaveAsync(AppConstants.ClaveCanalIngresoApp);
+                if (canalIngreso is not null)
+                {
+                    idCanalIngreso = canalIngreso.Id;
+                }
+            }
+            catch
+            {
+                // Sin bloquear el envio del reporte si el catalogo de canal de ingreso no responde.
+            }
+
             var (latitud, longitud) = ParseCoordinates(_coordinates);
             var request = new BackendCreateTicketRequest
             {
                 Idciudadano = _preferences.CiudadanoId,
+                Idprioridad = idPrioridad,
+                IdCanalIngreso = idCanalIngreso,
                 Asunto = _report.Title,
                 Descripcion = comments,
                 Observacionesapp = comments,

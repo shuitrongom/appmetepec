@@ -42,6 +42,16 @@ public sealed class PreferencesService
         set => Preferences.Default.Set(nameof(CiudadanoId), value);
     }
 
+    public DateTime? ProximaFechaEncuestaExperienciaApp
+    {
+        get
+        {
+            var ticks = Preferences.Default.Get(nameof(ProximaFechaEncuestaExperienciaApp), 0L);
+            return ticks == 0 ? null : new DateTime(ticks, DateTimeKind.Utc);
+        }
+        set => Preferences.Default.Set(nameof(ProximaFechaEncuestaExperienciaApp), value?.Ticks ?? 0L);
+    }
+
     public bool IsLoggedIn => !string.IsNullOrWhiteSpace(JwtToken);
 
     public void Logout()

@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
@@ -124,6 +125,12 @@ public sealed class MetepecApiService
 
     public async Task<int?> GetMyCiudadanoAsync(CancellationToken cancellationToken = default)
     {
+        var result = await GetMyCiudadanoDetailsAsync(cancellationToken);
+        return result?.Id;
+    }
+
+    public async Task<BackendCiudadanoDto?> GetMyCiudadanoDetailsAsync(CancellationToken cancellationToken = default)
+    {
         using var message = new HttpRequestMessage(HttpMethod.Get, AppConstants.MetepecBackendUrl + "/ciudadanos/me");
         AddBackendAuthorization(message);
 
@@ -134,8 +141,7 @@ public sealed class MetepecApiService
         }
 
         response.EnsureSuccessStatusCode();
-        var result = await ReadJsonAsync<BackendCiudadanoDto>(response, cancellationToken);
-        return result?.Id;
+        return await ReadJsonAsync<BackendCiudadanoDto>(response, cancellationToken);
     }
 
     public async Task<BackendUploadResult?> UploadEvidenceAsync(FileResult attachment, CancellationToken cancellationToken = default)
@@ -226,6 +232,99 @@ public sealed class MetepecApiService
                 image = item.ImagenPrincipal
             })
             .ToList();
+    }
+
+    public async Task<List<BackendPrioridadDto>> GetPrioridadesAsync(CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Get, AppConstants.MetepecBackendUrl + "/prioridades");
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        return await ReadJsonAsync<List<BackendPrioridadDto>>(response, cancellationToken) ?? [];
+    }
+
+    public async Task<BackendCanalIngresoDto?> GetCanalIngresoByClaveAsync(string clave, CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Get, AppConstants.MetepecBackendUrl + $"/canal-ingresos/clave/{clave}");
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        response.EnsureSuccessStatusCode();
+        return await ReadJsonAsync<BackendCanalIngresoDto>(response, cancellationToken);
+    }
+
+    public async Task<BackendTipoEncuestaDto?> GetTipoEncuestaByClaveAsync(string clave, CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Get, AppConstants.MetepecBackendUrl + $"/tipos-encuesta/clave/{clave}");
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        response.EnsureSuccessStatusCode();
+        return await ReadJsonAsync<BackendTipoEncuestaDto>(response, cancellationToken);
+    }
+
+    public async Task<List<BackendEncuestaPreguntaDto>> GetEncuestaPreguntasAsync(int idTipoEncuesta, CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Get, AppConstants.MetepecBackendUrl + $"/encuesta-preguntas?idTipoEncuesta={idTipoEncuesta}");
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        var result = await ReadJsonAsync<List<BackendEncuestaPreguntaDto>>(response, cancellationToken) ?? [];
+        return result.OrderBy(item => item.Orden).ToList();
+    }
+
+    public async Task<bool> ExisteEncuestaTicketAsync(int idTicket, int idTipoEncuesta, CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Get, AppConstants.MetepecBackendUrl + $"/encuestas/ticket/{idTicket}?idTipoEncuesta={idTipoEncuesta}");
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return false;
+        }
+
+        response.EnsureSuccessStatusCode();
+        return true;
+    }
+
+    public async Task<bool> ExisteEncuestaCiudadanoAsync(int idCiudadano, int idTipoEncuesta, CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Get, AppConstants.MetepecBackendUrl + $"/encuestas/ciudadano/{idCiudadano}?idTipoEncuesta={idTipoEncuesta}");
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return false;
+        }
+
+        response.EnsureSuccessStatusCode();
+        return true;
+    }
+
+    public async Task SubmitEncuestaAsync(BackendSubmitEncuestaRequest request, CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Post, AppConstants.MetepecBackendUrl + "/encuestas")
+        {
+            Content = JsonContent(request)
+        };
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        response.EnsureSuccessStatusCode();
     }
 
     private void AddBackendAuthorization(HttpRequestMessage message)

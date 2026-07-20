@@ -54,7 +54,7 @@
                                 </Border.StrokeShape>
                                 <VerticalStackLayout Spacing="6">
                                     <Grid ColumnDefinitions="*,Auto">
-                                        <Label Text="{Binding Usuarioregistra}" FontAttributes="Bold" FontSize="13" TextColor="#28113E" />
+                                        <Label Text="{Binding NombreMostrar}" FontAttributes="Bold" FontSize="13" TextColor="#28113E" />
                                         <Label Grid.Column="1" Text="{Binding Fechaalta, StringFormat='{0:dd/MM/yyyy HH:mm}'}" FontSize="11" TextColor="#8A9BA8" />
                                     </Grid>
                                     <Label Text="{Binding Observaciones}" FontSize="13" TextColor="#333" LineBreakMode="WordWrap" />

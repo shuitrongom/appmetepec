@@ -1,5 +1,6 @@
 using appmetepec.Models;
 using appmetepec.Services;
+using CommunityToolkit.Maui.Behaviors;
 
 namespace appmetepec.Views;
 
@@ -20,6 +21,11 @@ public partial class HomePage : ContentPage
         _navigationState = navigationState;
         _preferences = preferences;
         BannerCarousel.ItemsSource = BuildBanners();
+        LogoImage.Behaviors.Add(new TouchBehavior
+        {
+            LongPressDuration = 3000,
+            LongPressCommand = new Command(OnLogoLongPressed)
+        });
     }
 
     protected override async void OnAppearing()
@@ -36,6 +42,86 @@ public partial class HomePage : ContentPage
         }
 
         StartBannerTimer();
+        await VerificarEncuestaExperienciaAsync();
+    }
+
+    private async Task VerificarEncuestaExperienciaAsync()
+    {
+        if (_preferences.CiudadanoId <= 0)
+        {
+            return;
+        }
+
+        try
+        {
+            var proximaFecha = _preferences.ProximaFechaEncuestaExperienciaApp;
+            if (proximaFecha is not null && DateTime.UtcNow < proximaFecha.Value)
+            {
+                return;
+            }
+
+            var ciudadano = await _api.GetMyCiudadanoDetailsAsync();
+            if (ciudadano?.FechaPrimerAcceso is null)
+            {
+                return;
+            }
+
+            var diasDeUso = (DateTime.UtcNow - ciudadano.FechaPrimerAcceso.Value).TotalDays;
+            if (diasDeUso < AppConstants.DiasMinimosEncuestaExperienciaApp)
+            {
+                return;
+            }
+
+            var tipoEncuesta = await _api.GetTipoEncuestaByClaveAsync(AppConstants.ClaveEncuestaExperienciaApp);
+            if (tipoEncuesta is null)
+            {
+                return;
+            }
+
+            var yaContestada = await _api.ExisteEncuestaCiudadanoAsync(_preferences.CiudadanoId, tipoEncuesta.Id);
+            if (yaContestada)
+            {
+                return;
+            }
+
+            var deseaContestar = await DisplayAlert(
+                "Tu opinion es importante",
+                "Llevas varios dias usando la app Metepec *7311. ¿Nos ayudas contestando una breve encuesta?",
+                "Si", "Ahora no");
+
+            if (deseaContestar)
+            {
+                IrAEncuestaExperiencia();
+            }
+            else
+            {
+                _preferences.ProximaFechaEncuestaExperienciaApp = DateTime.UtcNow.AddDays(AppConstants.DiasCooldownEncuestaExperienciaApp);
+            }
+        }
+        catch
+        {
+            // No bloquea la vista principal si falla la verificacion de encuesta.
+        }
+    }
+
+    private void IrAEncuestaExperiencia()
+    {
+        _navigationState.SelectedTicket = null;
+        _navigationState.EncuestaClave = AppConstants.ClaveEncuestaExperienciaApp;
+        _ = Shell.Current.GoToAsync(nameof(EncuestaPage));
+    }
+
+    private async void OnLogoLongPressed()
+    {
+        var forzar = await DisplayAlert(
+            "Modo pruebas",
+            "¿Mostrar ahora la encuesta de experiencia de la app (sin esperar los 8 dias)?",
+            "Mostrar ahora", "Cancelar");
+
+        if (forzar)
+        {
+            IrAEncuestaExperiencia();
+        }
     }
 
     private void StartBannerTimer()

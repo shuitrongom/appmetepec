@@ -280,8 +280,13 @@ public sealed class BackendCreateTicketRequest
     [JsonPropertyName("idestatus")]
     public int Idestatus { get; set; } = 1;
 
+    // No se expone selector de prioridad en la app: el ciudadano no la elige,
+    // se manda fija en "Normal" (Id 2 en el catalogo Prioridad).
+    [JsonPropertyName("idprioridad")]
+    public int Idprioridad { get; set; } = 2;
+
     [JsonPropertyName("idCanalIngreso")]
-    public int IdCanalIngreso { get; set; } = 1;
+    public int IdCanalIngreso { get; set; }
 
     [JsonPropertyName("ubicacion")]
     public BackendTicketUbicacionRequest? Ubicacion { get; set; }
@@ -294,6 +299,18 @@ public sealed class BackendCreateTicketRequest
 
     [JsonPropertyName("observacion")]
     public BackendTicketObservacionRequest? Observacion { get; set; }
+}
+
+public sealed class BackendPrioridadDto
+{
+    [JsonPropertyName("id")]
+    public int Id { get; set; }
+
+    [JsonPropertyName("nombre")]
+    public string Nombre { get; set; } = "";
+
+    [JsonPropertyName("esDefault")]
+    public bool EsDefault { get; set; }
 }
 
 public sealed class BackendTicketServicioItemRequest
@@ -362,9 +379,58 @@ public sealed class BackendTicketDto
     public string? Observacionesapp { get; set; }
     public string? Descestatus { get; set; }
     public string? Colorestatus { get; set; }
+    public string? Claveestatus { get; set; }
     public string? Descservicio { get; set; }
     public string? Dependencia { get; set; }
+    public int Idciudadano { get; set; }
     public DateTime Fechaalta { get; set; }
+}
+
+public sealed class BackendTipoEncuestaDto
+{
+    public int Id { get; set; }
+    public string Clave { get; set; } = "";
+    public string Nombre { get; set; } = "";
+}
+
+public sealed class BackendCanalIngresoDto
+{
+    public int Id { get; set; }
+    public string Clave { get; set; } = "";
+    public string Nombre { get; set; } = "";
+}
+
+public sealed class BackendEncuestaPreguntaDto
+{
+    public int Id { get; set; }
+    public int IdTipoEncuesta { get; set; }
+    public string Pregunta { get; set; } = "";
+    public string TipoRespuesta { get; set; } = "";
+    public int Orden { get; set; }
+}
+
+public sealed class BackendEncuestaDto
+{
+    public int Id { get; set; }
+}
+
+public sealed class BackendEncuestaRespuestaItemRequest
+{
+    public int IdPregunta { get; set; }
+    public string? RespuestaTexto { get; set; }
+    public int? RespuestaNumero { get; set; }
+    public bool? RespuestaBool { get; set; }
+}
+
+public sealed class BackendSubmitEncuestaRequest
+{
+    public int IdTipoEncuesta { get; set; }
+    public int? IdTicket { get; set; }
+    public int? IdCiudadano { get; set; }
+    public string Canal { get; set; } = "RESOLUCION";
+    public int? CalificacionGeneral { get; set; }
+    public string? Comentario { get; set; }
+    public List<BackendEncuestaRespuestaItemRequest> Respuestas { get; set; } = new();
 }
 
 public sealed class BackendTicketObservacionDto
@@ -374,10 +440,13 @@ public sealed class BackendTicketObservacionDto
     public bool Visibleciudadano { get; set; }
     public DateTime Fechaalta { get; set; }
     public string? Desctipomensaje { get; set; }
+    public string? Clavetipomensaje { get; set; }
     public string? Descestatus { get; set; }
     public string Usuarioregistra { get; set; } = "";
+    public string? NombreUsuarioregistra { get; set; }
     public List<BackendTicketObservacionEvidenciaDto>? Evidencias { get; set; }
     public bool HasEvidencias => Evidencias is { Count: > 0 };
+    public string NombreMostrar => string.IsNullOrWhiteSpace(NombreUsuarioregistra) ? "Atención Metepec" : NombreUsuarioregistra;
 }
 
 public sealed class BackendTicketObservacionEvidenciaDto
@@ -413,6 +482,9 @@ public sealed class BackendCiudadanoDto
 {
     [JsonPropertyName("id")]
     public int Id { get; set; }
+
+    [JsonPropertyName("fechaPrimerAcceso")]
+    public DateTime? FechaPrimerAcceso { get; set; }
 }
 
 public sealed class BackendPublicacionDto

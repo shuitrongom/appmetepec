@@ -66,10 +66,25 @@ public partial class AlertaNaranjaPage : ContentPage
                 return;
             }
 
+            var idCanalIngreso = 1; // APP: fallback si falla la consulta del catalogo
+            try
+            {
+                var canalIngreso = await _api.GetCanalIngresoByClaveAsync(AppConstants.ClaveCanalIngresoApp);
+                if (canalIngreso is not null)
+                {
+                    idCanalIngreso = canalIngreso.Id;
+                }
+            }
+            catch
+            {
+                // Sin bloquear el envio de la alerta si el catalogo de canal de ingreso no responde.
+            }
+
             var (latitud, longitud) = ParseCoordinates(_coordinates);
             var request = new BackendCreateTicketRequest
             {
                 Idciudadano = _preferences.CiudadanoId,
+                IdCanalIngreso = idCanalIngreso,
                 Asunto = "ALERTA DE GENERO",
                 Descripcion = "Alerta naranja activada desde la app.",
                 Observacionesapp = "Alerta naranja activada desde la app.",
