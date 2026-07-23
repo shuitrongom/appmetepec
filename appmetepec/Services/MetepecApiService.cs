@@ -234,6 +234,17 @@ public sealed class MetepecApiService
             .ToList();
     }
 
+    public async Task<List<BackendArticuloConocimientoDto>> GetArticulosConocimientoAsync(CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Get, AppConstants.MetepecBackendUrl + "/articulos-conocimiento");
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        var result = await ReadJsonAsync<List<BackendArticuloConocimientoDto>>(response, cancellationToken) ?? [];
+        return result.Where(a => a.Activo).ToList();
+    }
+
     public async Task<List<BackendPrioridadDto>> GetPrioridadesAsync(CancellationToken cancellationToken = default)
     {
         using var message = new HttpRequestMessage(HttpMethod.Get, AppConstants.MetepecBackendUrl + "/prioridades");
