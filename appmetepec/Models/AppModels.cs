@@ -384,6 +384,11 @@ public sealed class BackendTicketDto
     public string? Dependencia { get; set; }
     public int Idciudadano { get; set; }
     public DateTime Fechaalta { get; set; }
+    public int Idestatus { get; set; }
+    public bool ConfirmadoCiudadano { get; set; }
+    public DateTime? FechaConfirmacionCiudadano { get; set; }
+    public DateTime? FechaCierre { get; set; }
+    public DateTime? Fechareapertura { get; set; }
 }
 
 public sealed class BackendTipoEncuestaDto

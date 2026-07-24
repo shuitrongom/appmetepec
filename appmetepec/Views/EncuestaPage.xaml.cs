@@ -69,6 +69,20 @@ public partial class EncuestaPage : ContentPage
             {
                 PreguntasContainer.Children.Add(CrearControlPregunta(pregunta));
             }
+
+            // Si venimos con un ticket real, primero se pregunta si de verdad se resolvio antes
+            // de dejar calificar la atencion. Sin ticket (entrada legacy), se muestra la encuesta
+            // directo, igual que antes.
+            if (_ticket is not null)
+            {
+                CierreContainer.IsVisible = true;
+                EncuestaContenidoContainer.IsVisible = false;
+            }
+            else
+            {
+                CierreContainer.IsVisible = false;
+                EncuestaContenidoContainer.IsVisible = true;
+            }
         }
         catch (Exception ex)
         {
@@ -236,6 +250,39 @@ public partial class EncuestaPage : ContentPage
         {
             BusyIndicator.IsRunning = BusyIndicator.IsVisible = false;
         }
+    }
+
+    private async void OnConfirmarResolucionClicked(object sender, EventArgs e)
+    {
+        if (_ticket is null) return;
+
+        try
+        {
+            BusyIndicator.IsRunning = BusyIndicator.IsVisible = true;
+            await _api.ConfirmarResolucionTicketAsync(_ticket.Id);
+            CierreContainer.IsVisible = false;
+            EncuestaContenidoContainer.IsVisible = true;
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlert("No se pudo confirmar", ex.Message, "Aceptar");
+        }
+        finally
+        {
+            BusyIndicator.IsRunning = BusyIndicator.IsVisible = false;
+        }
+    }
+
+    // Por ahora no se reabren tickets desde la app: si el problema sigue, se levanta un
+    // reporte nuevo. La capacidad de reabrir (ReabrirTicketAsync/api/tickets/{id}/reabrir)
+    // se deja construida pero sin usar aqui, por si mas adelante se decide habilitarla.
+    private async void OnAbrirNuevoClicked(object sender, EventArgs e)
+    {
+        await DisplayAlert(
+            "Levanta un reporte nuevo",
+            "Este reporte se queda como esta. Para el problema que sigue pendiente, levanta un reporte nuevo.",
+            "Entendido");
+        await Shell.Current.GoToAsync($"//{nameof(HomePage)}");
     }
 
     private async void OnCancelarTapped(object sender, TappedEventArgs e)
