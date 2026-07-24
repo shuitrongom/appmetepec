@@ -11,6 +11,7 @@ public partial class EncuestaPage : ContentPage
 
     private BackendTicketDto? _ticket;
     private BackendTipoEncuestaDto? _tipoEncuesta;
+    private bool _quiereAbrirNuevo;
 
     private readonly Dictionary<int, int> _calificaciones = new();
     private readonly Dictionary<int, bool> _siNoRespuestas = new();
@@ -240,7 +241,7 @@ public partial class EncuestaPage : ContentPage
 
             await _api.SubmitEncuestaAsync(request);
             await DisplayAlert("Gracias", "Tu encuesta fue registrada correctamente.", "Aceptar");
-            await Shell.Current.GoToAsync("..");
+            await SalirDeEncuestaAsync();
         }
         catch (Exception ex)
         {
@@ -250,6 +251,20 @@ public partial class EncuestaPage : ContentPage
         {
             BusyIndicator.IsRunning = BusyIndicator.IsVisible = false;
         }
+    }
+
+    // Si venian de "Abrir nuevo", los mandamos a levantar el reporte nuevo al terminar (o
+    // saltarse) la encuesta; si no, se comporta igual que antes (regresa al detalle del ticket).
+    private async Task SalirDeEncuestaAsync()
+    {
+        if (_quiereAbrirNuevo)
+        {
+            await DisplayAlert("Levanta un reporte nuevo", "Ahora levanta un reporte nuevo para el problema que sigue pendiente.", "Entendido");
+            await Shell.Current.GoToAsync($"//{nameof(HomePage)}");
+            return;
+        }
+
+        await Shell.Current.GoToAsync("..");
     }
 
     private async void OnConfirmarResolucionClicked(object sender, EventArgs e)
@@ -276,22 +291,23 @@ public partial class EncuestaPage : ContentPage
     // Por ahora no se reabren tickets desde la app: si el problema sigue, se levanta un
     // reporte nuevo. La capacidad de reabrir (ReabrirTicketAsync/api/tickets/{id}/reabrir)
     // se deja construida pero sin usar aqui, por si mas adelante se decide habilitarla.
-    private async void OnAbrirNuevoClicked(object sender, EventArgs e)
+    // El ticket se queda como esta (no se confirma ni se reabre); solo se desbloquea la
+    // encuesta para que la puedan responder igual, y al salir se les manda a levantar el
+    // reporte nuevo en vez de regresar al detalle del ticket.
+    private void OnAbrirNuevoClicked(object sender, EventArgs e)
     {
-        await DisplayAlert(
-            "Levanta un reporte nuevo",
-            "Este reporte se queda como esta. Para el problema que sigue pendiente, levanta un reporte nuevo.",
-            "Entendido");
-        await Shell.Current.GoToAsync($"//{nameof(HomePage)}");
+        _quiereAbrirNuevo = true;
+        CierreContainer.IsVisible = false;
+        EncuestaContenidoContainer.IsVisible = true;
     }
 
     private async void OnCancelarTapped(object sender, TappedEventArgs e)
     {
-        await Shell.Current.GoToAsync("..");
+        await SalirDeEncuestaAsync();
     }
 
     private async void OnCancelarClicked(object sender, EventArgs e)
     {
-        await Shell.Current.GoToAsync("..");
+        await SalirDeEncuestaAsync();
     }
 }
