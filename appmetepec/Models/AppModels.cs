@@ -384,6 +384,11 @@ public sealed class BackendTicketDto
     public string? Dependencia { get; set; }
     public int Idciudadano { get; set; }
     public DateTime Fechaalta { get; set; }
+    public int Idestatus { get; set; }
+    public bool ConfirmadoCiudadano { get; set; }
+    public DateTime? FechaConfirmacionCiudadano { get; set; }
+    public DateTime? FechaCierre { get; set; }
+    public DateTime? Fechareapertura { get; set; }
 }
 
 public sealed class BackendTipoEncuestaDto
@@ -512,4 +517,25 @@ public sealed class BackendPublicacionDto
 
     [JsonPropertyName("fechaPublicacion")]
     public DateTime? FechaPublicacion { get; set; }
+}
+
+public sealed class BackendArticuloConocimientoDto
+{
+    [JsonPropertyName("id")]
+    public int Id { get; set; }
+
+    [JsonPropertyName("titulo")]
+    public string Titulo { get; set; } = "";
+
+    [JsonPropertyName("resumen")]
+    public string? Resumen { get; set; }
+
+    [JsonPropertyName("contenido")]
+    public string Contenido { get; set; } = "";
+
+    [JsonPropertyName("palabrasClave")]
+    public string? PalabrasClave { get; set; }
+
+    [JsonPropertyName("activo")]
+    public bool Activo { get; set; }
 }

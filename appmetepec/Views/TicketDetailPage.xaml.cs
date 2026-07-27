@@ -110,16 +110,9 @@ public partial class TicketDetailPage : ContentPage
 
             _encuestaPromptMostrado = true;
 
-            var deseaContestar = await DisplayAlert(
-                "Encuesta de satisfaccion",
-                "Tu reporte ya fue resuelto. ¿Deseas contestar una breve encuesta sobre la solucion?",
-                "Si", "Ahora no");
-
-            if (!deseaContestar)
-            {
-                return false;
-            }
-
+            // Se navega directo a la encuesta: ahi mismo se pregunta "¿Tu problema se
+            // resolvio?" antes de las preguntas de satisfaccion (con opcion de "Ahora no"),
+            // asi que preguntar aqui tambien era redundante.
             _navigationState.EncuestaClave = AppConstants.ClaveEncuestaSolucionTicket;
             await Shell.Current.GoToAsync(nameof(EncuestaPage));
             return true;

@@ -189,6 +189,38 @@ public sealed class MetepecApiService
         return created?.Id ?? 0;
     }
 
+    public async Task<BackendTicketDto?> ConfirmarResolucionTicketAsync(int idTicket, CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Post, AppConstants.MetepecBackendUrl + $"/tickets/{idTicket}/confirmar-resolucion");
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.BadRequest)
+        {
+            var body = await ReadJsonAsync<ErrorResponse>(response, cancellationToken);
+            throw new InvalidOperationException(body?.error ?? "No se pudo confirmar la resolucion del reporte.");
+        }
+
+        response.EnsureSuccessStatusCode();
+        return await ReadJsonAsync<BackendTicketDto>(response, cancellationToken);
+    }
+
+    public async Task<BackendTicketDto?> ReabrirTicketAsync(int idTicket, CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Post, AppConstants.MetepecBackendUrl + $"/tickets/{idTicket}/reabrir");
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.BadRequest)
+        {
+            var body = await ReadJsonAsync<ErrorResponse>(response, cancellationToken);
+            throw new InvalidOperationException(body?.error ?? "No se pudo reabrir el reporte.");
+        }
+
+        response.EnsureSuccessStatusCode();
+        return await ReadJsonAsync<BackendTicketDto>(response, cancellationToken);
+    }
+
     public async Task<List<BackendTicketDto>> GetMyTicketsAsync(CancellationToken cancellationToken = default)
     {
         using var message = new HttpRequestMessage(HttpMethod.Get, AppConstants.MetepecBackendUrl + "/tickets/mis-tickets");
@@ -232,6 +264,17 @@ public sealed class MetepecApiService
                 image = item.ImagenPrincipal
             })
             .ToList();
+    }
+
+    public async Task<List<BackendArticuloConocimientoDto>> GetArticulosConocimientoAsync(CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Get, AppConstants.MetepecBackendUrl + "/articulos-conocimiento");
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        var result = await ReadJsonAsync<List<BackendArticuloConocimientoDto>>(response, cancellationToken) ?? [];
+        return result.Where(a => a.Activo).ToList();
     }
 
     public async Task<List<BackendPrioridadDto>> GetPrioridadesAsync(CancellationToken cancellationToken = default)

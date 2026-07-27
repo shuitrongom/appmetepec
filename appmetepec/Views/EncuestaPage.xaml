@@ -30,14 +30,32 @@
                     </VerticalStackLayout>
                 </Border>
 
-                <VerticalStackLayout x:Name="PreguntasContainer" Spacing="18" />
-
-                <VerticalStackLayout Spacing="6">
-                    <Label Text="Comentarios adicionales (opcional)" FontSize="13" TextColor="White" />
-                    <Editor x:Name="ComentarioEditor" BackgroundColor="White" AutoSize="TextChanges" HeightRequest="90" />
+                <VerticalStackLayout x:Name="CierreContainer" Spacing="10" IsVisible="False">
+                    <Border Stroke="#DDD" StrokeThickness="1" BackgroundColor="White" Padding="16">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="8" />
+                        </Border.StrokeShape>
+                        <VerticalStackLayout Spacing="10">
+                            <Label Text="¿Tu problema se resolvió?" FontAttributes="Bold" FontSize="15" TextColor="#28113E" />
+                            <HorizontalStackLayout Spacing="10">
+                                <Button Text="Sí, se resolvió" Clicked="OnConfirmarResolucionClicked" BackgroundColor="#4CAF50" TextColor="White" HeightRequest="44" WidthRequest="150" />
+                                <Button Text="Abrir nuevo" Clicked="OnAbrirNuevoClicked" BackgroundColor="#C62828" TextColor="White" HeightRequest="44" WidthRequest="150" />
+                            </HorizontalStackLayout>
+                        </VerticalStackLayout>
+                    </Border>
                 </VerticalStackLayout>
 
-                <Button Text="Enviar encuesta" Clicked="OnEnviarClicked" BackgroundColor="#F89A1C" TextColor="White" FontAttributes="Bold" HeightRequest="48" />
+                <VerticalStackLayout x:Name="EncuestaContenidoContainer" Spacing="16" IsVisible="False">
+                    <VerticalStackLayout x:Name="PreguntasContainer" Spacing="18" />
+
+                    <VerticalStackLayout Spacing="6">
+                        <Label Text="Comentarios adicionales (opcional)" FontSize="13" TextColor="White" />
+                        <Editor x:Name="ComentarioEditor" BackgroundColor="White" AutoSize="TextChanges" HeightRequest="90" />
+                    </VerticalStackLayout>
+
+                    <Button Text="Enviar encuesta" Clicked="OnEnviarClicked" BackgroundColor="#F89A1C" TextColor="White" FontAttributes="Bold" HeightRequest="48" />
+                </VerticalStackLayout>
+
                 <Button Text="Ahora no" Clicked="OnCancelarClicked" BackgroundColor="Transparent" TextColor="White" />
             </VerticalStackLayout>
         </ScrollView>

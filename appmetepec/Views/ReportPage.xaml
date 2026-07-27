@@ -41,7 +41,23 @@
                 </Grid>
                 <Label x:Name="CoordinatesLabel" TextColor="White" FontSize="12" />
 
-                <Editor x:Name="CommentsEditor" Placeholder="Observaciones o referencias" FontSize="12" AutoSize="TextChanges" HeightRequest="90" BackgroundColor="White" TextColor="#333" HorizontalTextAlignment="Center" />
+                <Editor x:Name="CommentsEditor" Placeholder="Observaciones o referencias" FontSize="12" AutoSize="TextChanges" HeightRequest="90" BackgroundColor="White" TextColor="#333" HorizontalTextAlignment="Center" TextChanged="OnCommentsChanged" />
+
+                <CollectionView x:Name="SuggestionsView" SelectionMode="Single" SelectionChanged="OnSuggestionSelected" IsVisible="False">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <Border Stroke="#E0E0E0" StrokeThickness="1" BackgroundColor="White" Padding="12" Margin="0,0,0,8">
+                                <Border.StrokeShape>
+                                    <RoundRectangle CornerRadius="8" />
+                                </Border.StrokeShape>
+                                <VerticalStackLayout Spacing="2">
+                                    <Label Text="{Binding Titulo}" FontAttributes="Bold" TextColor="#333" FontSize="13" />
+                                    <Label Text="{Binding Resumen}" TextColor="#666" FontSize="11" LineBreakMode="TailTruncation" />
+                                </VerticalStackLayout>
+                            </Border>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
 
                 <Label Text="Agrega un testigo:" TextColor="White" FontSize="12" />
                 <HorizontalStackLayout Spacing="14">

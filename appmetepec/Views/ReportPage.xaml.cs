@@ -12,6 +12,7 @@ public partial class ReportPage : ContentPage
     private ScreenReport? _report;
     private FileResult? _attachment;
     private string _coordinates = "";
+    private List<BackendArticuloConocimientoDto> _articulos = [];
 
     public ReportPage(PreferencesService preferences, MetepecApiService api, NavigationState navigationState, PendingTicketsService pendingTickets)
     {
@@ -41,6 +42,64 @@ public partial class ReportPage : ContentPage
         NameEntry.Text = user.Name;
         PhoneEntry.Text = user.Phone;
         EmailEntry.Text = user.Email;
+
+        _ = CargarArticulosAsync();
+    }
+
+    private async Task CargarArticulosAsync()
+    {
+        try
+        {
+            _articulos = await _api.GetArticulosConocimientoAsync();
+        }
+        catch
+        {
+            // Sin bloquear el reporte si el catalogo de articulos no responde.
+        }
+    }
+
+    private void OnCommentsChanged(object sender, TextChangedEventArgs e)
+    {
+        var texto = e.NewTextValue?.Trim() ?? "";
+        if (texto.Length < 4 || _articulos.Count == 0)
+        {
+            SuggestionsView.IsVisible = false;
+            return;
+        }
+
+        var palabras = texto
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(p => p.Length >= 4)
+            .ToArray();
+
+        if (palabras.Length == 0)
+        {
+            SuggestionsView.IsVisible = false;
+            return;
+        }
+
+        var sugerencias = _articulos
+            .Where(a => palabras.Any(p =>
+                a.Titulo.Contains(p, StringComparison.OrdinalIgnoreCase) ||
+                (a.PalabrasClave?.Contains(p, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                a.Contenido.Contains(p, StringComparison.OrdinalIgnoreCase)))
+            .Take(3)
+            .ToList();
+
+        SuggestionsView.ItemsSource = sugerencias;
+        SuggestionsView.IsVisible = sugerencias.Count > 0;
+    }
+
+    private async void OnSuggestionSelected(object sender, SelectionChangedEventArgs e)
+    {
+        if (e.CurrentSelection.FirstOrDefault() is not BackendArticuloConocimientoDto articulo)
+        {
+            return;
+        }
+
+        SuggestionsView.SelectedItem = null;
+        _navigationState.SelectedArticulo = articulo;
+        await Shell.Current.GoToAsync(nameof(ArticuloDetailPage));
     }
 
     private async void OnUseLocationClicked(object sender, EventArgs e)
