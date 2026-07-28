@@ -11,7 +11,7 @@ public partial class EncuestaPage : ContentPage
 
     private BackendTicketDto? _ticket;
     private BackendTipoEncuestaDto? _tipoEncuesta;
-    private bool _quiereAbrirNuevo;
+    private bool? _ticketResuelto;
 
     private readonly Dictionary<int, int> _calificaciones = new();
     private readonly Dictionary<int, bool> _siNoRespuestas = new();
@@ -71,19 +71,11 @@ public partial class EncuestaPage : ContentPage
                 PreguntasContainer.Children.Add(CrearControlPregunta(pregunta));
             }
 
-            // Si venimos con un ticket real, primero se pregunta si de verdad se resolvio antes
-            // de dejar calificar la atencion. Sin ticket (entrada legacy), se muestra la encuesta
-            // directo, igual que antes.
-            if (_ticket is not null)
-            {
-                CierreContainer.IsVisible = true;
-                EncuestaContenidoContainer.IsVisible = false;
-            }
-            else
-            {
-                CierreContainer.IsVisible = false;
-                EncuestaContenidoContainer.IsVisible = true;
-            }
+            // Si venimos con un ticket real, la pregunta de "¿se resolvio?" se muestra junto con
+            // las demas preguntas de la encuesta (un solo formulario, un solo envio) en vez de
+            // ser un paso aparte antes de la encuesta.
+            ResueltoBorder.IsVisible = _ticket is not null;
+            _ticketResuelto = null;
         }
         catch (Exception ex)
         {
@@ -115,12 +107,12 @@ public partial class EncuestaPage : ContentPage
                 contenedor.Children.Add(CrearControlSiNo(pregunta.Id));
                 break;
             case "NUMERICA":
-                var entryNumerico = new Entry { Keyboard = Keyboard.Numeric, BackgroundColor = Colors.White };
+                var entryNumerico = new Entry { Keyboard = Keyboard.Numeric, BackgroundColor = Colors.White, TextColor = Color.FromArgb("#333") };
                 _numericaControles[pregunta.Id] = entryNumerico;
                 contenedor.Children.Add(entryNumerico);
                 break;
             default: // TEXTO
-                var editorTexto = new Editor { AutoSize = EditorAutoSizeOption.TextChanges, HeightRequest = 70, BackgroundColor = Colors.White };
+                var editorTexto = new Editor { AutoSize = EditorAutoSizeOption.TextChanges, HeightRequest = 70, BackgroundColor = Colors.White, TextColor = Color.FromArgb("#333") };
                 _textoControles[pregunta.Id] = editorTexto;
                 contenedor.Children.Add(editorTexto);
                 break;
@@ -161,7 +153,9 @@ public partial class EncuestaPage : ContentPage
         var estrellas = _estrellasControles[idPregunta];
         for (var i = 0; i < estrellas.Count; i++)
         {
-            estrellas[i].Text = i < valor ? "★" : "☆";
+            var seleccionada = i < valor;
+            estrellas[i].Text = seleccionada ? "★" : "☆";
+            estrellas[i].TextColor = seleccionada ? Color.FromArgb("#F89A1C") : Colors.White;
         }
     }
 
@@ -189,10 +183,29 @@ public partial class EncuestaPage : ContentPage
         noButton.TextColor = !valor ? Colors.White : Color.FromArgb("#28113E");
     }
 
+    private void OnResueltoSiClicked(object sender, EventArgs e) => SeleccionarResuelto(true);
+
+    private void OnResueltoNoClicked(object sender, EventArgs e) => SeleccionarResuelto(false);
+
+    private void SeleccionarResuelto(bool resuelto)
+    {
+        _ticketResuelto = resuelto;
+        ResueltoSiButton.BackgroundColor = resuelto ? Color.FromArgb("#4CAF50") : Color.FromArgb("#DDD");
+        ResueltoSiButton.TextColor = resuelto ? Colors.White : Color.FromArgb("#28113E");
+        ResueltoNoButton.BackgroundColor = resuelto == false ? Color.FromArgb("#C62828") : Color.FromArgb("#DDD");
+        ResueltoNoButton.TextColor = resuelto == false ? Colors.White : Color.FromArgb("#28113E");
+    }
+
     private async void OnEnviarClicked(object sender, EventArgs e)
     {
         if (_tipoEncuesta is null)
         {
+            return;
+        }
+
+        if (_ticket is not null && _ticketResuelto is null)
+        {
+            await DisplayAlert("Falta un dato", "Indica si tu problema se resolvió antes de enviar.", "Aceptar");
             return;
         }
 
@@ -240,8 +253,38 @@ public partial class EncuestaPage : ContentPage
             };
 
             await _api.SubmitEncuestaAsync(request);
-            await DisplayAlert("Gracias", "Tu encuesta fue registrada correctamente.", "Aceptar");
-            await SalirDeEncuestaAsync();
+
+            // El cierre/apertura del ticket se resuelve hasta aqui, junto con el envio de la
+            // encuesta completa (un solo formulario, un solo submit) -- asi el ticket nunca se
+            // cierra antes de que el ciudadano de verdad termine y envie la encuesta. Por ahora
+            // no se reabren tickets desde la app (ReabrirTicketAsync se deja construido pero sin
+            // usar aqui): si no se resolvio, se manda a levantar un reporte nuevo.
+            if (_ticket is not null && _ticketResuelto == true)
+            {
+                try
+                {
+                    await _api.ConfirmarResolucionTicketAsync(_ticket.Id);
+                }
+                catch (Exception ex)
+                {
+                    await DisplayAlert("Encuesta enviada", $"Tu encuesta se registro, pero no se pudo confirmar el cierre del reporte: {ex.Message}", "Aceptar");
+                    await Shell.Current.GoToAsync("..");
+                    return;
+                }
+
+                await DisplayAlert("Gracias", "Tu encuesta fue registrada y tu reporte quedo cerrado.", "Aceptar");
+                await Shell.Current.GoToAsync("..");
+            }
+            else if (_ticket is not null && _ticketResuelto == false)
+            {
+                await DisplayAlert("Gracias", "Tu encuesta fue registrada. Levanta un reporte nuevo para el problema que sigue pendiente.", "Aceptar");
+                await Shell.Current.GoToAsync($"//{nameof(HomePage)}");
+            }
+            else
+            {
+                await DisplayAlert("Gracias", "Tu encuesta fue registrada correctamente.", "Aceptar");
+                await Shell.Current.GoToAsync("..");
+            }
         }
         catch (Exception ex)
         {
@@ -253,61 +296,13 @@ public partial class EncuestaPage : ContentPage
         }
     }
 
-    // Si venian de "Abrir nuevo", los mandamos a levantar el reporte nuevo al terminar (o
-    // saltarse) la encuesta; si no, se comporta igual que antes (regresa al detalle del ticket).
-    private async Task SalirDeEncuestaAsync()
-    {
-        if (_quiereAbrirNuevo)
-        {
-            await DisplayAlert("Levanta un reporte nuevo", "Ahora levanta un reporte nuevo para el problema que sigue pendiente.", "Entendido");
-            await Shell.Current.GoToAsync($"//{nameof(HomePage)}");
-            return;
-        }
-
-        await Shell.Current.GoToAsync("..");
-    }
-
-    private async void OnConfirmarResolucionClicked(object sender, EventArgs e)
-    {
-        if (_ticket is null) return;
-
-        try
-        {
-            BusyIndicator.IsRunning = BusyIndicator.IsVisible = true;
-            await _api.ConfirmarResolucionTicketAsync(_ticket.Id);
-            CierreContainer.IsVisible = false;
-            EncuestaContenidoContainer.IsVisible = true;
-        }
-        catch (Exception ex)
-        {
-            await DisplayAlert("No se pudo confirmar", ex.Message, "Aceptar");
-        }
-        finally
-        {
-            BusyIndicator.IsRunning = BusyIndicator.IsVisible = false;
-        }
-    }
-
-    // Por ahora no se reabren tickets desde la app: si el problema sigue, se levanta un
-    // reporte nuevo. La capacidad de reabrir (ReabrirTicketAsync/api/tickets/{id}/reabrir)
-    // se deja construida pero sin usar aqui, por si mas adelante se decide habilitarla.
-    // El ticket se queda como esta (no se confirma ni se reabre); solo se desbloquea la
-    // encuesta para que la puedan responder igual, y al salir se les manda a levantar el
-    // reporte nuevo en vez de regresar al detalle del ticket.
-    private void OnAbrirNuevoClicked(object sender, EventArgs e)
-    {
-        _quiereAbrirNuevo = true;
-        CierreContainer.IsVisible = false;
-        EncuestaContenidoContainer.IsVisible = true;
-    }
-
     private async void OnCancelarTapped(object sender, TappedEventArgs e)
     {
-        await SalirDeEncuestaAsync();
+        await Shell.Current.GoToAsync("..");
     }
 
     private async void OnCancelarClicked(object sender, EventArgs e)
     {
-        await SalirDeEncuestaAsync();
+        await Shell.Current.GoToAsync("..");
     }
 }
