@@ -31,7 +31,8 @@ public partial class LoginPage : ContentPage
             LoginButton.IsEnabled = false;
             BusyIndicator.IsRunning = BusyIndicator.IsVisible = true;
 
-            var result = await _api.LoginAsync(username, password);
+            var (latitud, longitud) = await IntentarObtenerUbicacionAsync();
+            var result = await _api.LoginAsync(username, password, latitud, longitud);
 
             if (result is null)
             {
@@ -64,6 +65,21 @@ public partial class LoginPage : ContentPage
         {
             LoginButton.IsEnabled = true;
             BusyIndicator.IsRunning = BusyIndicator.IsVisible = false;
+        }
+    }
+
+    // Best-effort: nunca bloquea ni retrasa el login por falta de permiso, GPS apagado o
+    // timeout -- solo alimenta el Mapa de Concentracion de Usuarios cuando se puede.
+    private static async Task<(decimal? Latitud, decimal? Longitud)> IntentarObtenerUbicacionAsync()
+    {
+        try
+        {
+            var location = await Geolocation.Default.GetLocationAsync(new GeolocationRequest(GeolocationAccuracy.Medium, TimeSpan.FromSeconds(5)));
+            return location is null ? (null, null) : ((decimal?)location.Latitude, (decimal?)location.Longitude);
+        }
+        catch
+        {
+            return (null, null);
         }
     }
 

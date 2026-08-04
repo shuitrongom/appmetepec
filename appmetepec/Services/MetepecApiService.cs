@@ -92,12 +92,15 @@ public sealed class MetepecApiService
         return result?.success == true ? result.data : null;
     }
 
-    public async Task<BackendLoginResponse?> LoginAsync(string userNameOrEmail, string password, CancellationToken cancellationToken = default)
+    public async Task<BackendLoginResponse?> LoginAsync(string userNameOrEmail, string password, decimal? latitud = null, decimal? longitud = null, CancellationToken cancellationToken = default)
     {
         var content = JsonContent(new BackendLoginRequest
         {
             UserNameOrEmail = userNameOrEmail,
-            Password = password
+            Password = password,
+            Plataforma = DeviceInfo.Current.Platform == DevicePlatform.iOS ? "IOS" : "ANDROID",
+            Latitud = latitud,
+            Longitud = longitud
         });
 
         using var response = await _httpClient.PostAsync(AppConstants.MetepecBackendUrl + "/seguridad/login", content, cancellationToken);

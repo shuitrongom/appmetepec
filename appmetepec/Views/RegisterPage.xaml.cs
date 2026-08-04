@@ -89,7 +89,8 @@ public partial class RegisterPage : ContentPage
                 $"Guarda estos datos para iniciar sesion despues:\n\nUsuario: {username}\nContraseña: {password}",
                 "Entendido");
 
-            var login = await _api.LoginAsync(username, password);
+            var (latitud, longitud) = await IntentarObtenerUbicacionAsync();
+            var login = await _api.LoginAsync(username, password, latitud, longitud);
             if (login is null)
             {
                 await Shell.Current.GoToAsync("..");
@@ -118,6 +119,21 @@ public partial class RegisterPage : ContentPage
         {
             RegisterButton.IsEnabled = true;
             BusyIndicator.IsRunning = BusyIndicator.IsVisible = false;
+        }
+    }
+
+    // Best-effort: nunca bloquea ni retrasa el login por falta de permiso, GPS apagado o
+    // timeout -- solo alimenta el Mapa de Concentracion de Usuarios cuando se puede.
+    private static async Task<(decimal? Latitud, decimal? Longitud)> IntentarObtenerUbicacionAsync()
+    {
+        try
+        {
+            var location = await Geolocation.Default.GetLocationAsync(new GeolocationRequest(GeolocationAccuracy.Medium, TimeSpan.FromSeconds(5)));
+            return location is null ? (null, null) : ((decimal?)location.Latitude, (decimal?)location.Longitude);
+        }
+        catch
+        {
+            return (null, null);
         }
     }
 

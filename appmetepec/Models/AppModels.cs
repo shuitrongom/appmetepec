@@ -187,6 +187,17 @@ public sealed class BackendLoginRequest
 
     [JsonPropertyName("password")]
     public string Password { get; set; } = "";
+
+    [JsonPropertyName("plataforma")]
+    public string? Plataforma { get; set; }
+
+    // Opcionales: solo se mandan si el ciudadano dio permiso de ubicacion. Nunca bloquean el
+    // login si faltan (permiso negado, GPS sin respuesta, etc.) -- ver AuthService.LoginAsync.
+    [JsonPropertyName("latitud")]
+    public decimal? Latitud { get; set; }
+
+    [JsonPropertyName("longitud")]
+    public decimal? Longitud { get; set; }
 }
 
 public sealed class BackendLoginResponse
