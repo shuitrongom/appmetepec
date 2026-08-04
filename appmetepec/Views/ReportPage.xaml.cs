@@ -252,18 +252,18 @@ public partial class ReportPage : ContentPage
                 IdCanalIngreso = idCanalIngreso,
                 Asunto = _report.Title,
                 Descripcion = comments,
-                Observacionesapp = comments,
                 Correoelectronico = email,
                 Numerotelefonico = phone,
                 Dependencia = _report.Dependencia.DisplayName(),
                 Idservicio = _report.IdServicio,
                 Ubicacion = new BackendTicketUbicacionRequest
                 {
-                    Direccionapp = address,
+                    Direccion = address,
                     Coordenadas = _coordinates,
                     Latitud = latitud,
                     Longitud = longitud
                 },
+                //Observaciones = comments,
                 Evidencias = evidencias,
                 Servicios = _report.IdServicio > 0
                     ? [new BackendTicketServicioItemRequest { IdServicio = _report.IdServicio, EsPrincipal = true }]
@@ -271,7 +271,9 @@ public partial class ReportPage : ContentPage
                 Observacion = new BackendTicketObservacionRequest
                 {
                     IdTipoMensaje = 1,
-                    Observaciones = string.IsNullOrWhiteSpace(comments) ? _report.Title : comments,
+                    // El mensaje inicial del hilo muestra el nombre del servicio/reporte (igual
+                    // que Zendesk); el texto libre del ciudadano va aparte, en Descripcion.
+                    Observaciones = _report.Title,
                     VisibleCiudadano = true
                 }
             };
