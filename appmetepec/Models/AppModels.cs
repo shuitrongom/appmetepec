@@ -339,9 +339,6 @@ public sealed class BackendTicketUbicacionRequest
     [JsonPropertyName("direccion")]
     public string? Direccion { get; set; }
 
-    [JsonPropertyName("direccionapp")]
-    public string? Direccionapp { get; set; }
-
     [JsonPropertyName("latitud")]
     public decimal? Latitud { get; set; }
 
