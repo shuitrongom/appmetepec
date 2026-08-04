@@ -87,14 +87,13 @@ public partial class AlertaNaranjaPage : ContentPage
                 IdCanalIngreso = idCanalIngreso,
                 Asunto = "ALERTA DE GENERO",
                 Descripcion = "Alerta naranja activada desde la app.",
-                Observacionesapp = "Alerta naranja activada desde la app.",
                 Correoelectronico = EmailEntry.Text?.Trim() ?? "",
                 Numerotelefonico = PhoneEntry.Text?.Trim() ?? "",
                 Dependencia = ZendeskDependencia.GerenciaCiudad.DisplayName(),
                 Idservicio = 36,
                 Ubicacion = new BackendTicketUbicacionRequest
                 {
-                    Direccionapp = AddressEditor.Text?.Trim() ?? "",
+                    Direccion = AddressEditor.Text?.Trim() ?? "",
                     Coordenadas = _coordinates,
                     Latitud = latitud,
                     Longitud = longitud
@@ -103,7 +102,9 @@ public partial class AlertaNaranjaPage : ContentPage
                 Observacion = new BackendTicketObservacionRequest
                 {
                     IdTipoMensaje = 1,
-                    Observaciones = "Alerta naranja activada desde la app.",
+                    // El mensaje inicial del hilo muestra el nombre del servicio/reporte (igual
+                    // que Zendesk); el texto libre va aparte, en Descripcion.
+                    Observaciones = "ALERTA DE GENERO",
                     VisibleCiudadano = true
                 }
             };

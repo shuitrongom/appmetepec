@@ -125,14 +125,13 @@ public partial class MyTicketsPage : ContentPage
                 IdCanalIngreso = idCanalIngreso,
                 Asunto = pending.Title,
                 Descripcion = pending.Comments,
-                Observacionesapp = pending.Comments,
                 Correoelectronico = pending.Email,
                 Numerotelefonico = pending.Phone,
                 Dependencia = pending.Dependencia,
                 Idservicio = pending.IdServicio,
                 Ubicacion = new BackendTicketUbicacionRequest
                 {
-                    Direccionapp = pending.Address,
+                    Direccion = pending.Address,
                     Coordenadas = pending.Coordinates,
                     Latitud = latitud,
                     Longitud = longitud
@@ -144,7 +143,9 @@ public partial class MyTicketsPage : ContentPage
                 Observacion = new BackendTicketObservacionRequest
                 {
                     IdTipoMensaje = 1,
-                    Observaciones = string.IsNullOrWhiteSpace(pending.Comments) ? pending.Title : pending.Comments,
+                    // El mensaje inicial del hilo muestra el nombre del servicio/reporte (igual
+                    // que Zendesk); el texto libre del ciudadano va aparte, en Descripcion.
+                    Observaciones = pending.Title,
                     VisibleCiudadano = true
                 }
             };

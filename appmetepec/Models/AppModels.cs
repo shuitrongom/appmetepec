@@ -268,9 +268,6 @@ public sealed class BackendCreateTicketRequest
     [JsonPropertyName("numerotelefonico")]
     public string? Numerotelefonico { get; set; }
 
-    [JsonPropertyName("observacionesapp")]
-    public string? Observacionesapp { get; set; }
-
     [JsonPropertyName("dependencia")]
     public string? Dependencia { get; set; }
 
@@ -339,6 +336,9 @@ public sealed class BackendTicketObservacionRequest
 
 public sealed class BackendTicketUbicacionRequest
 {
+    [JsonPropertyName("direccion")]
+    public string? Direccion { get; set; }
+
     [JsonPropertyName("direccionapp")]
     public string? Direccionapp { get; set; }
 
@@ -376,7 +376,6 @@ public sealed class BackendTicketDto
     public string? Folio { get; set; }
     public string Asunto { get; set; } = "";
     public string? Descripcion { get; set; }
-    public string? Observacionesapp { get; set; }
     public string? Descestatus { get; set; }
     public string? Colorestatus { get; set; }
     public string? Claveestatus { get; set; }
