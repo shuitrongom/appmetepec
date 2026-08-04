@@ -224,14 +224,10 @@ public sealed class BackendUserDto
 
 public sealed class BackendRegisterRequest
 {
-    [JsonPropertyName("userName")]
-    public string UserName { get; set; } = "";
-
+    // Usuario y contraseña ya no los captura el ciudadano: el back-end los genera
+    // (ver RegistroCiudadanoResponse.IdentityUser.Username / .GeneratedPassword).
     [JsonPropertyName("email")]
     public string Email { get; set; } = "";
-
-    [JsonPropertyName("password")]
-    public string Password { get; set; } = "";
 
     [JsonPropertyName("nombre")]
     public string Nombre { get; set; } = "";
@@ -244,6 +240,17 @@ public sealed class BackendRegisterRequest
 
     [JsonPropertyName("telefonomovil")]
     public string? Telefonomovil { get; set; }
+}
+
+public sealed class BackendRegistroResponse
+{
+    public BackendRegistroUsuarioDto IdentityUser { get; set; } = new();
+    public string GeneratedPassword { get; set; } = "";
+}
+
+public sealed class BackendRegistroUsuarioDto
+{
+    public string Username { get; set; } = "";
 }
 
 public sealed class ErrorResponse

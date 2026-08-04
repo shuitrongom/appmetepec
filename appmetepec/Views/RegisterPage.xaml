@@ -17,31 +17,7 @@
                 <Entry x:Name="ApellidoEntry" Placeholder="Apellido paterno" FontSize="18" BackgroundColor="#F4FAFD" TextColor="#555" HorizontalTextAlignment="Center" HeightRequest="52" />
                 <Entry x:Name="PhoneEntry" Placeholder="Telefono a 10 digitos" Keyboard="Telephone" FontSize="18" BackgroundColor="#F4FAFD" TextColor="#555" HorizontalTextAlignment="Center" HeightRequest="52" />
                 <Entry x:Name="EmailEntry" Placeholder="Correo Electronico" Keyboard="Email" FontSize="18" BackgroundColor="#F4FAFD" TextColor="#555" HorizontalTextAlignment="Center" HeightRequest="52" />
-                <Entry x:Name="UsernameEntry" Placeholder="Usuario" FontSize="18" BackgroundColor="#F4FAFD" TextColor="#555" HorizontalTextAlignment="Center" HeightRequest="52" />
-
-                <Grid ColumnDefinitions="*,50" BackgroundColor="#F4FAFD" HeightRequest="52">
-                    <Entry x:Name="PasswordEntry"
-                           Grid.Column="0"
-                           Placeholder="Contrasena"
-                           FontSize="18"
-                           BackgroundColor="Transparent"
-                           TextColor="#555"
-                           IsPassword="True"
-                           HorizontalTextAlignment="Center"
-                           HeightRequest="52" />
-                    <Label x:Name="EyeLabel"
-                           Grid.Column="1"
-                           Text="👁"
-                           FontSize="18"
-                           VerticalOptions="Center"
-                           HorizontalOptions="Center"
-                           TextColor="#BBBBBB">
-                        <Label.GestureRecognizers>
-                            <TapGestureRecognizer Tapped="OnTogglePasswordTapped" />
-                        </Label.GestureRecognizers>
-                    </Label>
-                </Grid>
-                <Label Text="Minimo 8 caracteres, con mayuscula, minuscula, numero y caracter especial." FontSize="12" TextColor="#888888" HorizontalTextAlignment="Center" />
+                <Label Text="Tu usuario y contraseña se generan automaticamente; te los mostraremos al terminar el registro." FontSize="12" TextColor="#888888" HorizontalTextAlignment="Center" />
 
                 <Button x:Name="RegisterButton"
                         Text="REGISTRAR"

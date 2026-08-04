@@ -109,7 +109,7 @@ public sealed class MetepecApiService
         return await ReadJsonAsync<BackendLoginResponse>(response, cancellationToken);
     }
 
-    public async Task<string?> RegisterAsync(BackendRegisterRequest request, CancellationToken cancellationToken = default)
+    public async Task<BackendRegistroResponse?> RegisterAsync(BackendRegisterRequest request, CancellationToken cancellationToken = default)
     {
         using var response = await _httpClient.PostAsync(AppConstants.MetepecBackendUrl + "/ciudadanos/registro", JsonContent(request), cancellationToken);
 
@@ -120,7 +120,7 @@ public sealed class MetepecApiService
         }
 
         response.EnsureSuccessStatusCode();
-        return null;
+        return await ReadJsonAsync<BackendRegistroResponse>(response, cancellationToken);
     }
 
     public async Task<int?> GetMyCiudadanoAsync(CancellationToken cancellationToken = default)
