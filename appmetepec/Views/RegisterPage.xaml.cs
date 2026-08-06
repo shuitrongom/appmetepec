@@ -19,22 +19,12 @@ public partial class RegisterPage : ContentPage
         _api = api;
     }
 
-    private void OnTogglePasswordTapped(object sender, TappedEventArgs e)
-    {
-        PasswordEntry.IsPassword = !PasswordEntry.IsPassword;
-        EyeLabel.TextColor = PasswordEntry.IsPassword
-            ? Color.FromArgb("#BBBBBB")
-            : Color.FromArgb("#F89A1C");
-    }
-
     private async void OnRegisterClicked(object sender, EventArgs e)
     {
         var nombre = NombreEntry.Text?.Trim() ?? "";
         var apellido = ApellidoEntry.Text?.Trim() ?? "";
         var phone = PhoneEntry.Text?.Trim() ?? "";
         var email = EmailEntry.Text?.Trim() ?? "";
-        var username = UsernameEntry.Text?.Trim() ?? "";
-        var password = PasswordEntry.Text ?? "";
 
         if (string.IsNullOrWhiteSpace(nombre) || string.IsNullOrWhiteSpace(apellido))
         {
@@ -51,12 +41,6 @@ public partial class RegisterPage : ContentPage
         if (string.IsNullOrWhiteSpace(email) || !email.Contains('@') || !email.Contains('.'))
         {
             await DisplayAlert("Correo invalido", "Captura un correo electronico valido.", "Aceptar");
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
-        {
-            await DisplayAlert("Datos incompletos", "Captura usuario y contrasena.", "Aceptar");
             return;
         }
 
@@ -80,23 +64,35 @@ public partial class RegisterPage : ContentPage
             RegisterButton.IsEnabled = false;
             BusyIndicator.IsRunning = BusyIndicator.IsVisible = true;
 
-            var username = UsernameEntry.Text?.Trim() ?? "";
-            var password = PasswordEntry.Text ?? "";
-
-            await _api.RegisterAsync(new BackendRegisterRequest
+            var registro = await _api.RegisterAsync(new BackendRegisterRequest
             {
-                UserName = username,
                 Email = EmailEntry.Text?.Trim() ?? "",
-                Password = password,
                 Nombre = NombreEntry.Text?.Trim() ?? "",
                 Apaterno = ApellidoEntry.Text?.Trim() ?? "",
                 Telefonomovil = _phone
             });
 
-            var login = await _api.LoginAsync(username, password);
+            var username = registro?.IdentityUser.Username ?? "";
+            var password = registro?.GeneratedPassword ?? "";
+
+            if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+            {
+                await DisplayAlert("Registro completado", "Tu cuenta fue creada. Inicia sesion desde la pantalla de acceso.", "Aceptar");
+                await Shell.Current.GoToAsync("..");
+                return;
+            }
+
+            // El ciudadano ya no elige usuario/contrasena: se le muestran una sola vez aqui,
+            // recien generados, para que los guarde antes de continuar.
+            await DisplayAlert(
+                "Registro completado",
+                $"Guarda estos datos para iniciar sesion despues:\n\nUsuario: {username}\nContraseña: {password}",
+                "Entendido");
+
+            var (latitud, longitud) = await IntentarObtenerUbicacionAsync();
+            var login = await _api.LoginAsync(username, password, latitud, longitud);
             if (login is null)
             {
-                await DisplayAlert("Registro completado", "Tu cuenta fue creada. Inicia sesion con tu usuario y contrasena.", "Aceptar");
                 await Shell.Current.GoToAsync("..");
                 return;
             }
@@ -123,6 +119,21 @@ public partial class RegisterPage : ContentPage
         {
             RegisterButton.IsEnabled = true;
             BusyIndicator.IsRunning = BusyIndicator.IsVisible = false;
+        }
+    }
+
+    // Best-effort: nunca bloquea ni retrasa el login por falta de permiso, GPS apagado o
+    // timeout -- solo alimenta el Mapa de Concentracion de Usuarios cuando se puede.
+    private static async Task<(decimal? Latitud, decimal? Longitud)> IntentarObtenerUbicacionAsync()
+    {
+        try
+        {
+            var location = await Geolocation.Default.GetLocationAsync(new GeolocationRequest(GeolocationAccuracy.Medium, TimeSpan.FromSeconds(5)));
+            return location is null ? (null, null) : ((decimal?)location.Latitude, (decimal?)location.Longitude);
+        }
+        catch
+        {
+            return (null, null);
         }
     }
 
