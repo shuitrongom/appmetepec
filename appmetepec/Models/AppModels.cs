@@ -187,6 +187,17 @@ public sealed class BackendLoginRequest
 
     [JsonPropertyName("password")]
     public string Password { get; set; } = "";
+
+    [JsonPropertyName("plataforma")]
+    public string? Plataforma { get; set; }
+
+    // Opcionales: solo se mandan si el ciudadano dio permiso de ubicacion. Nunca bloquean el
+    // login si faltan (permiso negado, GPS sin respuesta, etc.) -- ver AuthService.LoginAsync.
+    [JsonPropertyName("latitud")]
+    public decimal? Latitud { get; set; }
+
+    [JsonPropertyName("longitud")]
+    public decimal? Longitud { get; set; }
 }
 
 public sealed class BackendLoginResponse
@@ -224,14 +235,10 @@ public sealed class BackendUserDto
 
 public sealed class BackendRegisterRequest
 {
-    [JsonPropertyName("userName")]
-    public string UserName { get; set; } = "";
-
+    // Usuario y contraseña ya no los captura el ciudadano: el back-end los genera
+    // (ver RegistroCiudadanoResponse.IdentityUser.Username / .GeneratedPassword).
     [JsonPropertyName("email")]
     public string Email { get; set; } = "";
-
-    [JsonPropertyName("password")]
-    public string Password { get; set; } = "";
 
     [JsonPropertyName("nombre")]
     public string Nombre { get; set; } = "";
@@ -244,6 +251,17 @@ public sealed class BackendRegisterRequest
 
     [JsonPropertyName("telefonomovil")]
     public string? Telefonomovil { get; set; }
+}
+
+public sealed class BackendRegistroResponse
+{
+    public BackendRegistroUsuarioDto IdentityUser { get; set; } = new();
+    public string GeneratedPassword { get; set; } = "";
+}
+
+public sealed class BackendRegistroUsuarioDto
+{
+    public string Username { get; set; } = "";
 }
 
 public sealed class ErrorResponse
@@ -267,9 +285,6 @@ public sealed class BackendCreateTicketRequest
 
     [JsonPropertyName("numerotelefonico")]
     public string? Numerotelefonico { get; set; }
-
-    //[JsonPropertyName("observaciones")]
-    //public string? Observaciones { get; set; }
 
     [JsonPropertyName("dependencia")]
     public string? Dependencia { get; set; }
@@ -342,9 +357,6 @@ public sealed class BackendTicketUbicacionRequest
     [JsonPropertyName("direccion")]
     public string? Direccion { get; set; }
 
-    [JsonPropertyName("direccionapp")]
-    public string? Direccionapp { get; set; }
-
     [JsonPropertyName("latitud")]
     public decimal? Latitud { get; set; }
 
@@ -379,7 +391,6 @@ public sealed class BackendTicketDto
     public string? Folio { get; set; }
     public string Asunto { get; set; } = "";
     public string? Descripcion { get; set; }
-    //public string? Observacionesapp { get; set; }
     public string? Descestatus { get; set; }
     public string? Colorestatus { get; set; }
     public string? Claveestatus { get; set; }

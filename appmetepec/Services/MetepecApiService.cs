@@ -92,12 +92,15 @@ public sealed class MetepecApiService
         return result?.success == true ? result.data : null;
     }
 
-    public async Task<BackendLoginResponse?> LoginAsync(string userNameOrEmail, string password, CancellationToken cancellationToken = default)
+    public async Task<BackendLoginResponse?> LoginAsync(string userNameOrEmail, string password, decimal? latitud = null, decimal? longitud = null, CancellationToken cancellationToken = default)
     {
         var content = JsonContent(new BackendLoginRequest
         {
             UserNameOrEmail = userNameOrEmail,
-            Password = password
+            Password = password,
+            Plataforma = DeviceInfo.Current.Platform == DevicePlatform.iOS ? "IOS" : "ANDROID",
+            Latitud = latitud,
+            Longitud = longitud
         });
 
         using var response = await _httpClient.PostAsync(AppConstants.MetepecBackendUrl + "/seguridad/login", content, cancellationToken);
@@ -109,7 +112,7 @@ public sealed class MetepecApiService
         return await ReadJsonAsync<BackendLoginResponse>(response, cancellationToken);
     }
 
-    public async Task<string?> RegisterAsync(BackendRegisterRequest request, CancellationToken cancellationToken = default)
+    public async Task<BackendRegistroResponse?> RegisterAsync(BackendRegisterRequest request, CancellationToken cancellationToken = default)
     {
         using var response = await _httpClient.PostAsync(AppConstants.MetepecBackendUrl + "/ciudadanos/registro", JsonContent(request), cancellationToken);
 
@@ -120,7 +123,7 @@ public sealed class MetepecApiService
         }
 
         response.EnsureSuccessStatusCode();
-        return null;
+        return await ReadJsonAsync<BackendRegistroResponse>(response, cancellationToken);
     }
 
     public async Task<int?> GetMyCiudadanoAsync(CancellationToken cancellationToken = default)
