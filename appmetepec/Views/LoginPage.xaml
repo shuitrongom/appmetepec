@@ -90,6 +90,12 @@
                 </Label.GestureRecognizers>
             </Label>
 
+            <Label x:Name="VersionLabel"
+                   HorizontalTextAlignment="Center"
+                   FontSize="12"
+                   TextColor="#AAAAAA"
+                   Margin="0,16,0,0" />
+
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>
