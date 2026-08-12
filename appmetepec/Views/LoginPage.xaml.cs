@@ -13,6 +13,7 @@ public partial class LoginPage : ContentPage
         InitializeComponent();
         _preferences = preferences;
         _api = api;
+        VersionLabel.Text = $"v{AppInfo.Current.VersionString}";
     }
 
     private async void OnLoginClicked(object sender, EventArgs e)
