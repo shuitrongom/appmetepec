@@ -20,6 +20,8 @@ public partial class HomePage : ContentPage
         _api = api;
         _navigationState = navigationState;
         _preferences = preferences;
+        DarkThemeSwitch.IsToggled = _preferences.DarkThemeEnabled;
+        SetActiveTab(reportsActive: true);
         BannerCarousel.ItemsSource = BuildBanners();
         LogoImage.Behaviors.Add(new TouchBehavior
         {
@@ -390,6 +392,13 @@ public partial class HomePage : ContentPage
         OnNewsTabTapped(sender, e);
     }
 
+    private void OnDarkThemeToggled(object sender, ToggledEventArgs e)
+    {
+        _preferences.DarkThemeEnabled = e.Value;
+        Application.Current!.UserAppTheme = e.Value ? AppTheme.Dark : AppTheme.Light;
+        SetActiveTab(reportsActive: ReportsContent.IsVisible);
+    }
+
     private async void OnDrawerLogoutTapped(object sender, TappedEventArgs e)
     {
         await CloseDrawerAsync();
@@ -403,20 +412,31 @@ public partial class HomePage : ContentPage
         await Shell.Current.GoToAsync($"//{nameof(LoginPage)}");
     }
 
+    private static bool IsDarkTheme => Application.Current?.RequestedTheme == AppTheme.Dark;
+    private static Color ActiveTabBackground => IsDarkTheme ? Color.FromArgb("#33294D") : Color.FromArgb("#F1EEFB");
+    private static Color ActiveTabTextColor => IsDarkTheme ? Colors.White : Color.FromArgb("#28113E");
+    private static Color InactiveTabTextColor => Color.FromArgb("#9AA5B1");
+
+    private void SetActiveTab(bool reportsActive)
+    {
+        ReportsTab.BackgroundColor = reportsActive ? ActiveTabBackground : Colors.Transparent;
+        NewsTab.BackgroundColor = reportsActive ? Colors.Transparent : ActiveTabBackground;
+        ReportsTabLabel.TextColor = reportsActive ? ActiveTabTextColor : InactiveTabTextColor;
+        NewsTabLabel.TextColor = reportsActive ? InactiveTabTextColor : ActiveTabTextColor;
+    }
+
     private void OnReportsTabTapped(object sender, TappedEventArgs e)
     {
         ReportsContent.IsVisible = true;
         NewsContent.IsVisible = false;
-        ReportsTab.BackgroundColor = Color.FromArgb("#050505");
-        NewsTab.BackgroundColor = Color.FromArgb("#1A1A1A");
+        SetActiveTab(reportsActive: true);
     }
 
     private void OnNewsTabTapped(object sender, TappedEventArgs e)
     {
         ReportsContent.IsVisible = false;
         NewsContent.IsVisible = true;
-        ReportsTab.BackgroundColor = Color.FromArgb("#1A1A1A");
-        NewsTab.BackgroundColor = Color.FromArgb("#050505");
+        SetActiveTab(reportsActive: false);
 
         // El CollectionView recibe su ItemsSource en OnAppearing mientras NewsContent sigue oculto
         // (IsVisible=False), y MAUI no siempre relayoutea bien un CollectionView que estaba oculto
