@@ -15,13 +15,13 @@
 
                 <Image x:Name="LogoImage" Grid.Column="1" Source="logo.png" HeightRequest="50" WidthRequest="100" Aspect="AspectFit" />
 
-                <HorizontalStackLayout Grid.Column="2" Spacing="6" HorizontalOptions="End" VerticalOptions="Center">
+                <!--HorizontalStackLayout Grid.Column="2" Spacing="6" HorizontalOptions="End" VerticalOptions="Center">
                     <Label Text="ALERTA DE&#10;GENERO" FontSize="10" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#555, Dark=#C7CDD3}" HorizontalTextAlignment="End" VerticalOptions="Center" />
                     <Image Source="ic_alerta_on.png" HeightRequest="30" WidthRequest="30" />
                     <HorizontalStackLayout.GestureRecognizers>
                         <TapGestureRecognizer Tapped="OnAlertaTapped" />
                     </HorizontalStackLayout.GestureRecognizers>
-                </HorizontalStackLayout>
+                </HorizontalStackLayout-->
             </Grid>
 
             <CarouselView x:Name="BannerCarousel"
@@ -161,6 +161,7 @@
                             </Grid.GestureRecognizers>
                         </Grid>
 
+                        <!--
                         <Grid ColumnDefinitions="46,*" Padding="20,14" ColumnSpacing="14">
                             <Image Source="ic_trash.png" HeightRequest="24" WidthRequest="24" HorizontalOptions="Center" />
                             <Label Grid.Column="1" Text="Recoleccion de basura" FontSize="15" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" VerticalOptions="Center" />
@@ -176,6 +177,7 @@
                                 <TapGestureRecognizer Tapped="OnDrawerAlertaTapped" />
                             </Grid.GestureRecognizers>
                         </Grid>
+                        -->
 
                         <Grid ColumnDefinitions="46,*" Padding="20,14" ColumnSpacing="14">
                             <Image Source="btn_noticias.png" HeightRequest="24" WidthRequest="24" HorizontalOptions="Center" />
