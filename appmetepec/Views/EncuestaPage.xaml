@@ -11,7 +11,7 @@
                     <TapGestureRecognizer Tapped="OnCancelarTapped" />
                 </Label.GestureRecognizers>
             </Label>
-            <Image Grid.Column="1" Source="logo.png" HeightRequest="50" WidthRequest="100" Aspect="AspectFit" HorizontalOptions="Center" />
+            <Image Grid.Column="1" Source="placeholder.png" HeightRequest="50" WidthRequest="100" Aspect="AspectFit" HorizontalOptions="Center" />
         </Grid>
 
         <ScrollView Grid.Row="1">
