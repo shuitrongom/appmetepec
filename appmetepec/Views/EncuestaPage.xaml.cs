@@ -1,5 +1,6 @@
 using appmetepec.Models;
 using appmetepec.Services;
+using Microsoft.Maui.Controls.Shapes;
 
 namespace appmetepec.Views;
 
@@ -90,6 +91,19 @@ public partial class EncuestaPage : ContentPage
     private static bool IsDarkTheme => Application.Current?.RequestedTheme == AppTheme.Dark;
     private static Color ThemedHeadingColor() => IsDarkTheme ? Colors.White : Color.FromArgb("#28113E");
     private static Color ThemedNeutralButtonBackground() => IsDarkTheme ? Color.FromArgb("#3A3A3A") : Color.FromArgb("#DDD");
+    private static Color ThemedInputTextColor() => IsDarkTheme ? Colors.White : Color.FromArgb("#333");
+    private static Color ThemedInputBorderColor() => IsDarkTheme ? Color.FromArgb("#3A3A3A") : Color.FromArgb("#DDD");
+    private static Color ThemedInputBackground() => IsDarkTheme ? Color.FromArgb("#2A2A2A") : Colors.White;
+
+    private static Border WrapInputBorder(View input) => new()
+    {
+        Stroke = ThemedInputBorderColor(),
+        StrokeThickness = 1,
+        BackgroundColor = ThemedInputBackground(),
+        Padding = 0,
+        StrokeShape = new RoundRectangle { CornerRadius = 8 },
+        Content = input
+    };
 
     private View CrearControlPregunta(BackendEncuestaPreguntaDto pregunta)
     {
@@ -111,14 +125,14 @@ public partial class EncuestaPage : ContentPage
                 contenedor.Children.Add(CrearControlSiNo(pregunta.Id));
                 break;
             case "NUMERICA":
-                var entryNumerico = new Entry { Keyboard = Keyboard.Numeric, BackgroundColor = Colors.White, TextColor = Color.FromArgb("#333") };
+                var entryNumerico = new Entry { Keyboard = Keyboard.Numeric, BackgroundColor = Colors.Transparent, TextColor = ThemedInputTextColor() };
                 _numericaControles[pregunta.Id] = entryNumerico;
-                contenedor.Children.Add(entryNumerico);
+                contenedor.Children.Add(WrapInputBorder(entryNumerico));
                 break;
             default: // TEXTO
-                var editorTexto = new Editor { AutoSize = EditorAutoSizeOption.TextChanges, HeightRequest = 70, BackgroundColor = Colors.White, TextColor = Color.FromArgb("#333") };
+                var editorTexto = new Editor { AutoSize = EditorAutoSizeOption.TextChanges, HeightRequest = 70, BackgroundColor = Colors.Transparent, TextColor = ThemedInputTextColor() };
                 _textoControles[pregunta.Id] = editorTexto;
-                contenedor.Children.Add(editorTexto);
+                contenedor.Children.Add(WrapInputBorder(editorTexto));
                 break;
         }
 

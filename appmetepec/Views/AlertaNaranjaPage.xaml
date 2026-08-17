@@ -10,10 +10,30 @@
             <Label Text="ALERTA DE GENERO" FontSize="20" FontAttributes="Bold" TextColor="#F48021" BackgroundColor="White" Padding="15" HorizontalTextAlignment="Center" Margin="0,16,0,16" />
 
             <VerticalStackLayout Padding="20,0,20,26" Spacing="10">
-                <Entry x:Name="NameEntry" Placeholder="Nombre" FontSize="15" BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" TextColor="{AppThemeBinding Light=#333, Dark=White}" HorizontalTextAlignment="Center" HeightRequest="46" />
-                <Entry x:Name="PhoneEntry" Placeholder="Telefono" Keyboard="Telephone" FontSize="15" BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" TextColor="{AppThemeBinding Light=#333, Dark=White}" HorizontalTextAlignment="Center" HeightRequest="46" />
-                <Entry x:Name="EmailEntry" Placeholder="Correo" Keyboard="Email" FontSize="15" BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" TextColor="{AppThemeBinding Light=#333, Dark=White}" HorizontalTextAlignment="Center" HeightRequest="46" />
-                <Editor x:Name="AddressEditor" Placeholder="Direccion" FontSize="15" AutoSize="TextChanges" HeightRequest="80" BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" TextColor="{AppThemeBinding Light=#333, Dark=White}" HorizontalTextAlignment="Center" />
+                <Border Stroke="{AppThemeBinding Light=#DDD, Dark=#3A3A3A}" StrokeThickness="1" BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" Padding="0">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="8" />
+                    </Border.StrokeShape>
+                    <Entry x:Name="NameEntry" Placeholder="Nombre" FontSize="15" BackgroundColor="Transparent" TextColor="{AppThemeBinding Light=#333, Dark=White}" HorizontalTextAlignment="Center" HeightRequest="46" />
+                </Border>
+                <Border Stroke="{AppThemeBinding Light=#DDD, Dark=#3A3A3A}" StrokeThickness="1" BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" Padding="0">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="8" />
+                    </Border.StrokeShape>
+                    <Entry x:Name="PhoneEntry" Placeholder="Telefono" Keyboard="Telephone" FontSize="15" BackgroundColor="Transparent" TextColor="{AppThemeBinding Light=#333, Dark=White}" HorizontalTextAlignment="Center" HeightRequest="46" />
+                </Border>
+                <Border Stroke="{AppThemeBinding Light=#DDD, Dark=#3A3A3A}" StrokeThickness="1" BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" Padding="0">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="8" />
+                    </Border.StrokeShape>
+                    <Entry x:Name="EmailEntry" Placeholder="Correo" Keyboard="Email" FontSize="15" BackgroundColor="Transparent" TextColor="{AppThemeBinding Light=#333, Dark=White}" HorizontalTextAlignment="Center" HeightRequest="46" />
+                </Border>
+                <Border Stroke="{AppThemeBinding Light=#DDD, Dark=#3A3A3A}" StrokeThickness="1" BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" Padding="0">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="8" />
+                    </Border.StrokeShape>
+                    <Editor x:Name="AddressEditor" Placeholder="Direccion" FontSize="15" AutoSize="TextChanges" HeightRequest="80" BackgroundColor="Transparent" TextColor="{AppThemeBinding Light=#333, Dark=White}" HorizontalTextAlignment="Center" />
+                </Border>
                 <Button Text="USAR UBICACION" Clicked="OnUseLocationClicked" BackgroundColor="#A6CE39" TextColor="White" FontSize="12" FontAttributes="Bold" />
                 <Label x:Name="CoordinatesLabel" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" FontSize="12" />
                 <Button Text="REGISTRAR Y ALERTAR" Clicked="OnSaveClicked" BackgroundColor="#F48021" TextColor="White" FontSize="18" FontAttributes="Bold" Margin="0,10,0,0" />
