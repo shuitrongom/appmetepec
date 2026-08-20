@@ -264,7 +264,10 @@ public sealed class MetepecApiService
                 subtitle = item.Resumen,
                 shortContent = item.Resumen,
                 content = item.Contenido,
-                image = item.ImagenPrincipal
+                image = item.ImagenPrincipal,
+                destacada = item.Destacada,
+                fechaInicioEvento = item.FechaInicioEvento,
+                fechaFinEvento = item.FechaFinEvento
             })
             .ToList();
     }

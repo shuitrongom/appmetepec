@@ -60,26 +60,51 @@
                         <VerticalStackLayout x:Name="CategoriesHost" Spacing="28" />
                     </VerticalStackLayout>
 
-                    <VerticalStackLayout x:Name="NewsContent" Padding="28,26,28,20" Spacing="14" IsVisible="False">
-                        <Label Text="NOTICIAS" FontSize="28" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" />
+                    <VerticalStackLayout x:Name="NewsContent" Padding="28,26,28,20" Spacing="18" IsVisible="False">
+                        <!--Label Text="NOTICIAS" FontSize="28" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" /-->
+
+                        <Border x:Name="FeaturedNewsCard" StrokeThickness="0" Padding="0" HeightRequest="210" IsVisible="False">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="14" />
+                            </Border.StrokeShape>
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="OnFeaturedNewsTapped" />
+                            </Border.GestureRecognizers>
+                            <Grid>
+                                <Image x:Name="FeaturedNewsImage" Aspect="AspectFill" />
+                                <BoxView>
+                                    <BoxView.Background>
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                            <GradientStop Color="Transparent" Offset="0.0" />
+                                            <GradientStop Color="#CC000000" Offset="1.0" />
+                                        </LinearGradientBrush>
+                                    </BoxView.Background>
+                                </BoxView>
+                                <VerticalStackLayout VerticalOptions="End" Padding="16,12" Spacing="4">
+                                    <Label x:Name="FeaturedNewsTitle" TextColor="White" FontAttributes="Bold" FontSize="19" LineBreakMode="TailTruncation" MaxLines="2" />
+                                    <Label x:Name="FeaturedNewsSubtitle" TextColor="#E6E6E6" FontSize="13" LineBreakMode="TailTruncation" MaxLines="2" />
+                                </VerticalStackLayout>
+                            </Grid>
+                        </Border>
+
                         <CollectionView x:Name="NewsView" SelectionMode="Single" SelectionChanged="OnNewsSelected">
                             <CollectionView.EmptyView>
                                 <Label Text="Sin noticias cargadas." TextColor="{AppThemeBinding Light=#6B7280, Dark=#9AA5B1}" />
                             </CollectionView.EmptyView>
                             <CollectionView.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#3A3A3A}" StrokeThickness="1" BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" Padding="14" Margin="0,0,0,12">
-                                        <Border.StrokeShape>
-                                            <RoundRectangle CornerRadius="8" />
-                                        </Border.StrokeShape>
-                                        <Grid ColumnDefinitions="84,*" ColumnSpacing="12">
-                                            <Image Source="{Binding image}" HeightRequest="74" WidthRequest="74" Aspect="AspectFill" />
-                                            <VerticalStackLayout Grid.Column="1" Spacing="4">
-                                                <Label Text="{Binding title}" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#333, Dark=White}" />
-                                                <Label Text="{Binding subtitle}" TextColor="{AppThemeBinding Light=#666, Dark=#B0B8C1}" LineBreakMode="TailTruncation" />
-                                            </VerticalStackLayout>
-                                        </Grid>
-                                    </Border>
+                                    <Grid ColumnDefinitions="64,*" ColumnSpacing="12" Padding="0,10">
+                                        <Border StrokeThickness="0" Padding="0" HeightRequest="64" WidthRequest="64" HorizontalOptions="Start" VerticalOptions="Start">
+                                            <Border.StrokeShape>
+                                                <RoundRectangle CornerRadius="8" />
+                                            </Border.StrokeShape>
+                                            <Image Source="{Binding image}" Aspect="AspectFill" HeightRequest="64" WidthRequest="64" />
+                                        </Border>
+                                        <VerticalStackLayout Grid.Column="1" Spacing="3" VerticalOptions="Center">
+                                            <Label Text="{Binding title}" FontAttributes="Bold" FontSize="14" TextColor="{AppThemeBinding Light=#333, Dark=White}" LineBreakMode="TailTruncation" MaxLines="2" />
+                                            <Label Text="{Binding subtitle}" FontSize="12" TextColor="{AppThemeBinding Light=#666, Dark=#B0B8C1}" LineBreakMode="TailTruncation" MaxLines="2" />
+                                        </VerticalStackLayout>
+                                    </Grid>
                                 </DataTemplate>
                             </CollectionView.ItemTemplate>
                         </CollectionView>

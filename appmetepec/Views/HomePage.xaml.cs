@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using appmetepec.Models;
 using appmetepec.Services;
 using CommunityToolkit.Maui.Behaviors;
@@ -226,6 +227,8 @@ public partial class HomePage : ContentPage
             Color.FromArgb("#9B12B3"), "ic_denuncia_ciudadana.png", "DENUNCIAS", "CIUDADANAS")
     ];
 
+    private NewsLetter? _featuredNews;
+
     private async Task LoadNewsAsync()
     {
         try
@@ -233,18 +236,80 @@ public partial class HomePage : ContentPage
             BusyIndicator.IsRunning = BusyIndicator.IsVisible = true;
             var news = await _api.GetPublicacionesAsync();
             System.Diagnostics.Debug.WriteLine($"[Noticias] {news.Count} publicaciones cargadas.");
-            NewsView.ItemsSource = news;
+            ShowNews(news);
         }
         catch (Exception ex)
         {
             var status = (ex as HttpRequestException)?.StatusCode;
             System.Diagnostics.Debug.WriteLine($"[Noticias] Error al cargar publicaciones: {ex.GetType().Name} {status} - {ex.Message}");
-            NewsView.ItemsSource = Array.Empty<NewsLetter>();
+            ShowNews([]);
         }
         finally
         {
             BusyIndicator.IsRunning = BusyIndicator.IsVisible = false;
         }
+    }
+
+    // La primera noticia (marcada Destacada, o la mas reciente si ninguna lo esta) se
+    // muestra como tarjeta grande con imagen de fondo; el resto en la lista compacta.
+    private void ShowNews(List<NewsLetter> news)
+    {
+        _featuredNews = news.FirstOrDefault(n => n.destacada) ?? news.FirstOrDefault();
+
+        if (_featuredNews is null)
+        {
+            FeaturedNewsCard.IsVisible = false;
+            NewsView.IsVisible = true;
+            NewsView.ItemsSource = news;
+            return;
+        }
+
+        FeaturedNewsCard.IsVisible = true;
+        FeaturedNewsImage.Source = _featuredNews.image;
+        FeaturedNewsTitle.Text = _featuredNews.title;
+        FeaturedNewsSubtitle.Text = BuildExcerpt(_featuredNews);
+
+        // Si tras sacar la destacada no queda ninguna otra noticia, se oculta la lista por
+        // completo: de lo contrario su EmptyView ("Sin noticias cargadas") se mostraria
+        // aunque si haya una noticia (la destacada, ya visible arriba).
+        var resto = news.Where(n => n != _featuredNews).ToList();
+        NewsView.IsVisible = resto.Count > 0;
+        NewsView.ItemsSource = resto;
+    }
+
+    // Debajo del titulo de la tarjeta destacada va el resumen; si la noticia no trae
+    // resumen, se usa un fragmento del contenido (sin las etiquetas HTML) y "...Ver mas".
+    private static string BuildExcerpt(NewsLetter news)
+    {
+        if (!string.IsNullOrWhiteSpace(news.subtitle))
+        {
+            return news.subtitle!;
+        }
+
+        var texto = StripHtml(news.content ?? news.shortContent ?? string.Empty);
+        if (string.IsNullOrWhiteSpace(texto))
+        {
+            return string.Empty;
+        }
+
+        const int maxLength = 90;
+        var recortado = texto.Length > maxLength ? texto[..maxLength].TrimEnd() : texto;
+        return $"{recortado}...Ver mas";
+    }
+
+    private static string StripHtml(string html) =>
+        Regex.Replace(html, "<.*?>", string.Empty).Trim();
+
+    private async void OnFeaturedNewsTapped(object sender, TappedEventArgs e)
+    {
+        if (_featuredNews is null) return;
+        await AbrirNoticiaAsync(_featuredNews);
+    }
+
+    private async Task AbrirNoticiaAsync(NewsLetter news)
+    {
+        _navigationState.SelectedNews = news;
+        await Shell.Current.GoToAsync(nameof(NewsDetailPage));
     }
 
     private async void OnRefreshing(object sender, EventArgs e)
@@ -297,8 +362,7 @@ public partial class HomePage : ContentPage
         }
 
         NewsView.SelectedItem = null;
-        _navigationState.SelectedNews = news;
-        await Shell.Current.GoToAsync(nameof(NewsDetailPage));
+        await AbrirNoticiaAsync(news);
     }
 
     private async void OnRecoleccionClicked(object sender, EventArgs e)
