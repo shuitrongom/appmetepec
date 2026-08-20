@@ -24,6 +24,19 @@ namespace appmetepec
             builder.Logging.AddDebug();
 #endif
 
+#if ANDROID
+            // Los Entry/Editor ya llevan un Border propio dibujando el contorno del campo;
+            // quitamos el subrayado nativo de Android para no duplicar el borde.
+            Microsoft.Maui.Handlers.EntryHandler.Mapper.AppendToMapping("NoUnderline", (handler, view) =>
+            {
+                handler.PlatformView.Background = null;
+            });
+            Microsoft.Maui.Handlers.EditorHandler.Mapper.AppendToMapping("NoUnderline", (handler, view) =>
+            {
+                handler.PlatformView.Background = null;
+            });
+#endif
+
             builder.Services.AddSingleton<PreferencesService>();
             builder.Services.AddSingleton(sp => new HttpClient(new AuthExpiredHandler(sp.GetRequiredService<PreferencesService>())));
             builder.Services.AddSingleton<ReportCatalogService>();

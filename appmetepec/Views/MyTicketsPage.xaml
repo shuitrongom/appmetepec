@@ -3,89 +3,110 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="appmetepec.Views.MyTicketsPage"
              Title="Mis reportes"
-             Shell.NavBarIsVisible="False"
-             BackgroundColor="#555"
-             BackgroundImageSource="bg8.png">
+             Shell.NavBarIsVisible="False">
     <Grid RowDefinitions="Auto,*">
-        <Grid BackgroundColor="White" Padding="25,12" ColumnDefinitions="40,*,40">
-            <Label Text="‹" FontSize="30" TextColor="#28113E" VerticalTextAlignment="Center" HorizontalTextAlignment="Center">
+        <Grid BackgroundColor="{AppThemeBinding Light=White, Dark=#1f1f1f}" Padding="25,12" ColumnDefinitions="40,*,40">
+            <Label Text="‹" FontSize="30" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" VerticalTextAlignment="Center" HorizontalTextAlignment="Center">
                 <Label.GestureRecognizers>
                     <TapGestureRecognizer Tapped="OnBackTapped" />
                 </Label.GestureRecognizers>
             </Label>
-            <Image Grid.Column="1" Source="logo.png" HeightRequest="50" WidthRequest="100" Aspect="AspectFit" HorizontalOptions="Center" />
-            <Image Grid.Column="2" Source="ic_alerta_on.png" HeightRequest="30" WidthRequest="30" />
+            <Image Grid.Column="1" Source="placeholder.png" HeightRequest="50" WidthRequest="100" Aspect="AspectFit" HorizontalOptions="Center" />
+            <!--Image Grid.Column="2" Source="ic_alerta_on.png" HeightRequest="30" WidthRequest="30" /-->
         </Grid>
 
         <RefreshView Grid.Row="1" x:Name="TicketsRefreshView" Refreshing="OnRefreshing">
             <ScrollView>
                 <VerticalStackLayout Padding="20" Spacing="10">
-                    <ActivityIndicator x:Name="BusyIndicator" Color="White" />
+                    <ActivityIndicator x:Name="BusyIndicator" Color="{AppThemeBinding Light=#28113E, Dark=White}" />
 
                     <VerticalStackLayout x:Name="PendingSection" Spacing="10" IsVisible="False" Margin="0,0,0,10">
-                        <Label Text="PENDIENTES POR ENVIAR" FontSize="16" FontAttributes="Bold" TextColor="#F89A1C" />
+                        <Label Text="PENDIENTES POR ENVIAR" FontSize="14" FontAttributes="Bold" CharacterSpacing="0.5" TextColor="#F89A1C" />
                         <CollectionView x:Name="PendingView">
                             <CollectionView.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Stroke="#F89A1C" StrokeThickness="1" BackgroundColor="White" Padding="14" Margin="0,0,0,12">
+                                    <Border BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" Padding="0" Margin="0,0,0,12">
                                         <Border.StrokeShape>
-                                            <RoundRectangle CornerRadius="8" />
+                                            <RoundRectangle CornerRadius="12" />
                                         </Border.StrokeShape>
-                                        <VerticalStackLayout Spacing="6">
-                                            <Label Text="{Binding Title}" FontAttributes="Bold" FontSize="15" TextColor="#28113E" />
-                                            <Label FontSize="11" TextColor="#8A9BA8">
-                                                <Label.FormattedText>
-                                                    <FormattedString>
-                                                        <Span Text="Guardado el " />
-                                                        <Span Text="{Binding SavedAt, StringFormat='{0:dd/MM/yyyy HH:mm}'}" />
-                                                    </FormattedString>
-                                            </Label.FormattedText>
-                                            </Label>
-                                            <Label Text="{Binding LastError}" FontSize="11" TextColor="#C0392B" LineBreakMode="TailTruncation" MaxLines="2" />
-                                            <HorizontalStackLayout Spacing="10" Margin="0,6,0,0">
-                                                <Button Text="Reintentar envio" Clicked="OnRetryPendingClicked" BackgroundColor="#F89A1C" TextColor="White" FontSize="12" HeightRequest="38" />
-                                                <Button Text="Descartar" Clicked="OnDiscardPendingClicked" BackgroundColor="#EEE" TextColor="#555" FontSize="12" HeightRequest="38" />
-                                            </HorizontalStackLayout>
-                                        </VerticalStackLayout>
+                                        <Border.Shadow>
+                                            <Shadow Brush="Black" Opacity="0.12" Radius="10" Offset="0,3" />
+                                        </Border.Shadow>
+                                        <Grid ColumnDefinitions="5,*">
+                                            <BoxView Grid.Column="0" Color="#F89A1C" />
+                                            <VerticalStackLayout Grid.Column="1" Spacing="6" Padding="16,14">
+                                                <Label Text="{Binding Title}" FontAttributes="Bold" FontSize="15" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" />
+                                                <Label FontSize="11" TextColor="{AppThemeBinding Light=#8A9BA8, Dark=#B0B8C1}">
+                                                    <Label.FormattedText>
+                                                        <FormattedString>
+                                                            <Span Text="Guardado el " />
+                                                            <Span Text="{Binding SavedAt, StringFormat='{0:dd MMM yyyy, HH:mm}'}" />
+                                                        </FormattedString>
+                                                    </Label.FormattedText>
+                                                </Label>
+                                                <Label Text="{Binding LastError}" FontSize="11" TextColor="#C0392B" LineBreakMode="TailTruncation" MaxLines="2" />
+                                                <HorizontalStackLayout Spacing="10" Margin="0,6,0,0">
+                                                    <Button Text="Reintentar envío" Clicked="OnRetryPendingClicked" BackgroundColor="#F89A1C" TextColor="White" FontSize="12" FontAttributes="Bold" HeightRequest="38" CornerRadius="19" Padding="16,0" />
+                                                    <Button Text="Descartar" Clicked="OnDiscardPendingClicked" BackgroundColor="{AppThemeBinding Light=#F0F0F0, Dark=#3A3A3A}" TextColor="{AppThemeBinding Light=#555, Dark=#D8D8D8}" FontSize="12" HeightRequest="38" CornerRadius="19" Padding="16,0" />
+                                                </HorizontalStackLayout>
+                                            </VerticalStackLayout>
+                                        </Grid>
                                     </Border>
                                 </DataTemplate>
                             </CollectionView.ItemTemplate>
                         </CollectionView>
                     </VerticalStackLayout>
 
-                    <Label Text="MIS REPORTES" FontSize="20" FontAttributes="Bold" TextColor="White" Margin="0,10,0,6" />
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,10,0,6">
+                        <Label Text="MIS REPORTES" FontSize="18" FontAttributes="Bold" CharacterSpacing="0.5" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" />
+                        <Label x:Name="ReportsCountLabel" Grid.Column="1" FontSize="13" TextColor="{AppThemeBinding Light=#8A9BA8, Dark=#D8D8D8}" VerticalOptions="Center" />
+                    </Grid>
 
                     <CollectionView x:Name="TicketsView" SelectionMode="Single" SelectionChanged="OnTicketSelected">
                         <CollectionView.EmptyView>
-                            <Label Text="Aun no has enviado ningun reporte." TextColor="White" FontSize="14" Margin="0,20,0,0" />
+                            <VerticalStackLayout HorizontalOptions="Center" Padding="0,24,0,0" Spacing="4">
+                                <Label Text="Aún no has enviado ningún reporte" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" FontAttributes="Bold" FontSize="15" HorizontalTextAlignment="Center" />
+                                <Label Text="Cuando envíes uno, aparecerá aquí." TextColor="{AppThemeBinding Light=#8A9BA8, Dark=#D8D8D8}" FontSize="13" HorizontalTextAlignment="Center" />
+                            </VerticalStackLayout>
                         </CollectionView.EmptyView>
                         <CollectionView.ItemTemplate>
                             <DataTemplate>
-                                <Border Stroke="#DDD" StrokeThickness="1" BackgroundColor="White" Padding="14" Margin="0,0,0,12">
+                                <Border BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" Padding="0" Margin="0,0,0,12">
                                     <Border.StrokeShape>
-                                        <RoundRectangle CornerRadius="8" />
+                                        <RoundRectangle CornerRadius="12" />
                                     </Border.StrokeShape>
-                                    <VerticalStackLayout Spacing="6">
-                                        <Grid ColumnDefinitions="*,Auto">
-                                            <Label Text="{Binding Asunto}" FontAttributes="Bold" FontSize="15" TextColor="#28113E" LineBreakMode="TailTruncation" />
-                                            <Border Grid.Column="1" BackgroundColor="{Binding Colorestatus, Converter={StaticResource HexToColorConverter}}" Padding="8,3" VerticalOptions="Start">
-                                                <Border.StrokeShape>
-                                                    <RoundRectangle CornerRadius="10" />
-                                                </Border.StrokeShape>
-                                                <Label Text="{Binding Descestatus}" TextColor="White" FontSize="11" FontAttributes="Bold" />
-                                            </Border>
-                                        </Grid>
-                                        <Label Text="{Binding Descservicio}" FontSize="12" TextColor="#555" />
-                                        <Label FontSize="11" TextColor="#8A9BA8">
-                                            <Label.FormattedText>
-                                                <FormattedString>
-                                                    <Span Text="{Binding Folio}" />
-                                                    <Span Text="  •  " />
-                                                    <Span Text="{Binding Fechaalta, StringFormat='{0:dd/MM/yyyy HH:mm}'}" />
-                                                </FormattedString>
-                                            </Label.FormattedText>
-                                        </Label>
-                                    </VerticalStackLayout>
+                                    <Border.Shadow>
+                                        <Shadow Brush="Black" Opacity="0.12" Radius="10" Offset="0,3" />
+                                    </Border.Shadow>
+                                    <Grid ColumnDefinitions="5,*">
+                                        <BoxView Grid.Column="0" Color="{Binding Colorestatus, Converter={StaticResource HexToColorConverter}}" />
+
+                                        <VerticalStackLayout Grid.Column="1" Spacing="6" Padding="16,14">
+                                            <Grid ColumnDefinitions="*,Auto">
+                                                <Label Text="{Binding Asunto}" FontAttributes="Bold" FontSize="15" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" LineBreakMode="TailTruncation" VerticalOptions="Center" />
+                                                <Border Grid.Column="1" BackgroundColor="{Binding Colorestatus, Converter={StaticResource HexToColorConverter}}" Padding="10,4" VerticalOptions="Start" Margin="8,0,0,0">
+                                                    <Border.StrokeShape>
+                                                        <RoundRectangle CornerRadius="10" />
+                                                    </Border.StrokeShape>
+                                                    <Label Text="{Binding Descestatus}" TextColor="White" FontSize="11" FontAttributes="Bold" />
+                                                </Border>
+                                            </Grid>
+                                            <Label Text="{Binding Descservicio}" FontSize="12.5" TextColor="{AppThemeBinding Light=#5B6672, Dark=#B0B8C1}" LineBreakMode="TailTruncation" />
+
+                                            <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                                                <Label FontSize="11" TextColor="{AppThemeBinding Light=#8A9BA8, Dark=#B0B8C1}" VerticalOptions="Center">
+                                                    <Label.FormattedText>
+                                                        <FormattedString>
+                                                            <Span Text="{Binding Folio}" FontAttributes="Bold" />
+                                                            <Span Text="  •  " />
+                                                            <Span Text="{Binding Fechaalta, StringFormat='{0:dd MMM yyyy}'}" />
+                                                        </FormattedString>
+                                                    </Label.FormattedText>
+                                                </Label>
+                                                <Label Grid.Column="1" Text="›" FontSize="20" TextColor="{AppThemeBinding Light=#C7CDD3, Dark=#6A7078}" VerticalOptions="Center" />
+                                            </Grid>
+                                        </VerticalStackLayout>
+                                    </Grid>
                                 </Border>
                             </DataTemplate>
                         </CollectionView.ItemTemplate>

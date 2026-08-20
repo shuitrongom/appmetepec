@@ -1,5 +1,6 @@
 using appmetepec.Models;
 using appmetepec.Services;
+using Microsoft.Maui.Controls.Shapes;
 
 namespace appmetepec.Views;
 
@@ -87,6 +88,23 @@ public partial class EncuestaPage : ContentPage
         }
     }
 
+    private static bool IsDarkTheme => Application.Current?.RequestedTheme == AppTheme.Dark;
+    private static Color ThemedHeadingColor() => IsDarkTheme ? Colors.White : Color.FromArgb("#28113E");
+    private static Color ThemedNeutralButtonBackground() => IsDarkTheme ? Color.FromArgb("#3A3A3A") : Color.FromArgb("#DDD");
+    private static Color ThemedInputTextColor() => IsDarkTheme ? Colors.White : Color.FromArgb("#333");
+    private static Color ThemedInputBorderColor() => IsDarkTheme ? Color.FromArgb("#3A3A3A") : Color.FromArgb("#DDD");
+    private static Color ThemedInputBackground() => IsDarkTheme ? Color.FromArgb("#2A2A2A") : Colors.White;
+
+    private static Border WrapInputBorder(View input) => new()
+    {
+        Stroke = ThemedInputBorderColor(),
+        StrokeThickness = 1,
+        BackgroundColor = ThemedInputBackground(),
+        Padding = 0,
+        StrokeShape = new RoundRectangle { CornerRadius = 8 },
+        Content = input
+    };
+
     private View CrearControlPregunta(BackendEncuestaPreguntaDto pregunta)
     {
         var contenedor = new VerticalStackLayout { Spacing = 8 };
@@ -95,7 +113,7 @@ public partial class EncuestaPage : ContentPage
             Text = pregunta.Pregunta,
             FontSize = 14,
             FontAttributes = FontAttributes.Bold,
-            TextColor = Colors.White
+            TextColor = ThemedHeadingColor()
         });
 
         switch (pregunta.TipoRespuesta.Trim().ToUpperInvariant())
@@ -107,14 +125,14 @@ public partial class EncuestaPage : ContentPage
                 contenedor.Children.Add(CrearControlSiNo(pregunta.Id));
                 break;
             case "NUMERICA":
-                var entryNumerico = new Entry { Keyboard = Keyboard.Numeric, BackgroundColor = Colors.White, TextColor = Color.FromArgb("#333") };
+                var entryNumerico = new Entry { Keyboard = Keyboard.Numeric, BackgroundColor = Colors.Transparent, TextColor = ThemedInputTextColor() };
                 _numericaControles[pregunta.Id] = entryNumerico;
-                contenedor.Children.Add(entryNumerico);
+                contenedor.Children.Add(WrapInputBorder(entryNumerico));
                 break;
             default: // TEXTO
-                var editorTexto = new Editor { AutoSize = EditorAutoSizeOption.TextChanges, HeightRequest = 70, BackgroundColor = Colors.White, TextColor = Color.FromArgb("#333") };
+                var editorTexto = new Editor { AutoSize = EditorAutoSizeOption.TextChanges, HeightRequest = 70, BackgroundColor = Colors.Transparent, TextColor = ThemedInputTextColor() };
                 _textoControles[pregunta.Id] = editorTexto;
-                contenedor.Children.Add(editorTexto);
+                contenedor.Children.Add(WrapInputBorder(editorTexto));
                 break;
         }
 
@@ -133,7 +151,7 @@ public partial class EncuestaPage : ContentPage
             {
                 Text = "☆",
                 FontSize = 32,
-                TextColor = Colors.White
+                TextColor = Color.FromArgb("#C7CDD3")
             };
             estrella.GestureRecognizers.Add(new TapGestureRecognizer
             {
@@ -155,7 +173,7 @@ public partial class EncuestaPage : ContentPage
         {
             var seleccionada = i < valor;
             estrellas[i].Text = seleccionada ? "★" : "☆";
-            estrellas[i].TextColor = seleccionada ? Color.FromArgb("#F89A1C") : Colors.White;
+            estrellas[i].TextColor = seleccionada ? Color.FromArgb("#F89A1C") : Color.FromArgb("#C7CDD3");
         }
     }
 
@@ -163,8 +181,8 @@ public partial class EncuestaPage : ContentPage
     {
         var fila = new HorizontalStackLayout { Spacing = 10 };
 
-        var siButton = new Button { Text = "Si", BackgroundColor = Color.FromArgb("#DDD"), TextColor = Color.FromArgb("#28113E"), WidthRequest = 100 };
-        var noButton = new Button { Text = "No", BackgroundColor = Color.FromArgb("#DDD"), TextColor = Color.FromArgb("#28113E"), WidthRequest = 100 };
+        var siButton = new Button { Text = "Si", BackgroundColor = ThemedNeutralButtonBackground(), TextColor = ThemedHeadingColor(), WidthRequest = 100 };
+        var noButton = new Button { Text = "No", BackgroundColor = ThemedNeutralButtonBackground(), TextColor = ThemedHeadingColor(), WidthRequest = 100 };
 
         siButton.Clicked += (_, _) => SeleccionarSiNo(idPregunta, true, siButton, noButton);
         noButton.Clicked += (_, _) => SeleccionarSiNo(idPregunta, false, siButton, noButton);
@@ -177,10 +195,10 @@ public partial class EncuestaPage : ContentPage
     private void SeleccionarSiNo(int idPregunta, bool valor, Button siButton, Button noButton)
     {
         _siNoRespuestas[idPregunta] = valor;
-        siButton.BackgroundColor = valor ? Color.FromArgb("#F89A1C") : Color.FromArgb("#DDD");
-        siButton.TextColor = valor ? Colors.White : Color.FromArgb("#28113E");
-        noButton.BackgroundColor = !valor ? Color.FromArgb("#F89A1C") : Color.FromArgb("#DDD");
-        noButton.TextColor = !valor ? Colors.White : Color.FromArgb("#28113E");
+        siButton.BackgroundColor = valor ? Color.FromArgb("#F89A1C") : ThemedNeutralButtonBackground();
+        siButton.TextColor = valor ? Colors.White : ThemedHeadingColor();
+        noButton.BackgroundColor = !valor ? Color.FromArgb("#F89A1C") : ThemedNeutralButtonBackground();
+        noButton.TextColor = !valor ? Colors.White : ThemedHeadingColor();
     }
 
     private void OnResueltoSiClicked(object sender, EventArgs e) => SeleccionarResuelto(true);
@@ -190,10 +208,10 @@ public partial class EncuestaPage : ContentPage
     private void SeleccionarResuelto(bool resuelto)
     {
         _ticketResuelto = resuelto;
-        ResueltoSiButton.BackgroundColor = resuelto ? Color.FromArgb("#4CAF50") : Color.FromArgb("#DDD");
-        ResueltoSiButton.TextColor = resuelto ? Colors.White : Color.FromArgb("#28113E");
-        ResueltoNoButton.BackgroundColor = resuelto == false ? Color.FromArgb("#C62828") : Color.FromArgb("#DDD");
-        ResueltoNoButton.TextColor = resuelto == false ? Colors.White : Color.FromArgb("#28113E");
+        ResueltoSiButton.BackgroundColor = resuelto ? Color.FromArgb("#4CAF50") : ThemedNeutralButtonBackground();
+        ResueltoSiButton.TextColor = resuelto ? Colors.White : ThemedHeadingColor();
+        ResueltoNoButton.BackgroundColor = resuelto == false ? Color.FromArgb("#C62828") : ThemedNeutralButtonBackground();
+        ResueltoNoButton.TextColor = resuelto == false ? Colors.White : ThemedHeadingColor();
     }
 
     private async void OnEnviarClicked(object sender, EventArgs e)

@@ -42,6 +42,12 @@ public sealed class PreferencesService
         set => Preferences.Default.Set(nameof(CiudadanoId), value);
     }
 
+    public bool DarkThemeEnabled
+    {
+        get => Preferences.Default.Get(nameof(DarkThemeEnabled), false);
+        set => Preferences.Default.Set(nameof(DarkThemeEnabled), value);
+    }
+
     public DateTime? ProximaFechaEncuestaExperienciaApp
     {
         get

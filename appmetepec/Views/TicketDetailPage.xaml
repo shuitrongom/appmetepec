@@ -3,29 +3,27 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="appmetepec.Views.TicketDetailPage"
              Title="Reporte"
-             Shell.NavBarIsVisible="False"
-             BackgroundColor="#555"
-             BackgroundImageSource="bg8.png">
+             Shell.NavBarIsVisible="False">
     <Grid RowDefinitions="Auto,*">
-        <Grid BackgroundColor="White" Padding="25,12" ColumnDefinitions="40,*,40">
-            <Label Text="‹" FontSize="30" TextColor="#28113E" VerticalTextAlignment="Center" HorizontalTextAlignment="Center">
+        <Grid BackgroundColor="{AppThemeBinding Light=White, Dark=#1f1f1f}" Padding="25,12" ColumnDefinitions="40,*,40">
+            <Label Text="‹" FontSize="30" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" VerticalTextAlignment="Center" HorizontalTextAlignment="Center">
                 <Label.GestureRecognizers>
                     <TapGestureRecognizer Tapped="OnBackTapped" />
                 </Label.GestureRecognizers>
             </Label>
-            <Image Grid.Column="1" Source="logo.png" HeightRequest="50" WidthRequest="100" Aspect="AspectFit" HorizontalOptions="Center" />
-            <Image Grid.Column="2" Source="ic_alerta_on.png" HeightRequest="30" WidthRequest="30" />
+            <Image Grid.Column="1" Source="placeholder.png" HeightRequest="50" WidthRequest="100" Aspect="AspectFit" HorizontalOptions="Center" />
+            <!--Image Grid.Column="2" Source="ic_alerta_on.png" HeightRequest="30" WidthRequest="30" /-->
         </Grid>
 
         <ScrollView Grid.Row="1">
             <VerticalStackLayout Padding="20" Spacing="14">
-                <Border Stroke="#DDD" StrokeThickness="1" BackgroundColor="White" Padding="16">
+                <Border Stroke="{AppThemeBinding Light=#DDD, Dark=#3A3A3A}" StrokeThickness="1" BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" Padding="16">
                     <Border.StrokeShape>
                         <RoundRectangle CornerRadius="8" />
                     </Border.StrokeShape>
                     <VerticalStackLayout Spacing="8">
                         <Grid ColumnDefinitions="*,Auto">
-                            <Label x:Name="AsuntoLabel" FontAttributes="Bold" FontSize="17" TextColor="#28113E" LineBreakMode="WordWrap" />
+                            <Label x:Name="AsuntoLabel" FontAttributes="Bold" FontSize="17" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" LineBreakMode="WordWrap" />
                             <Border Grid.Column="1" x:Name="EstatusChip" BackgroundColor="#8A9BA8" Padding="9,4" VerticalOptions="Start">
                                 <Border.StrokeShape>
                                     <RoundRectangle CornerRadius="10" />
@@ -33,31 +31,31 @@
                                 <Label x:Name="EstatusLabel" TextColor="White" FontSize="11" FontAttributes="Bold" />
                             </Border>
                         </Grid>
-                        <Label x:Name="ServicioLabel" FontSize="13" TextColor="#555" />
-                        <Label x:Name="DependenciaLabel" FontSize="12" TextColor="#8A9BA8" />
-                        <Label x:Name="FolioLabel" FontSize="11" TextColor="#8A9BA8" />
+                        <Label x:Name="ServicioLabel" FontSize="13" TextColor="{AppThemeBinding Light=#555, Dark=#B0B8C1}" />
+                        <Label x:Name="DependenciaLabel" FontSize="12" TextColor="{AppThemeBinding Light=#8A9BA8, Dark=#B0B8C1}" />
+                        <Label x:Name="FolioLabel" FontSize="11" TextColor="{AppThemeBinding Light=#8A9BA8, Dark=#B0B8C1}" />
                     </VerticalStackLayout>
                 </Border>
 
-                <Label Text="RESPUESTAS Y SEGUIMIENTO" FontSize="14" FontAttributes="Bold" TextColor="White" Margin="0,10,0,0" />
-                <ActivityIndicator x:Name="BusyIndicator" Color="White" />
+                <Label Text="RESPUESTAS Y SEGUIMIENTO" FontSize="14" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" Margin="0,10,0,0" />
+                <ActivityIndicator x:Name="BusyIndicator" Color="{AppThemeBinding Light=#28113E, Dark=White}" />
 
                 <CollectionView x:Name="ObservacionesView">
                     <CollectionView.EmptyView>
-                        <Label Text="Aun no hay respuestas registradas." TextColor="White" FontSize="13" />
+                        <Label Text="Aun no hay respuestas registradas." TextColor="{AppThemeBinding Light=#555, Dark=White}" FontSize="13" />
                     </CollectionView.EmptyView>
                     <CollectionView.ItemTemplate>
                         <DataTemplate>
-                            <Border Stroke="#DDD" StrokeThickness="1" BackgroundColor="White" Padding="14" Margin="0,0,0,10">
+                            <Border Stroke="{AppThemeBinding Light=#DDD, Dark=#3A3A3A}" StrokeThickness="1" BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" Padding="14" Margin="0,0,0,10">
                                 <Border.StrokeShape>
                                     <RoundRectangle CornerRadius="8" />
                                 </Border.StrokeShape>
                                 <VerticalStackLayout Spacing="6">
                                     <Grid ColumnDefinitions="*,Auto">
-                                        <Label Text="{Binding NombreMostrar}" FontAttributes="Bold" FontSize="13" TextColor="#28113E" />
-                                        <Label Grid.Column="1" Text="{Binding Fechaalta, StringFormat='{0:dd/MM/yyyy HH:mm}'}" FontSize="11" TextColor="#8A9BA8" />
+                                        <Label Text="{Binding NombreMostrar}" FontAttributes="Bold" FontSize="13" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" />
+                                        <Label Grid.Column="1" Text="{Binding Fechaalta, StringFormat='{0:dd/MM/yyyy HH:mm}'}" FontSize="11" TextColor="{AppThemeBinding Light=#8A9BA8, Dark=#B0B8C1}" />
                                     </Grid>
-                                    <Label Text="{Binding Observaciones}" FontSize="13" TextColor="#333" LineBreakMode="WordWrap" />
+                                    <Label Text="{Binding Observaciones}" FontSize="13" TextColor="{AppThemeBinding Light=#333, Dark=#E0E0E0}" LineBreakMode="WordWrap" />
                                     <CollectionView ItemsSource="{Binding Evidencias}" IsVisible="{Binding HasEvidencias}">
                                         <CollectionView.ItemsLayout>
                                             <LinearItemsLayout Orientation="Horizontal" ItemSpacing="8" />

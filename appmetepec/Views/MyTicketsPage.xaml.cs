@@ -34,11 +34,14 @@ public partial class MyTicketsPage : ContentPage
         try
         {
             BusyIndicator.IsRunning = BusyIndicator.IsVisible = true;
-            TicketsView.ItemsSource = await _api.GetMyTicketsAsync();
+            var tickets = await _api.GetMyTicketsAsync();
+            TicketsView.ItemsSource = tickets;
+            ReportsCountLabel.Text = $"{tickets.Count} reporte{(tickets.Count == 1 ? "" : "s")}";
         }
         catch (Exception ex)
         {
             TicketsView.ItemsSource = Array.Empty<BackendTicketDto>();
+            ReportsCountLabel.Text = string.Empty;
             await DisplayAlert("No se pudieron cargar tus reportes", ex.Message, "Aceptar");
         }
         finally

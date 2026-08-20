@@ -13,39 +13,49 @@
             <Image Source="logo.png" HeightRequest="220" Aspect="AspectFit" HorizontalOptions="Center" />
 
             <VerticalStackLayout Spacing="18" Margin="0,26,0,0">
-                <Entry x:Name="UsernameEntry"
-                       Placeholder="Usuario o Correo Electronico"
-                       FontSize="22"
-                       BackgroundColor="#F4FAFD"
-                       TextColor="#555"
-                       Keyboard="Email"
-                       HorizontalTextAlignment="Center"
-                       HeightRequest="62"
-                       ReturnType="Next" />
-
-                <Grid ColumnDefinitions="*,50" BackgroundColor="#F4FAFD" HeightRequest="62">
-                    <Entry x:Name="PasswordEntry"
-                           Grid.Column="0"
-                           Placeholder="Contrasena"
+                <Border Stroke="#DDD" StrokeThickness="1" BackgroundColor="#F4FAFD" Padding="0">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="10" />
+                    </Border.StrokeShape>
+                    <Entry x:Name="UsernameEntry"
+                           Placeholder="Usuario o Correo Electronico"
                            FontSize="22"
                            BackgroundColor="Transparent"
                            TextColor="#555"
-                           IsPassword="True"
+                           Keyboard="Email"
                            HorizontalTextAlignment="Center"
                            HeightRequest="62"
-                           ReturnType="Go" />
-                    <Label x:Name="EyeLabel"
-                           Grid.Column="1"
-                           Text="👁"
-                           FontSize="22"
-                           VerticalOptions="Center"
-                           HorizontalOptions="Center"
-                           TextColor="#BBBBBB">
-                        <Label.GestureRecognizers>
-                            <TapGestureRecognizer Tapped="OnTogglePasswordTapped" />
-                        </Label.GestureRecognizers>
-                    </Label>
-                </Grid>
+                           ReturnType="Next" />
+                </Border>
+
+                <Border Stroke="#DDD" StrokeThickness="1" BackgroundColor="#F4FAFD" Padding="0">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="10" />
+                    </Border.StrokeShape>
+                    <Grid ColumnDefinitions="*,50" HeightRequest="62">
+                        <Entry x:Name="PasswordEntry"
+                               Grid.Column="0"
+                               Placeholder="Contrasena"
+                               FontSize="22"
+                               BackgroundColor="Transparent"
+                               TextColor="#555"
+                               IsPassword="True"
+                               HorizontalTextAlignment="Center"
+                               HeightRequest="62"
+                               ReturnType="Go" />
+                        <Label x:Name="EyeLabel"
+                               Grid.Column="1"
+                               Text="👁"
+                               FontSize="22"
+                               VerticalOptions="Center"
+                               HorizontalOptions="Center"
+                               TextColor="#BBBBBB">
+                            <Label.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="OnTogglePasswordTapped" />
+                            </Label.GestureRecognizers>
+                        </Label>
+                    </Grid>
+                </Border>
             </VerticalStackLayout>
 
             <Button x:Name="LoginButton"

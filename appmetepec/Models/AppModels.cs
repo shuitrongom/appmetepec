@@ -99,6 +99,9 @@ public sealed class NewsLetter
     public string? content { get; set; }
     public string? image { get; set; }
     public string? url { get; set; }
+    public bool destacada { get; set; }
+    public DateTime? fechaInicioEvento { get; set; }
+    public DateTime? fechaFinEvento { get; set; }
 }
 
 public sealed class TokenRecoleccionResponse
@@ -525,6 +528,15 @@ public sealed class BackendPublicacionDto
 
     [JsonPropertyName("publicada")]
     public bool Publicada { get; set; }
+
+    [JsonPropertyName("destacada")]
+    public bool Destacada { get; set; }
+
+    [JsonPropertyName("fechaInicioEvento")]
+    public DateTime? FechaInicioEvento { get; set; }
+
+    [JsonPropertyName("fechaFinEvento")]
+    public DateTime? FechaFinEvento { get; set; }
 
     [JsonPropertyName("activo")]
     public bool Activo { get; set; }

@@ -3,63 +3,86 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="appmetepec.Views.ReportPage"
              Title="Reporte"
-             Shell.NavBarIsVisible="False"
-             BackgroundColor="#555"
-             BackgroundImageSource="bg8.png">
+             Shell.NavBarIsVisible="False">
     <Grid RowDefinitions="Auto,*">
-        <Grid BackgroundColor="White" Padding="25,12" ColumnDefinitions="40,*,40">
-            <Label Text="‹" FontSize="30" TextColor="#28113E" VerticalTextAlignment="Center" HorizontalTextAlignment="Center">
+        <Grid BackgroundColor="{AppThemeBinding Light=White, Dark=#1f1f1f}" Padding="25,12" ColumnDefinitions="40,*,40">
+            <Label Text="‹" FontSize="30" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" VerticalTextAlignment="Center" HorizontalTextAlignment="Center">
                 <Label.GestureRecognizers>
                     <TapGestureRecognizer Tapped="OnBackTapped" />
                 </Label.GestureRecognizers>
             </Label>
-            <Image Grid.Column="1" Source="logo.png" HeightRequest="50" WidthRequest="100" Aspect="AspectFit" HorizontalOptions="Center" />
-            <Image Grid.Column="2" Source="ic_alerta_on.png" HeightRequest="30" WidthRequest="30" />
+            <Image Grid.Column="1" Source="placeholder.png" HeightRequest="50" WidthRequest="100" Aspect="AspectFit" HorizontalOptions="Center" />
+            <!--Image Grid.Column="2" Source="ic_alerta_on.png" HeightRequest="30" WidthRequest="30" /-->
         </Grid>
 
         <ScrollView Grid.Row="1">
             <VerticalStackLayout Padding="34,20,34,26" Spacing="16">
                 <Grid ColumnDefinitions="60,*" ColumnSpacing="10" Margin="0,0,0,8">
                     <Image x:Name="ReportIcon" HeightRequest="50" WidthRequest="50" Aspect="AspectFit" />
-                    <Label x:Name="TitleLabel" Grid.Column="1" FontSize="20" FontAttributes="Bold" TextColor="White" VerticalOptions="Center" />
+                    <Label x:Name="TitleLabel" Grid.Column="1" FontSize="20" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" VerticalOptions="Center" />
                 </Grid>
 
                 <Label Text="Proporciona la siguiente informacion para darle seguimiento a tu reporte"
                        FontSize="15"
-                       TextColor="White"
+                       TextColor="{AppThemeBinding Light=#28113E, Dark=White}"
                        HorizontalTextAlignment="Center"
                        Margin="0,0,0,16" />
-                <Label x:Name="InstructionsLabel" TextColor="White" FontSize="12" IsVisible="False" />
+                <Label x:Name="InstructionsLabel" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" FontSize="12" IsVisible="False" />
 
-                <Entry x:Name="NameEntry" Placeholder="Nombre" FontSize="12" BackgroundColor="White" TextColor="#333" HorizontalTextAlignment="Center" HeightRequest="44" />
-                <Entry x:Name="PhoneEntry" Placeholder="Telefono" Keyboard="Telephone" FontSize="12" BackgroundColor="White" TextColor="#333" HorizontalTextAlignment="Center" HeightRequest="44" />
-                <Entry x:Name="EmailEntry" Placeholder="Correo" Keyboard="Email" FontSize="12" BackgroundColor="White" TextColor="#333" HorizontalTextAlignment="Center" HeightRequest="44" />
+                <Border Stroke="{AppThemeBinding Light=#DDD, Dark=#3A3A3A}" StrokeThickness="1" BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" Padding="0">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="8" />
+                    </Border.StrokeShape>
+                    <Entry x:Name="NameEntry" Placeholder="Nombre" FontSize="12" BackgroundColor="Transparent" TextColor="{AppThemeBinding Light=#333, Dark=White}" HorizontalTextAlignment="Center" HeightRequest="44" />
+                </Border>
+                <Border Stroke="{AppThemeBinding Light=#DDD, Dark=#3A3A3A}" StrokeThickness="1" BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" Padding="0">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="8" />
+                    </Border.StrokeShape>
+                    <Entry x:Name="PhoneEntry" Placeholder="Telefono" Keyboard="Telephone" FontSize="12" BackgroundColor="Transparent" TextColor="{AppThemeBinding Light=#333, Dark=White}" HorizontalTextAlignment="Center" HeightRequest="44" />
+                </Border>
+                <Border Stroke="{AppThemeBinding Light=#DDD, Dark=#3A3A3A}" StrokeThickness="1" BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" Padding="0">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="8" />
+                    </Border.StrokeShape>
+                    <Entry x:Name="EmailEntry" Placeholder="Correo" Keyboard="Email" FontSize="12" BackgroundColor="Transparent" TextColor="{AppThemeBinding Light=#333, Dark=White}" HorizontalTextAlignment="Center" HeightRequest="44" />
+                </Border>
 
                 <Grid>
-                    <Editor x:Name="AddressEditor" Placeholder="Direccion" FontSize="12" AutoSize="TextChanges" HeightRequest="110" BackgroundColor="White" TextColor="#333" HorizontalTextAlignment="Center" />
+                    <Border Stroke="{AppThemeBinding Light=#DDD, Dark=#3A3A3A}" StrokeThickness="1" BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" Padding="0">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="8" />
+                        </Border.StrokeShape>
+                        <Editor x:Name="AddressEditor" Placeholder="Direccion" FontSize="12" AutoSize="TextChanges" HeightRequest="110" BackgroundColor="Transparent" TextColor="{AppThemeBinding Light=#333, Dark=White}" HorizontalTextAlignment="Center" />
+                    </Border>
                     <Button Text="Elige tu direccion en el mapa" Clicked="OnUseLocationClicked" ImageSource="ic_marker.png" BackgroundColor="#A6CE39" TextColor="White" FontSize="10" WidthRequest="160" HeightRequest="36" HorizontalOptions="Start" VerticalOptions="End" />
                 </Grid>
-                <Label x:Name="CoordinatesLabel" TextColor="White" FontSize="12" />
+                <Label x:Name="CoordinatesLabel" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" FontSize="12" />
 
-                <Editor x:Name="CommentsEditor" Placeholder="Observaciones o referencias" FontSize="12" AutoSize="TextChanges" HeightRequest="90" BackgroundColor="White" TextColor="#333" HorizontalTextAlignment="Center" TextChanged="OnCommentsChanged" />
+                <Border Stroke="{AppThemeBinding Light=#DDD, Dark=#3A3A3A}" StrokeThickness="1" BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" Padding="0">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="8" />
+                    </Border.StrokeShape>
+                    <Editor x:Name="CommentsEditor" Placeholder="Observaciones o referencias" FontSize="12" AutoSize="TextChanges" HeightRequest="90" BackgroundColor="Transparent" TextColor="{AppThemeBinding Light=#333, Dark=White}" HorizontalTextAlignment="Center" TextChanged="OnCommentsChanged" />
+                </Border>
 
                 <CollectionView x:Name="SuggestionsView" SelectionMode="Single" SelectionChanged="OnSuggestionSelected" IsVisible="False">
                     <CollectionView.ItemTemplate>
                         <DataTemplate>
-                            <Border Stroke="#E0E0E0" StrokeThickness="1" BackgroundColor="White" Padding="12" Margin="0,0,0,8">
+                            <Border Stroke="{AppThemeBinding Light=#E0E0E0, Dark=#3A3A3A}" StrokeThickness="1" BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" Padding="12" Margin="0,0,0,8">
                                 <Border.StrokeShape>
                                     <RoundRectangle CornerRadius="8" />
                                 </Border.StrokeShape>
                                 <VerticalStackLayout Spacing="2">
-                                    <Label Text="{Binding Titulo}" FontAttributes="Bold" TextColor="#333" FontSize="13" />
-                                    <Label Text="{Binding Resumen}" TextColor="#666" FontSize="11" LineBreakMode="TailTruncation" />
+                                    <Label Text="{Binding Titulo}" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#333, Dark=White}" FontSize="13" />
+                                    <Label Text="{Binding Resumen}" TextColor="{AppThemeBinding Light=#666, Dark=#B0B8C1}" FontSize="11" LineBreakMode="TailTruncation" />
                                 </VerticalStackLayout>
                             </Border>
                         </DataTemplate>
                     </CollectionView.ItemTemplate>
                 </CollectionView>
 
-                <Label Text="Agrega un testigo:" TextColor="White" FontSize="12" />
+                <Label Text="Agrega un testigo:" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" FontSize="12" />
                 <HorizontalStackLayout Spacing="14">
                     <Image Source="btn_camara.png" HeightRequest="50" WidthRequest="50">
                         <Image.GestureRecognizers>
@@ -68,7 +91,7 @@
                     </Image>
                     <Image x:Name="PreviewImage" Source="placeholder_imagepreview.png" HeightRequest="70" WidthRequest="70" Aspect="AspectFill" />
                 </HorizontalStackLayout>
-                <Label x:Name="AttachmentLabel" TextColor="White" FontSize="12" />
+                <Label x:Name="AttachmentLabel" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" FontSize="12" />
 
                 <Button x:Name="SendButton" Text="ENVIAR" Clicked="OnSendClicked" BackgroundColor="#F89A1C" TextColor="White" FontSize="20" FontAttributes="Bold" WidthRequest="220" HeightRequest="52" HorizontalOptions="Center" />
                 <ActivityIndicator x:Name="BusyIndicator" />
