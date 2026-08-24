@@ -272,6 +272,83 @@ public sealed class MetepecApiService
             .ToList();
     }
 
+    // El back-end incrementa Publicacion.Vistas solo cuando GetById lo consulta un usuario
+    // con rol Ciudadano (ver PublicacionService.GetByIdAsync). El listado (GetPublicacionesAsync)
+    // no cuenta como vista; hay que golpear este endpoint al abrir el detalle de una noticia.
+    // Best-effort: si falla, no debe afectar la experiencia de lectura de la noticia.
+    public async Task RegistrarVistaPublicacionAsync(int idPublicacion, int idCiudadano, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var message = new HttpRequestMessage(HttpMethod.Get, $"{AppConstants.MetepecBackendUrl}/publicaciones/{idPublicacion}");
+            AddBackendAuthorization(message);
+            using var response = await _httpClient.SendAsync(message, cancellationToken);
+        }
+        catch
+        {
+            // Ignorado a proposito: es solo telemetria de lectura, no debe interrumpir al usuario.
+        }
+
+        // Ademas del contador simple (Vistas), registra el ciudadano en PublicacionVista para que
+        // el panel de administracion pueda contar ciudadanos unicos, no solo aperturas totales.
+        if (idCiudadano <= 0) return;
+        try
+        {
+            using var message = new HttpRequestMessage(HttpMethod.Post, $"{AppConstants.MetepecBackendUrl}/publicacion-vistas")
+            {
+                Content = JsonContent(new { idPublicacion, idCiudadano })
+            };
+            AddBackendAuthorization(message);
+            using var response = await _httpClient.SendAsync(message, cancellationToken);
+        }
+        catch
+        {
+            // Ignorado a proposito: es solo telemetria de lectura, no debe interrumpir al usuario.
+        }
+    }
+
+    public async Task<string?> GetMiReaccionPublicacionAsync(int idPublicacion, int idCiudadano, CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Get, $"{AppConstants.MetepecBackendUrl}/publicacion-reacciones/{idPublicacion}/{idCiudadano}");
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NotFound) return null;
+        response.EnsureSuccessStatusCode();
+
+        var result = await ReadJsonAsync<BackendPublicacionReaccionDto>(response, cancellationToken);
+        return result?.Tipo;
+    }
+
+    // tipo: "Like" o "Dislike". Reaccionar de nuevo con un tipo distinto reemplaza la reaccion
+    // anterior (un ciudadano solo puede tener una reaccion activa por publicacion).
+    public async Task<string?> ReaccionarPublicacionAsync(int idPublicacion, int idCiudadano, string tipo, CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Post, $"{AppConstants.MetepecBackendUrl}/publicacion-reacciones")
+        {
+            Content = JsonContent(new { idPublicacion, idCiudadano, tipo })
+        };
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        var result = await ReadJsonAsync<BackendPublicacionReaccionDto>(response, cancellationToken);
+        return result?.Tipo;
+    }
+
+    public async Task QuitarReaccionPublicacionAsync(int idPublicacion, int idCiudadano, CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Delete, $"{AppConstants.MetepecBackendUrl}/publicacion-reacciones/{idPublicacion}/{idCiudadano}");
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        if (response.StatusCode != HttpStatusCode.NotFound)
+        {
+            response.EnsureSuccessStatusCode();
+        }
+    }
+
     public async Task<List<BackendArticuloConocimientoDto>> GetArticulosConocimientoAsync(CancellationToken cancellationToken = default)
     {
         using var message = new HttpRequestMessage(HttpMethod.Get, AppConstants.MetepecBackendUrl + "/articulos-conocimiento");

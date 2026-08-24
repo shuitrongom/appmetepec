@@ -34,6 +34,11 @@
                 <Label x:Name="ContentLabel" TextType="Html" FontSize="16" TextColor="{AppThemeBinding Light=#28113E, Dark=#E0E0E0}" LineBreakMode="WordWrap" Margin="0,6,0,0" LineHeight="1.3" />
 
                 <Button x:Name="OpenUrlButton" Text="Abrir enlace" Clicked="OnOpenUrlClicked" BackgroundColor="#111827" TextColor="White" IsVisible="False" Margin="0,16,0,0" />
+
+                <HorizontalStackLayout x:Name="ReactionRow" Spacing="10" IsVisible="False" Margin="0,20,0,0">
+                    <Button x:Name="LikeButton" Text="&#128077; Me gusta" Clicked="OnLikeTapped" FontSize="13" CornerRadius="18" HeightRequest="42" Padding="16,0" BackgroundColor="#F1EEFB" TextColor="#28113E" />
+                    <Button x:Name="DislikeButton" Text="&#128078; No me gusta" Clicked="OnDislikeTapped" FontSize="13" CornerRadius="18" HeightRequest="42" Padding="16,0" BackgroundColor="#F1EEFB" TextColor="#28113E" />
+                </HorizontalStackLayout>
             </VerticalStackLayout>
         </ScrollView>
     </Grid>

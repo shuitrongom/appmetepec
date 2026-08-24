@@ -9,21 +9,26 @@ public partial class NewsDetailPage : ContentPage
     private static readonly CultureInfo SpanishCulture = new("es-MX");
 
     private readonly NavigationState _navigationState;
+    private readonly MetepecApiService _api;
+    private readonly PreferencesService _preferences;
     private NewsLetter? _news;
+    private string? _miReaccion;
 
-    public NewsDetailPage(NavigationState navigationState)
+    public NewsDetailPage(NavigationState navigationState, MetepecApiService api, PreferencesService preferences)
     {
         InitializeComponent();
         _navigationState = navigationState;
+        _api = api;
+        _preferences = preferences;
     }
 
-    protected override void OnAppearing()
+    protected override async void OnAppearing()
     {
         base.OnAppearing();
         _news = _navigationState.SelectedNews;
         if (_news is null)
         {
-            Shell.Current.GoToAsync("..");
+            await Shell.Current.GoToAsync("..");
             return;
         }
 
@@ -44,7 +49,64 @@ public partial class NewsDetailPage : ContentPage
             NewsImage.Source = ImageSource.FromUri(new Uri(_news.image));
             NewsImage.IsVisible = true;
         }
+
+        var idCiudadano = _preferences.CiudadanoId;
+        ReactionRow.IsVisible = idCiudadano > 0;
+
+        _ = _api.RegistrarVistaPublicacionAsync(_news.id, idCiudadano);
+
+        if (idCiudadano > 0)
+        {
+            _miReaccion = await _api.GetMiReaccionPublicacionAsync(_news.id, idCiudadano);
+            ActualizarBotonesReaccion();
+        }
     }
+
+    // Alternar: tocar el mismo tipo que ya estaba activo quita la reaccion; tocar el otro la
+    // reemplaza (solo se puede tener una reaccion activa por publicacion, ver PublicacionReaccion).
+    private async Task ReaccionarAsync(string tipo)
+    {
+        if (_news is null) return;
+        var idCiudadano = _preferences.CiudadanoId;
+        if (idCiudadano <= 0) return;
+
+        LikeButton.IsEnabled = false;
+        DislikeButton.IsEnabled = false;
+
+        try
+        {
+            if (string.Equals(_miReaccion, tipo, StringComparison.OrdinalIgnoreCase))
+            {
+                await _api.QuitarReaccionPublicacionAsync(_news.id, idCiudadano);
+                _miReaccion = null;
+            }
+            else
+            {
+                _miReaccion = await _api.ReaccionarPublicacionAsync(_news.id, idCiudadano, tipo);
+            }
+        }
+        finally
+        {
+            ActualizarBotonesReaccion();
+            LikeButton.IsEnabled = true;
+            DislikeButton.IsEnabled = true;
+        }
+    }
+
+    private void ActualizarBotonesReaccion()
+    {
+        var esLike = string.Equals(_miReaccion, "Like", StringComparison.OrdinalIgnoreCase);
+        var esDislike = string.Equals(_miReaccion, "Dislike", StringComparison.OrdinalIgnoreCase);
+
+        LikeButton.TextColor = esLike ? Colors.White : Color.FromArgb("#28113E");
+        LikeButton.BackgroundColor = esLike ? Color.FromArgb("#F89A1C") : Color.FromArgb("#F1EEFB");
+        DislikeButton.TextColor = esDislike ? Colors.White : Color.FromArgb("#28113E");
+        DislikeButton.BackgroundColor = esDislike ? Color.FromArgb("#F89A1C") : Color.FromArgb("#F1EEFB");
+    }
+
+    private async void OnLikeTapped(object sender, EventArgs e) => await ReaccionarAsync("Like");
+
+    private async void OnDislikeTapped(object sender, EventArgs e) => await ReaccionarAsync("Dislike");
 
     // FechaInicioEvento/FechaFinEvento son las fechas del evento que anuncia la publicacion
     // (no la fecha de publicacion). Si ambas existen y difieren se muestra como rango.
