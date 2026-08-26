@@ -243,6 +243,11 @@ public sealed class BackendRegisterRequest
     [JsonPropertyName("email")]
     public string Email { get; set; } = "";
 
+    // Token de SolicitarVerificacionEmailAsync, confirmado por VerificarCodigoEmailAsync antes de
+    // registrar. El back-end lo vuelve a validar en CiudadanoService.RegistrarAsync.
+    [JsonPropertyName("token")]
+    public string Token { get; set; } = "";
+
     [JsonPropertyName("nombre")]
     public string Nombre { get; set; } = "";
 
@@ -270,6 +275,47 @@ public sealed class BackendRegistroUsuarioDto
 public sealed class ErrorResponse
 {
     public string? error { get; set; }
+}
+
+public sealed class ErrorsResponse
+{
+    public string[]? errors { get; set; }
+}
+
+public sealed class BackendSolicitarRecuperacionResponse
+{
+    [JsonPropertyName("token")]
+    public string Token { get; set; } = "";
+
+    [JsonPropertyName("mensaje")]
+    public string Mensaje { get; set; } = "";
+
+    [JsonPropertyName("bloqueado")]
+    public bool Bloqueado { get; set; }
+}
+
+public sealed class BackendIdentificarUsuarioResponse
+{
+    [JsonPropertyName("existe")]
+    public bool Existe { get; set; }
+
+    [JsonPropertyName("nombreCorto")]
+    public string? NombreCorto { get; set; }
+
+    [JsonPropertyName("email")]
+    public string? Email { get; set; }
+}
+
+public sealed class BackendSolicitarVerificacionEmailResponse
+{
+    [JsonPropertyName("token")]
+    public string Token { get; set; } = "";
+
+    [JsonPropertyName("mensaje")]
+    public string Mensaje { get; set; } = "";
+
+    [JsonPropertyName("bloqueado")]
+    public bool Bloqueado { get; set; }
 }
 
 public sealed class BackendCreateTicketRequest

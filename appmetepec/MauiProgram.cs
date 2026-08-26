@@ -48,6 +48,7 @@ namespace appmetepec
             builder.Services.AddTransient<SplashPage>();
             builder.Services.AddTransient<LoginPage>();
             builder.Services.AddTransient<RegisterPage>();
+            builder.Services.AddTransient<RecoverAccountPage>();
             builder.Services.AddTransient<HomePage>();
             builder.Services.AddTransient<ReportPage>();
             builder.Services.AddTransient<ReportSuccessPage>();

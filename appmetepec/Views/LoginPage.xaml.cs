@@ -7,12 +7,14 @@ public partial class LoginPage : ContentPage
 {
     private readonly PreferencesService _preferences;
     private readonly MetepecApiService _api;
+    private readonly NavigationState _navigationState;
 
-    public LoginPage(PreferencesService preferences, MetepecApiService api)
+    public LoginPage(PreferencesService preferences, MetepecApiService api, NavigationState navigationState)
     {
         InitializeComponent();
         _preferences = preferences;
         _api = api;
+        _navigationState = navigationState;
         VersionLabel.Text = $"v{AppInfo.Current.VersionString}";
     }
 
@@ -37,7 +39,7 @@ public partial class LoginPage : ContentPage
 
             if (result is null)
             {
-                await DisplayAlert("Acceso denegado", "Usuario o contrasena incorrectos.", "Aceptar");
+                await OfrecerRecuperacionAsync(username);
                 return;
             }
 
@@ -67,6 +69,40 @@ public partial class LoginPage : ContentPage
             LoginButton.IsEnabled = true;
             BusyIndicator.IsRunning = BusyIndicator.IsVisible = false;
         }
+    }
+
+    // Cuando el login falla, se identifica activamente la credencial (usuario o correo) para
+    // preguntar "eres tu?" y, si acepta, mandarlo directo al flujo de recuperacion con el correo
+    // ya precargado. Si la identificacion misma falla o la credencial no existe, cae al mensaje
+    // generico de siempre.
+    private async Task OfrecerRecuperacionAsync(string credential)
+    {
+        try
+        {
+            var identidad = await _api.IdentificarUsuarioAsync(credential);
+            if (identidad is { Existe: true })
+            {
+                var saludo = string.IsNullOrWhiteSpace(identidad.NombreCorto) ? "" : $" {identidad.NombreCorto}";
+                var irARecuperar = await DisplayAlert(
+                    "Acceso denegado",
+                    $"Usuario o contrasena incorrectos. ¿Eres{saludo}? Si no recuerdas tu contrasena, puedes recuperar tu cuenta.",
+                    "Recuperar cuenta",
+                    "Cancelar");
+
+                if (irARecuperar && !string.IsNullOrWhiteSpace(identidad.Email))
+                {
+                    _navigationState.RecoverAccountEmail = identidad.Email;
+                    await Shell.Current.GoToAsync(nameof(RecoverAccountPage));
+                }
+                return;
+            }
+        }
+        catch
+        {
+            // Si falla la identificacion (sin conexion, etc.), se cae al mensaje generico de abajo.
+        }
+
+        await DisplayAlert("Acceso denegado", "Usuario o contrasena incorrectos.", "Aceptar");
     }
 
     // Best-effort: nunca bloquea ni retrasa el login por falta de permiso, GPS apagado o
@@ -100,5 +136,10 @@ public partial class LoginPage : ContentPage
     private async void OnRegisterTapped(object sender, TappedEventArgs e)
     {
         await Shell.Current.GoToAsync(nameof(RegisterPage));
+    }
+
+    private async void OnRecoverAccountTapped(object sender, TappedEventArgs e)
+    {
+        await Shell.Current.GoToAsync(nameof(RecoverAccountPage));
     }
 }

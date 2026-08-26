@@ -126,6 +126,76 @@ public sealed class MetepecApiService
         return await ReadJsonAsync<BackendRegistroResponse>(response, cancellationToken);
     }
 
+    // Flujo publico "olvide mi contrasena" (recuperacion de cuenta por correo ya registrado).
+    // El token siempre se regresa aunque el correo no exista (para no filtrar cuentas), asi que
+    // este metodo no lanza por 400: solo EnsureSuccessStatusCode contra errores reales de servidor.
+    public async Task<BackendSolicitarRecuperacionResponse?> SolicitarRecuperacionAsync(string email, CancellationToken cancellationToken = default)
+    {
+        using var response = await _httpClient.PostAsync(
+            AppConstants.MetepecBackendUrl + "/seguridad/recuperar-password/solicitar",
+            JsonContent(new { email }),
+            cancellationToken);
+        response.EnsureSuccessStatusCode();
+        return await ReadJsonAsync<BackendSolicitarRecuperacionResponse>(response, cancellationToken);
+    }
+
+    public async Task<bool> VerificarCodigoRecuperacionAsync(string email, string token, string codigo, CancellationToken cancellationToken = default)
+    {
+        using var response = await _httpClient.PostAsync(
+            AppConstants.MetepecBackendUrl + "/seguridad/recuperar-password/verificar",
+            JsonContent(new { email, token, codigo }),
+            cancellationToken);
+        return response.IsSuccessStatusCode;
+    }
+
+    // Regresa null si se restablecio correctamente, o el mensaje de error del backend en caso contrario.
+    public async Task<string?> RestablecerPasswordAsync(string email, string token, string nuevaContrasena, CancellationToken cancellationToken = default)
+    {
+        using var response = await _httpClient.PostAsync(
+            AppConstants.MetepecBackendUrl + "/seguridad/recuperar-password/restablecer",
+            JsonContent(new { email, token, nuevaContrasena }),
+            cancellationToken);
+
+        if (response.IsSuccessStatusCode) return null;
+
+        var body = await ReadJsonAsync<ErrorsResponse>(response, cancellationToken);
+        return body?.errors is { Length: > 0 } errores ? errores[0] : "No se pudo restablecer la contraseña.";
+    }
+
+    // Flujo publico "verificar mi correo antes de registrarme". Igual que SolicitarRecuperacionAsync,
+    // el token siempre se regresa aunque el correo ya este bloqueado (Bloqueado=true en la respuesta),
+    // asi que este metodo no lanza por 400.
+    public async Task<BackendSolicitarVerificacionEmailResponse?> SolicitarVerificacionEmailAsync(string email, CancellationToken cancellationToken = default)
+    {
+        using var response = await _httpClient.PostAsync(
+            AppConstants.MetepecBackendUrl + "/seguridad/verificar-correo/solicitar",
+            JsonContent(new { email }),
+            cancellationToken);
+        response.EnsureSuccessStatusCode();
+        return await ReadJsonAsync<BackendSolicitarVerificacionEmailResponse>(response, cancellationToken);
+    }
+
+    public async Task<bool> VerificarCodigoEmailAsync(string email, string token, string codigo, CancellationToken cancellationToken = default)
+    {
+        using var response = await _httpClient.PostAsync(
+            AppConstants.MetepecBackendUrl + "/seguridad/verificar-correo/verificar",
+            JsonContent(new { email, token, codigo }),
+            cancellationToken);
+        return response.IsSuccessStatusCode;
+    }
+
+    // Usado cuando el login falla: si la credencial (usuario o correo) corresponde a una cuenta
+    // activa, se le pregunta al ciudadano "eres tu?" antes de ofrecer el flujo de recuperacion.
+    public async Task<BackendIdentificarUsuarioResponse?> IdentificarUsuarioAsync(string credential, CancellationToken cancellationToken = default)
+    {
+        using var response = await _httpClient.PostAsync(
+            AppConstants.MetepecBackendUrl + "/seguridad/identificar-usuario",
+            JsonContent(new { credential }),
+            cancellationToken);
+        response.EnsureSuccessStatusCode();
+        return await ReadJsonAsync<BackendIdentificarUsuarioResponse>(response, cancellationToken);
+    }
+
     public async Task<int?> GetMyCiudadanoAsync(CancellationToken cancellationToken = default)
     {
         var result = await GetMyCiudadanoDetailsAsync(cancellationToken);

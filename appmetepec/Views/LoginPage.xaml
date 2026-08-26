@@ -100,6 +100,18 @@
                 </Label.GestureRecognizers>
             </Label>
 
+            <Label HorizontalTextAlignment="Center" FontSize="16" TextColor="#F89A1C" Margin="0,2,0,0">
+                <Label.FormattedText>
+                    <FormattedString>
+                        <Span Text="Olvidaste tu usuario o contrasena? " TextColor="#555" />
+                        <Span Text="Recupera tu cuenta" TextColor="#F89A1C" FontAttributes="Bold" />
+                    </FormattedString>
+                </Label.FormattedText>
+                <Label.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnRecoverAccountTapped" />
+                </Label.GestureRecognizers>
+            </Label>
+
             <Label x:Name="VersionLabel"
                    HorizontalTextAlignment="Center"
                    FontSize="12"

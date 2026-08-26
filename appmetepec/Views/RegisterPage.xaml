@@ -51,7 +51,7 @@
             </VerticalStackLayout>
 
             <VerticalStackLayout x:Name="CodePanel" Spacing="14" IsVisible="False">
-                <Label Text="Te enviamos un codigo de verificacion por SMS." FontSize="15" TextColor="#555555" HorizontalTextAlignment="Center" />
+                <Label Text="Te enviamos un codigo de verificacion a tu correo electronico." FontSize="15" TextColor="#555555" HorizontalTextAlignment="Center" />
                 <Border Stroke="#DDD" StrokeThickness="1" BackgroundColor="#F4FAFD" Padding="0">
                     <Border.StrokeShape>
                         <RoundRectangle CornerRadius="10" />

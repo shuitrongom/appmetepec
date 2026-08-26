@@ -9,4 +9,6 @@ public sealed class NavigationState
     public BackendArticuloConocimientoDto? SelectedArticulo { get; set; }
     public BackendTicketDto? SelectedTicket { get; set; }
     public string? EncuestaClave { get; set; }
+    // Precarga el correo en RecoverAccountPage cuando se llega desde "este correo ya existe" en el registro.
+    public string? RecoverAccountEmail { get; set; }
 }
