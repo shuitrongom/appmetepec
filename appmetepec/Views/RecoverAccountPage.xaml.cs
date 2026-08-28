@@ -212,6 +212,22 @@ public partial class RecoverAccountPage : ContentPage
         }
     }
 
+    private void OnToggleNewPasswordTapped(object sender, TappedEventArgs e)
+    {
+        NewPasswordEntry.IsPassword = !NewPasswordEntry.IsPassword;
+        NewPasswordEyeLabel.TextColor = NewPasswordEntry.IsPassword
+            ? Color.FromArgb("#BBBBBB")
+            : Color.FromArgb("#F89A1C");
+    }
+
+    private void OnToggleConfirmPasswordTapped(object sender, TappedEventArgs e)
+    {
+        ConfirmPasswordEntry.IsPassword = !ConfirmPasswordEntry.IsPassword;
+        ConfirmPasswordEyeLabel.TextColor = ConfirmPasswordEntry.IsPassword
+            ? Color.FromArgb("#BBBBBB")
+            : Color.FromArgb("#F89A1C");
+    }
+
     private void OnModifyEmailTapped(object sender, TappedEventArgs e)
     {
         StopCodeTimer();

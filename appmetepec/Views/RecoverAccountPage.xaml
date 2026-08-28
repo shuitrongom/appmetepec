@@ -70,13 +70,55 @@
                     <Border.StrokeShape>
                         <RoundRectangle CornerRadius="10" />
                     </Border.StrokeShape>
-                    <Entry x:Name="NewPasswordEntry" Placeholder="Nueva contrasena" IsPassword="True" FontSize="18" BackgroundColor="Transparent" TextColor="#555" HorizontalTextAlignment="Center" HeightRequest="52" />
+                    <Grid ColumnDefinitions="*,50" HeightRequest="52">
+                        <Entry x:Name="NewPasswordEntry"
+                               Grid.Column="0"
+                               Placeholder="Nueva contrasena"
+                               IsPassword="True"
+                               FontSize="18"
+                               BackgroundColor="Transparent"
+                               TextColor="#555"
+                               HorizontalTextAlignment="Center"
+                               HeightRequest="52" />
+                        <Label x:Name="NewPasswordEyeLabel"
+                               Grid.Column="1"
+                               Text="👁"
+                               FontSize="20"
+                               VerticalOptions="Center"
+                               HorizontalOptions="Center"
+                               TextColor="#BBBBBB">
+                            <Label.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="OnToggleNewPasswordTapped" />
+                            </Label.GestureRecognizers>
+                        </Label>
+                    </Grid>
                 </Border>
                 <Border Stroke="#DDD" StrokeThickness="1" BackgroundColor="#F4FAFD" Padding="0">
                     <Border.StrokeShape>
                         <RoundRectangle CornerRadius="10" />
                     </Border.StrokeShape>
-                    <Entry x:Name="ConfirmPasswordEntry" Placeholder="Confirmar contrasena" IsPassword="True" FontSize="18" BackgroundColor="Transparent" TextColor="#555" HorizontalTextAlignment="Center" HeightRequest="52" />
+                    <Grid ColumnDefinitions="*,50" HeightRequest="52">
+                        <Entry x:Name="ConfirmPasswordEntry"
+                               Grid.Column="0"
+                               Placeholder="Confirmar contrasena"
+                               IsPassword="True"
+                               FontSize="18"
+                               BackgroundColor="Transparent"
+                               TextColor="#555"
+                               HorizontalTextAlignment="Center"
+                               HeightRequest="52" />
+                        <Label x:Name="ConfirmPasswordEyeLabel"
+                               Grid.Column="1"
+                               Text="👁"
+                               FontSize="20"
+                               VerticalOptions="Center"
+                               HorizontalOptions="Center"
+                               TextColor="#BBBBBB">
+                            <Label.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="OnToggleConfirmPasswordTapped" />
+                            </Label.GestureRecognizers>
+                        </Label>
+                    </Grid>
                 </Border>
 
                 <Button x:Name="RestablecerButton"
