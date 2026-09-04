@@ -37,7 +37,7 @@ public partial class RecoleccionPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlert("Rutas", ex.Message, "Aceptar");
+            await DisplayAlert("Rutas", ErrorMessageHelper.Traducir(ex), "Aceptar");
         }
         finally
         {
@@ -66,7 +66,7 @@ public partial class RecoleccionPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlert("Ruta", ex.Message, "Aceptar");
+            await DisplayAlert("Ruta", ErrorMessageHelper.Traducir(ex), "Aceptar");
         }
         finally
         {

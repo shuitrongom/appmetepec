@@ -62,7 +62,7 @@ public partial class LoginPage : ContentPage
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[Login] {ex.GetType().Name}: {ex.Message}");
-            await DisplayAlert("No se pudo conectar", $"{ex.GetType().Name}: {ex.Message}", "Aceptar");
+            await DisplayAlert("No se pudo conectar", ErrorMessageHelper.Traducir(ex), "Aceptar");
         }
         finally
         {

@@ -118,7 +118,7 @@ public partial class ReportPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlert("Ubicacion", ex.Message, "Aceptar");
+            await DisplayAlert("Ubicacion", ErrorMessageHelper.Traducir(ex), "Aceptar");
         }
     }
 
@@ -150,7 +150,7 @@ public partial class ReportPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlert("No se pudo agregar el testigo", ex.Message, "Aceptar");
+            await DisplayAlert("No se pudo agregar el testigo", ErrorMessageHelper.Traducir(ex), "Aceptar");
         }
     }
 
@@ -283,15 +283,16 @@ public partial class ReportPage : ContentPage
         }
         catch (Exception ex)
         {
+            var mensajeError = ErrorMessageHelper.Traducir(ex);
             var guardar = await DisplayAlert(
                 "No se pudo enviar",
-                $"{ex.Message}\n\n¿Quieres guardar este reporte para volver a intentarlo despues?",
+                $"{mensajeError}\n\n¿Quieres guardar este reporte para volver a intentarlo despues?",
                 "Guardar",
                 "Cancelar");
 
             if (guardar)
             {
-                await GuardarReportePendienteAsync(name, email, phone, address, comments, ex.Message);
+                await GuardarReportePendienteAsync(name, email, phone, address, comments, mensajeError);
             }
         }
         finally

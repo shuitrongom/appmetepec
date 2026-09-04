@@ -42,7 +42,7 @@ public partial class MyTicketsPage : ContentPage
         {
             TicketsView.ItemsSource = Array.Empty<BackendTicketDto>();
             ReportsCountLabel.Text = string.Empty;
-            await DisplayAlert("No se pudieron cargar tus reportes", ex.Message, "Aceptar");
+            await DisplayAlert("No se pudieron cargar tus reportes", ErrorMessageHelper.Traducir(ex), "Aceptar");
         }
         finally
         {
@@ -161,7 +161,7 @@ public partial class MyTicketsPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlert("No se pudo enviar", ex.Message, "Aceptar");
+            await DisplayAlert("No se pudo enviar", ErrorMessageHelper.Traducir(ex), "Aceptar");
         }
         finally
         {

@@ -70,7 +70,7 @@ public partial class RegisterPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlert("No se pudo enviar el codigo", ex.Message, "Aceptar");
+            await DisplayAlert("No se pudo enviar el codigo", ErrorMessageHelper.Traducir(ex), "Aceptar");
         }
         finally
         {
@@ -154,7 +154,7 @@ public partial class RegisterPage : ContentPage
             }
             else
             {
-                await DisplayAlert("No se pudo completar el registro", ex.Message, "Aceptar");
+                await DisplayAlert("No se pudo completar el registro", ErrorMessageHelper.Traducir(ex), "Aceptar");
             }
         }
         finally
@@ -207,7 +207,7 @@ public partial class RegisterPage : ContentPage
             StopCodeTimer();
             CodePanel.IsVisible = false;
             FormPanel.IsVisible = true;
-            await DisplayAlert("No se pudo completar el registro", ex.Message, "Aceptar");
+            await DisplayAlert("No se pudo completar el registro", ErrorMessageHelper.Traducir(ex), "Aceptar");
         }
         finally
         {
@@ -237,7 +237,7 @@ public partial class RegisterPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlert("No se pudo reenviar el codigo", ex.Message, "Aceptar");
+            await DisplayAlert("No se pudo reenviar el codigo", ErrorMessageHelper.Traducir(ex), "Aceptar");
         }
     }
 

@@ -38,7 +38,7 @@ public partial class AlertaNaranjaPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlert("Ubicacion", ex.Message, "Aceptar");
+            await DisplayAlert("Ubicacion", ErrorMessageHelper.Traducir(ex), "Aceptar");
         }
     }
 
@@ -114,7 +114,7 @@ public partial class AlertaNaranjaPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlert("No se pudo enviar", ex.Message, "Aceptar");
+            await DisplayAlert("No se pudo enviar", ErrorMessageHelper.Traducir(ex), "Aceptar");
         }
         finally
         {

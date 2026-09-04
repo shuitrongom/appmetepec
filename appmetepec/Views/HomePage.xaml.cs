@@ -396,7 +396,7 @@ public partial class HomePage : ContentPage
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[Menu] Error al abrir/cerrar el drawer: {ex}");
-            await DisplayAlert("Menu", ex.Message, "Aceptar");
+            await DisplayAlert("Menu", ErrorMessageHelper.Traducir(ex), "Aceptar");
         }
     }
 

@@ -137,7 +137,7 @@ public partial class TicketDetailPage : ContentPage
         catch (Exception ex)
         {
             ObservacionesView.ItemsSource = Array.Empty<BackendTicketObservacionDto>();
-            await DisplayAlert("No se pudieron cargar las respuestas", ex.Message, "Aceptar");
+            await DisplayAlert("No se pudieron cargar las respuestas", ErrorMessageHelper.Traducir(ex), "Aceptar");
         }
         finally
         {
