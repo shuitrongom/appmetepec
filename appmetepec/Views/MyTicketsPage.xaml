@@ -97,7 +97,7 @@
                                                 <Label FontSize="11" TextColor="{AppThemeBinding Light=#8A9BA8, Dark=#B0B8C1}" VerticalOptions="Center">
                                                     <Label.FormattedText>
                                                         <FormattedString>
-                                                            <Span Text="{Binding Folio}" FontAttributes="Bold" />
+                                                            <Span Text="{Binding Id, StringFormat='Folio {0}'}" FontAttributes="Bold" />
                                                             <Span Text="  •  " />
                                                             <Span Text="{Binding Fechaalta, StringFormat='{0:dd MMM yyyy}'}" />
                                                         </FormattedString>

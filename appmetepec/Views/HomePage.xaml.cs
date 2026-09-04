@@ -13,6 +13,7 @@ public partial class HomePage : ContentPage
     private readonly PreferencesService _preferences;
     private bool _bannerTimerStarted;
     private bool _isDrawerOpen;
+    private bool _newsLoaded;
 
     public HomePage(ReportCatalogService catalog, MetepecApiService api, NavigationState navigationState, PreferencesService preferences)
     {
@@ -39,7 +40,7 @@ public partial class HomePage : ContentPage
             RenderCategories(_catalog.GetCategories());
         }
 
-        if (NewsView.ItemsSource is null)
+        if (!_newsLoaded)
         {
             await LoadNewsAsync();
         }
@@ -229,20 +230,53 @@ public partial class HomePage : ContentPage
 
     private NewsLetter? _featuredNews;
 
+    // El primer intento de red justo despues del arranque en frio de la app a veces falla
+    // (el stack de red/DNS del dispositivo todavia esta calentando), aunque la conexion si
+    // funcione bien un par de segundos despues -- por eso "deslizar para refrescar" siempre lo
+    // recupera. Reintentar aqui mismo evita que el ciudadano tenga que descubrir ese gesto.
+    private const int MaxIntentosCargaNoticias = 3;
+
     private async Task LoadNewsAsync()
     {
         try
         {
             BusyIndicator.IsRunning = BusyIndicator.IsVisible = true;
-            var news = await _api.GetPublicacionesAsync();
+
+            List<NewsLetter>? news = null;
+            Exception? ultimoError = null;
+            for (var intento = 1; intento <= MaxIntentosCargaNoticias && news is null; intento++)
+            {
+                try
+                {
+                    news = await _api.GetPublicacionesAsync();
+                }
+                catch (Exception ex)
+                {
+                    ultimoError = ex;
+                    if (intento < MaxIntentosCargaNoticias)
+                    {
+                        await Task.Delay(TimeSpan.FromSeconds(intento));
+                    }
+                }
+            }
+
+            if (news is null)
+            {
+                throw ultimoError!;
+            }
+
             System.Diagnostics.Debug.WriteLine($"[Noticias] {news.Count} publicaciones cargadas.");
             ShowNews(news);
+            _newsLoaded = true;
         }
         catch (Exception ex)
         {
             var status = (ex as HttpRequestException)?.StatusCode;
             System.Diagnostics.Debug.WriteLine($"[Noticias] Error al cargar publicaciones: {ex.GetType().Name} {status} - {ex.Message}");
             ShowNews([]);
+            // _newsLoaded se queda en false a proposito: si el ciudadano vuelve a esta pantalla
+            // mas tarde (navega a otra pantalla y regresa), OnAppearing reintenta solo, sin
+            // depender de que descubra el gesto de "deslizar para refrescar".
         }
         finally
         {
