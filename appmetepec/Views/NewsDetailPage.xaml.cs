@@ -21,6 +21,7 @@ public partial class NewsDetailPage : ContentPage
         public DateTime FechaComentario { get; init; }
         public string Comentario { get; init; } = "";
         public bool EsPropio { get; init; }
+        public bool EsRespuestaAdmin { get; init; }
     }
 
     public NewsDetailPage(NavigationState navigationState, MetepecApiService api, PreferencesService preferences)
@@ -87,10 +88,13 @@ public partial class NewsDetailPage : ContentPage
             ComentariosView.ItemsSource = comentarios.Select(c => new ComentarioItem
             {
                 Id = c.Id,
-                NombreCiudadano = string.IsNullOrWhiteSpace(c.NombreCiudadano) ? "Ciudadano" : c.NombreCiudadano,
+                NombreCiudadano = !string.IsNullOrWhiteSpace(c.NombreAutor)
+                    ? c.NombreAutor
+                    : (c.EsRespuestaAdmin ? "Administrador" : "Ciudadano"),
                 FechaComentario = c.FechaComentario,
                 Comentario = c.Comentario,
-                EsPropio = idCiudadano > 0 && c.IdCiudadano == idCiudadano
+                EsPropio = idCiudadano > 0 && c.IdCiudadano == idCiudadano,
+                EsRespuestaAdmin = c.EsRespuestaAdmin
             }).ToList();
         }
         catch (Exception ex)

@@ -614,8 +614,15 @@ public sealed class BackendPublicacionComentarioDto
     [JsonPropertyName("idPublicacion")]
     public int IdPublicacion { get; set; }
 
+    // Nullable: una respuesta hecha desde el panel web (IdUsuario) no trae ciudadano.
     [JsonPropertyName("idCiudadano")]
-    public int IdCiudadano { get; set; }
+    public int? IdCiudadano { get; set; }
+
+    [JsonPropertyName("idUsuario")]
+    public int? IdUsuario { get; set; }
+
+    [JsonPropertyName("idComentarioPadre")]
+    public long? IdComentarioPadre { get; set; }
 
     [JsonPropertyName("comentario")]
     public string Comentario { get; set; } = "";
@@ -623,8 +630,13 @@ public sealed class BackendPublicacionComentarioDto
     [JsonPropertyName("fechaComentario")]
     public DateTime FechaComentario { get; set; }
 
-    [JsonPropertyName("nombreCiudadano")]
-    public string? NombreCiudadano { get; set; }
+    // Antes "nombreCiudadano": el back-end lo renombro porque ahora tambien puede ser el nombre
+    // de un agente/administrador que respondio desde el panel web (ver EsRespuestaAdmin).
+    [JsonPropertyName("nombreAutor")]
+    public string? NombreAutor { get; set; }
+
+    [JsonPropertyName("esRespuestaAdmin")]
+    public bool EsRespuestaAdmin { get; set; }
 }
 
 public sealed class BackendArticuloConocimientoDto

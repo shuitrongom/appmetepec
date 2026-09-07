@@ -423,6 +423,20 @@ public partial class HomePage : ContentPage
         await Shell.Current.GoToAsync(nameof(AlertaNaranjaPage));
     }
 
+    // Mismo numero que OpenReportAsync usa para el reporte "Llamada" (*7311), pero accesible
+    // directo desde el encabezado sin tener que entrar a un reporte primero.
+    private async void OnLlamarTapped(object sender, TappedEventArgs e)
+    {
+        try
+        {
+            await Launcher.Default.OpenAsync("tel:*7311");
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlert("No se pudo iniciar la llamada", ErrorMessageHelper.Traducir(ex), "Aceptar");
+        }
+    }
+
     private async void OnMenuTapped(object sender, TappedEventArgs e)
     {
         try
