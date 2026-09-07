@@ -220,12 +220,21 @@ public partial class HomePage : ContentPage
 
     private static IReadOnlyList<BannerItem> BuildBanners() =>
     [
-        new(Color.FromArgb("#B8D927"), "btn_predial.png", "PREDIAL", "PAGO EN LINEA",
+        /*new(Color.FromArgb("#B8D927"), "btn_predial.png", "PREDIAL", "PAGO EN LINEA",
             Color.FromArgb("#7BCDEB"), "ic_opdapas.png", "OPDAPAS", "PAGO EN LINEA"),
         new(Color.FromArgb("#9B12B3"), "ic_denuncia_ciudadana.png", "DENUNCIAS", "CIUDADANAS",
             Color.FromArgb("#24AEE4"), "btn_visita_camion_basura.png", "MUEVETEX", "Transformamos la movilidad"),
         new(Color.FromArgb("#7BCDEB"), "ic_opdapas.png", "OPDAPAS", "PAGO EN LINEA",
-            Color.FromArgb("#9B12B3"), "ic_denuncia_ciudadana.png", "DENUNCIAS", "CIUDADANAS")
+            Color.FromArgb("#9B12B3"), "ic_denuncia_ciudadana.png", "DENUNCIAS", "CIUDADANAS")*/
+        new(Color.FromArgb("#B8D927"), "btn_predial.png", "PREDIAL", "PAGO EN LINEA",
+            Color.FromArgb("#7BCDEB"), "ic_opdapas.png", "OPDAPAS", "PAGO EN LINEA"),
+
+        new(Color.FromArgb("#7BCDEB"), "ic_opdapas.png", "OPDAPAS", "PAGO EN LINEA",
+            Color.FromArgb("#9B12B3"), "ic_denuncia_ciudadana.png", "DENUNCIAS", "CIUDADANAS"),
+
+        new(Color.FromArgb("#9B12B3"), "ic_denuncia_ciudadana.png", "DENUNCIAS", "CIUDADANAS",
+            Color.FromArgb("#B8D927"), "btn_predial.png", "PREDIAL", "PAGO EN LINEA")
+        
     ];
 
     private NewsLetter? _featuredNews;
