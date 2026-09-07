@@ -419,6 +419,47 @@ public sealed class MetepecApiService
         }
     }
 
+    public async Task<List<BackendPublicacionComentarioDto>> GetComentariosPublicacionAsync(int idPublicacion, CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Get, $"{AppConstants.MetepecBackendUrl}/publicacion-comentarios/publicacion/{idPublicacion}");
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        return await ReadJsonAsync<List<BackendPublicacionComentarioDto>>(response, cancellationToken) ?? [];
+    }
+
+    public async Task<BackendPublicacionComentarioDto> ComentarPublicacionAsync(int idPublicacion, int idCiudadano, string comentario, CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Post, $"{AppConstants.MetepecBackendUrl}/publicacion-comentarios")
+        {
+            Content = JsonContent(new { idPublicacion, idCiudadano, comentario })
+        };
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.BadRequest)
+        {
+            var body = await ReadJsonAsync<ErrorResponse>(response, cancellationToken);
+            throw new InvalidOperationException(body?.error ?? "No se pudo publicar el comentario.");
+        }
+
+        response.EnsureSuccessStatusCode();
+        return await ReadJsonAsync<BackendPublicacionComentarioDto>(response, cancellationToken)
+            ?? throw new InvalidOperationException("No se pudo publicar el comentario.");
+    }
+
+    public async Task<bool> EliminarComentarioPublicacionAsync(long idComentario, int idCiudadano, CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Delete, $"{AppConstants.MetepecBackendUrl}/publicacion-comentarios/{idComentario}/{idCiudadano}");
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NotFound) return false;
+        response.EnsureSuccessStatusCode();
+        return true;
+    }
+
     public async Task<List<BackendArticuloConocimientoDto>> GetArticulosConocimientoAsync(CancellationToken cancellationToken = default)
     {
         using var message = new HttpRequestMessage(HttpMethod.Get, AppConstants.MetepecBackendUrl + "/articulos-conocimiento");

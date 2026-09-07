@@ -14,6 +14,15 @@ public partial class NewsDetailPage : ContentPage
     private NewsLetter? _news;
     private string? _miReaccion;
 
+    private sealed class ComentarioItem
+    {
+        public long Id { get; init; }
+        public string NombreCiudadano { get; init; } = "Ciudadano";
+        public DateTime FechaComentario { get; init; }
+        public string Comentario { get; init; } = "";
+        public bool EsPropio { get; init; }
+    }
+
     public NewsDetailPage(NavigationState navigationState, MetepecApiService api, PreferencesService preferences)
     {
         InitializeComponent();
@@ -52,6 +61,8 @@ public partial class NewsDetailPage : ContentPage
 
         var idCiudadano = _preferences.CiudadanoId;
         ReactionRow.IsVisible = idCiudadano > 0;
+        CommentInputRow.IsVisible = idCiudadano > 0;
+        CommentEditor.Text = string.Empty;
 
         _ = _api.RegistrarVistaPublicacionAsync(_news.id, idCiudadano);
 
@@ -59,6 +70,85 @@ public partial class NewsDetailPage : ContentPage
         {
             _miReaccion = await _api.GetMiReaccionPublicacionAsync(_news.id, idCiudadano);
             ActualizarBotonesReaccion();
+        }
+
+        await CargarComentariosAsync();
+    }
+
+    private async Task CargarComentariosAsync()
+    {
+        if (_news is null) return;
+
+        ComentariosBusyIndicator.IsRunning = ComentariosBusyIndicator.IsVisible = true;
+        try
+        {
+            var idCiudadano = _preferences.CiudadanoId;
+            var comentarios = await _api.GetComentariosPublicacionAsync(_news.id);
+            ComentariosView.ItemsSource = comentarios.Select(c => new ComentarioItem
+            {
+                Id = c.Id,
+                NombreCiudadano = string.IsNullOrWhiteSpace(c.NombreCiudadano) ? "Ciudadano" : c.NombreCiudadano,
+                FechaComentario = c.FechaComentario,
+                Comentario = c.Comentario,
+                EsPropio = idCiudadano > 0 && c.IdCiudadano == idCiudadano
+            }).ToList();
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlert("No se pudieron cargar los comentarios", ErrorMessageHelper.Traducir(ex), "Aceptar");
+        }
+        finally
+        {
+            ComentariosBusyIndicator.IsRunning = ComentariosBusyIndicator.IsVisible = false;
+        }
+    }
+
+    private async void OnEnviarComentarioClicked(object sender, EventArgs e)
+    {
+        if (_news is null) return;
+        var idCiudadano = _preferences.CiudadanoId;
+        if (idCiudadano <= 0) return;
+
+        var texto = CommentEditor.Text?.Trim();
+        if (string.IsNullOrWhiteSpace(texto))
+        {
+            return;
+        }
+
+        ((Button)sender).IsEnabled = false;
+        try
+        {
+            await _api.ComentarPublicacionAsync(_news.id, idCiudadano, texto);
+            CommentEditor.Text = string.Empty;
+            await CargarComentariosAsync();
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlert("No se pudo publicar el comentario", ErrorMessageHelper.Traducir(ex), "Aceptar");
+        }
+        finally
+        {
+            ((Button)sender).IsEnabled = true;
+        }
+    }
+
+    private async void OnEliminarComentarioTapped(object sender, TappedEventArgs e)
+    {
+        if (sender is not Element element || element.BindingContext is not ComentarioItem item) return;
+        var idCiudadano = _preferences.CiudadanoId;
+        if (idCiudadano <= 0) return;
+
+        var confirmar = await DisplayAlert("Eliminar comentario", "¿Quieres eliminar este comentario?", "Eliminar", "Cancelar");
+        if (!confirmar) return;
+
+        try
+        {
+            await _api.EliminarComentarioPublicacionAsync(item.Id, idCiudadano);
+            await CargarComentariosAsync();
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlert("No se pudo eliminar el comentario", ErrorMessageHelper.Traducir(ex), "Aceptar");
         }
     }
 

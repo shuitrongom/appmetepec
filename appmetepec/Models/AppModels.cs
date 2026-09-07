@@ -606,6 +606,27 @@ public sealed class BackendPublicacionReaccionDto
     public DateTime FechaReaccion { get; set; }
 }
 
+public sealed class BackendPublicacionComentarioDto
+{
+    [JsonPropertyName("id")]
+    public long Id { get; set; }
+
+    [JsonPropertyName("idPublicacion")]
+    public int IdPublicacion { get; set; }
+
+    [JsonPropertyName("idCiudadano")]
+    public int IdCiudadano { get; set; }
+
+    [JsonPropertyName("comentario")]
+    public string Comentario { get; set; } = "";
+
+    [JsonPropertyName("fechaComentario")]
+    public DateTime FechaComentario { get; set; }
+
+    [JsonPropertyName("nombreCiudadano")]
+    public string? NombreCiudadano { get; set; }
+}
+
 public sealed class BackendArticuloConocimientoDto
 {
     [JsonPropertyName("id")]
