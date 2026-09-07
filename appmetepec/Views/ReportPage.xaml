@@ -82,7 +82,7 @@
                     </CollectionView.ItemTemplate>
                 </CollectionView>
 
-                <Label Text="Agrega un testigo:" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" FontSize="12" />
+                <Label Text="Agrega una evidencia:" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" FontSize="12" />
                 <HorizontalStackLayout Spacing="14">
                     <Image Source="btn_camara.png" HeightRequest="50" WidthRequest="50">
                         <Image.GestureRecognizers>

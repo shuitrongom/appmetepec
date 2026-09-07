@@ -130,7 +130,7 @@ public partial class ReportPage : ContentPage
                 ? new[] { "Tomar foto", "Elegir de la galeria" }
                 : new[] { "Elegir de la galeria" };
 
-            var choice = await DisplayActionSheet("Agrega un testigo", "Cancelar", null, options);
+            var choice = await DisplayActionSheet("Agrega una evidencia", "Cancelar", null, options);
 
             FileResult? result = choice switch
             {
@@ -150,7 +150,7 @@ public partial class ReportPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlert("No se pudo agregar el testigo", ErrorMessageHelper.Traducir(ex), "Aceptar");
+            await DisplayAlert("No se pudo agregar la evidencia", ErrorMessageHelper.Traducir(ex), "Aceptar");
         }
     }
 
