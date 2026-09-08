@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.RegularExpressions;
 using appmetepec.Models;
 using appmetepec.Services;
 
@@ -13,6 +14,9 @@ public partial class NewsDetailPage : ContentPage
     private readonly PreferencesService _preferences;
     private NewsLetter? _news;
     private string? _miReaccion;
+    // Comentario raiz al que se le esta redactando una respuesta (null = comentario nuevo,
+    // sin padre). Se reutiliza el mismo compositor de arriba en vez de uno por comentario.
+    private long? _respondiendoAId;
 
     private sealed class ComentarioItem
     {
@@ -22,6 +26,9 @@ public partial class NewsDetailPage : ContentPage
         public string Comentario { get; init; } = "";
         public bool EsPropio { get; init; }
         public bool EsRespuestaAdmin { get; init; }
+        // true para cualquier respuesta dentro de un hilo (de un ciudadano o del admin), no
+        // solo las del admin -- controla la indentacion/tinte visual de "es una respuesta".
+        public bool EsRespuesta { get; init; }
     }
 
     public NewsDetailPage(NavigationState navigationState, MetepecApiService api, PreferencesService preferences)
@@ -43,7 +50,7 @@ public partial class NewsDetailPage : ContentPage
         }
 
         TitleLabel.Text = _news.title;
-        ContentLabel.Text = _news.content ?? _news.shortContent;
+        RenderContenido(_news.content ?? _news.shortContent);
         OpenUrlButton.IsVisible = !string.IsNullOrWhiteSpace(_news.url);
 
         var tieneResumen = !string.IsNullOrWhiteSpace(_news.subtitle);
@@ -64,6 +71,7 @@ public partial class NewsDetailPage : ContentPage
         ReactionRow.IsVisible = idCiudadano > 0;
         CommentInputRow.IsVisible = idCiudadano > 0;
         CommentEditor.Text = string.Empty;
+        CancelarRespuesta();
 
         _ = _api.RegistrarVistaPublicacionAsync(_news.id, idCiudadano);
 
@@ -74,6 +82,64 @@ public partial class NewsDetailPage : ContentPage
         }
 
         await CargarComentariosAsync();
+    }
+
+    // Label con TextType="Html" no soporta <img>: una imagen insertada en el editor web (aparte
+    // de la imagen principal, que ya se muestra arriba via NewsImage) se veia como un cuadrito
+    // vacio. Aqui se parte el HTML en segmentos de texto e imagen alternados, respetando el
+    // orden original, y se arman como hijos de ContentHost (Label para texto, Image para cada
+    // <img>) en vez de un unico Label.
+    private static readonly Regex ImgTagRegex = new(
+        "<img[^>]*\\bsrc\\s*=\\s*[\"']([^\"']+)[\"'][^>]*/?>",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    private void RenderContenido(string? html)
+    {
+        ContentHost.Children.Clear();
+        if (string.IsNullOrWhiteSpace(html))
+        {
+            return;
+        }
+
+        var estilo = (Style)Resources["ContentSegmentLabelStyle"];
+        var posicion = 0;
+
+        foreach (Match match in ImgTagRegex.Matches(html))
+        {
+            AgregarSegmentoTexto(html[posicion..match.Index], estilo);
+            AgregarImagen(match.Groups[1].Value);
+            posicion = match.Index + match.Length;
+        }
+
+        AgregarSegmentoTexto(html[posicion..], estilo);
+    }
+
+    private void AgregarSegmentoTexto(string segmentoHtml, Style estilo)
+    {
+        // Entre dos imagenes seguidas (o al inicio/fin del contenido) puede quedar un segmento
+        // que, sin las etiquetas, es puro espacio en blanco -- no vale la pena un Label vacio.
+        var soloTexto = Regex.Replace(segmentoHtml, "<.*?>", string.Empty);
+        if (string.IsNullOrWhiteSpace(soloTexto))
+        {
+            return;
+        }
+
+        ContentHost.Children.Add(new Label { Text = segmentoHtml, Style = estilo });
+    }
+
+    private void AgregarImagen(string url)
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+        {
+            return;
+        }
+
+        ContentHost.Children.Add(new Image
+        {
+            Source = ImageSource.FromUri(uri),
+            Aspect = Aspect.AspectFit,
+            HorizontalOptions = LayoutOptions.Fill,
+        });
     }
 
     private async Task CargarComentariosAsync()
@@ -94,7 +160,8 @@ public partial class NewsDetailPage : ContentPage
                 FechaComentario = c.FechaComentario,
                 Comentario = c.Comentario,
                 EsPropio = idCiudadano > 0 && c.IdCiudadano == idCiudadano,
-                EsRespuestaAdmin = c.EsRespuestaAdmin
+                EsRespuestaAdmin = c.EsRespuestaAdmin,
+                EsRespuesta = c.IdComentarioPadre.HasValue
             }).ToList();
         }
         catch (Exception ex)
@@ -122,8 +189,9 @@ public partial class NewsDetailPage : ContentPage
         ((Button)sender).IsEnabled = false;
         try
         {
-            await _api.ComentarPublicacionAsync(_news.id, idCiudadano, texto);
+            await _api.ComentarPublicacionAsync(_news.id, idCiudadano, texto, _respondiendoAId);
             CommentEditor.Text = string.Empty;
+            CancelarRespuesta();
             await CargarComentariosAsync();
         }
         catch (Exception ex)
@@ -134,6 +202,45 @@ public partial class NewsDetailPage : ContentPage
         {
             ((Button)sender).IsEnabled = true;
         }
+    }
+
+    // Icono "Responder" en un comentario raiz: reutiliza el mismo compositor de arriba en vez
+    // de abrir uno por comentario, mostrando un banner de "Respondiendo a X" para dar contexto.
+    private void OnResponderComentarioTapped(object sender, TappedEventArgs e)
+    {
+        if (sender is not Element element || element.BindingContext is not ComentarioItem item) return;
+
+        _respondiendoAId = item.Id;
+        ReplyBannerLabel.Text = $"Respondiendo a {item.NombreCiudadano}";
+        ReplyBanner.IsVisible = true;
+        CommentEditor.Focus();
+    }
+
+    private void OnCancelarRespuestaTapped(object sender, TappedEventArgs e) => CancelarRespuesta();
+
+    private void CancelarRespuesta()
+    {
+        _respondiendoAId = null;
+        ReplyBanner.IsVisible = false;
+    }
+
+    // Deslizar hacia abajo para refrescar (mismo patron que HomePage.OnRefreshing): antes solo
+    // se recargaban los comentarios al entrar a la pantalla o al enviar uno propio, asi que ver
+    // una respuesta nueva del admin exigia salir y volver a entrar.
+    private async void OnRefreshing(object sender, EventArgs e)
+    {
+        if (_news is not null)
+        {
+            var idCiudadano = _preferences.CiudadanoId;
+            if (idCiudadano > 0)
+            {
+                _miReaccion = await _api.GetMiReaccionPublicacionAsync(_news.id, idCiudadano);
+                ActualizarBotonesReaccion();
+            }
+        }
+
+        await CargarComentariosAsync();
+        ((RefreshView)sender).IsRefreshing = false;
     }
 
     private async void OnEliminarComentarioTapped(object sender, TappedEventArgs e)
