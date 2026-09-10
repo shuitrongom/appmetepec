@@ -460,6 +460,21 @@ public sealed class MetepecApiService
         return true;
     }
 
+    // Se llama en cada arranque de la app (una vez que se tiene el token de Firebase y el
+    // ciudadano esta identificado): es un upsert por token en el back-end, asi que reenviar el
+    // mismo token en cada arranque es seguro y no crea filas duplicadas.
+    public async Task RegistrarDispositivoPushAsync(int idCiudadano, string token, string plataforma, string? modelo, string? versionApp, CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Post, $"{AppConstants.MetepecBackendUrl}/usuario-dispositivos-push")
+        {
+            Content = JsonContent(new { idCiudadano, token, plataforma, modelo, versionApp })
+        };
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        response.EnsureSuccessStatusCode();
+    }
+
     public async Task<List<BackendArticuloConocimientoDto>> GetArticulosConocimientoAsync(CancellationToken cancellationToken = default)
     {
         using var message = new HttpRequestMessage(HttpMethod.Get, AppConstants.MetepecBackendUrl + "/articulos-conocimiento");

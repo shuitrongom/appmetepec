@@ -8,13 +8,15 @@ public partial class LoginPage : ContentPage
     private readonly PreferencesService _preferences;
     private readonly MetepecApiService _api;
     private readonly NavigationState _navigationState;
+    private readonly PushRegistrationService _pushRegistration;
 
-    public LoginPage(PreferencesService preferences, MetepecApiService api, NavigationState navigationState)
+    public LoginPage(PreferencesService preferences, MetepecApiService api, NavigationState navigationState, PushRegistrationService pushRegistration)
     {
         InitializeComponent();
         _preferences = preferences;
         _api = api;
         _navigationState = navigationState;
+        _pushRegistration = pushRegistration;
         VersionLabel.Text = $"v{AppInfo.Current.VersionString}";
     }
 
@@ -56,6 +58,12 @@ public partial class LoginPage : ContentPage
             {
                 // No bloquea el login; ReportPage vuelve a intentarlo antes de crear un ticket.
             }
+
+            // Se dispara aqui (ademas de HomePage.OnAppearing) para que cada login reintente el
+            // registro, incluso si un intento previo fallo en silencio (permiso no otorgado,
+            // Firebase aun inicializando, etc.) -- PushRegistrationService hace upsert por token en
+            // el back-end, asi que repetirlo es inofensivo.
+            await _pushRegistration.RegistrarSiAplicaAsync(_preferences.CiudadanoId);
 
             await Shell.Current.GoToAsync($"//{nameof(HomePage)}");
         }

@@ -24,7 +24,7 @@
 		<ApplicationTitle>Metepec *7311</ApplicationTitle>
 
 		<!-- App Identifier -->
-		<ApplicationId>com.companyname.appmetepec</ApplicationId>
+		<ApplicationId>com.app.metepec</ApplicationId>
 
 		<!-- Versions -->
 		<ApplicationDisplayVersion>1.0.1</ApplicationDisplayVersion>
@@ -66,6 +66,14 @@
 		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="8.0.1" />
 		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
 		<PackageReference Include="CommunityToolkit.Maui" Version="9.1.1" />
+		<PackageReference Include="Plugin.Firebase.Core" Version="3.1.1" />
+		<PackageReference Include="Plugin.Firebase.CloudMessaging" Version="3.1.1" />
+	</ItemGroup>
+
+	<!-- Solo para Android por ahora: falta GoogleService-Info.plist (descargarlo desde Firebase
+	     Console al registrar la app iOS) para habilitar tambien ese target. -->
+	<ItemGroup Condition="'$(TargetFramework)'=='net8.0-android'">
+		<GoogleServicesJson Include="google-services.json" />
 	</ItemGroup>
 
 </Project>

@@ -2,6 +2,10 @@ using System.Text.RegularExpressions;
 using appmetepec.Models;
 using appmetepec.Services;
 using CommunityToolkit.Maui.Behaviors;
+#if ANDROID
+using Plugin.Firebase.CloudMessaging;
+using Plugin.Firebase.CloudMessaging.EventArgs;
+#endif
 
 namespace appmetepec.Views;
 
@@ -11,17 +15,19 @@ public partial class HomePage : ContentPage
     private readonly MetepecApiService _api;
     private readonly NavigationState _navigationState;
     private readonly PreferencesService _preferences;
+    private readonly PushRegistrationService _pushRegistration;
     private bool _bannerTimerStarted;
     private bool _isDrawerOpen;
     private bool _newsLoaded;
 
-    public HomePage(ReportCatalogService catalog, MetepecApiService api, NavigationState navigationState, PreferencesService preferences)
+    public HomePage(ReportCatalogService catalog, MetepecApiService api, NavigationState navigationState, PreferencesService preferences, PushRegistrationService pushRegistration)
     {
         InitializeComponent();
         _catalog = catalog;
         _api = api;
         _navigationState = navigationState;
         _preferences = preferences;
+        _pushRegistration = pushRegistration;
         DarkThemeSwitch.IsToggled = _preferences.DarkThemeEnabled;
         SetActiveTab(reportsActive: true);
         BannerCarousel.ItemsSource = BuildBanners();
@@ -30,6 +36,12 @@ public partial class HomePage : ContentPage
             LongPressDuration = 3000,
             LongPressCommand = new Command(OnLogoLongPressed)
         });
+
+#if ANDROID
+        // Firebase puede rotar el token del dispositivo en cualquier momento (no solo al
+        // instalar la app); esta suscripcion vive mientras la app este viva, no solo en Home.
+        CrossFirebaseCloudMessaging.Current.TokenChanged += OnFirebaseTokenChanged;
+#endif
     }
 
     protected override async void OnAppearing()
@@ -47,7 +59,29 @@ public partial class HomePage : ContentPage
 
         StartBannerTimer();
         await VerificarEncuestaExperienciaAsync();
+        // El login ya intenta este mismo registro (ver LoginPage.OnLoginClicked); esta llamada es
+        // el respaldo para cuando la app arranca ya logueada (sin pasar por LoginPage) o el intento
+        // del login fallo en silencio. PushRegistrationService hace upsert por token en el back-end,
+        // asi que repetirla en cada OnAppearing es inofensivo.
+        await _pushRegistration.RegistrarSiAplicaAsync(_preferences.CiudadanoId);
     }
+
+#if ANDROID
+    private async void OnFirebaseTokenChanged(object? sender, FCMTokenChangedEventArgs e)
+    {
+        var idCiudadano = _preferences.CiudadanoId;
+        if (idCiudadano <= 0) return;
+
+        try
+        {
+            await _api.RegistrarDispositivoPushAsync(idCiudadano, e.Token, "ANDROID", DeviceInfo.Current.Model, AppInfo.Current.VersionString);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Push] No se pudo actualizar el token rotado: {ex}");
+        }
+    }
+#endif
 
     private async Task VerificarEncuestaExperienciaAsync()
     {
