@@ -377,6 +377,27 @@ public sealed class BackendPrioridadDto
     public bool EsDefault { get; set; }
 }
 
+public sealed class BackendServicioDto
+{
+    [JsonPropertyName("id")]
+    public int Id { get; set; }
+
+    // Null = sin definir (no obliga evidencia). Si coincide con el Id del
+    // TipoObligatoriedadEvidencia de clave "OBLIGATORIA", ReportPage exige la foto antes de
+    // enviar; cualquier otro valor (u obligatoriedad "Opcional"/"No requerida") no la exige.
+    [JsonPropertyName("requierefoto")]
+    public int? Requierefoto { get; set; }
+}
+
+public sealed class BackendTipoObligatoriedadEvidenciaDto
+{
+    [JsonPropertyName("id")]
+    public int Id { get; set; }
+
+    [JsonPropertyName("clave")]
+    public string Clave { get; set; } = "";
+}
+
 public sealed class BackendTicketServicioItemRequest
 {
     [JsonPropertyName("idServicio")]
@@ -589,6 +610,12 @@ public sealed class BackendPublicacionDto
 
     [JsonPropertyName("fechaPublicacion")]
     public DateTime? FechaPublicacion { get; set; }
+
+    [JsonPropertyName("fechaInicioVigencia")]
+    public DateTime? FechaInicioVigencia { get; set; }
+
+    [JsonPropertyName("fechaFinVigencia")]
+    public DateTime? FechaFinVigencia { get; set; }
 }
 
 public sealed class BackendPublicacionReaccionDto

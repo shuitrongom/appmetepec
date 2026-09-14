@@ -323,9 +323,18 @@ public sealed class MetepecApiService
         using var response = await _httpClient.SendAsync(message, cancellationToken);
         response.EnsureSuccessStatusCode();
         var result = await ReadJsonAsync<List<BackendPublicacionDto>>(response, cancellationToken);
+        // El back-end guarda estas fechas en hora local de Mexico (TicketingServiceHelpers.Now()),
+        // no UTC -- hay que comparar contra la misma zona sin importar donde este el dispositivo,
+        // para no desfasar la vigencia varias horas.
+        var ahora = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTime.UtcNow, "America/Mexico_City");
 
         return (result ?? [])
-            .Where(item => item.Publicada && item.Activo)
+            // El back-end no despublica sola una publicacion vencida (Publicada se queda en true
+            // para siempre, "Finalizada" es solo un estado visual del panel admin -- ver
+            // PublicacionService.CalcularEstado); appmetepec debe filtrar la vigencia el mismo.
+            .Where(item => item.Publicada && item.Activo
+                && (item.FechaInicioVigencia is null || item.FechaInicioVigencia.Value <= ahora)
+                && (item.FechaFinVigencia is null || item.FechaFinVigencia.Value > ahora))
             .OrderByDescending(item => item.FechaPublicacion)
             .Select(item => new NewsLetter
             {
@@ -494,6 +503,26 @@ public sealed class MetepecApiService
         using var response = await _httpClient.SendAsync(message, cancellationToken);
         response.EnsureSuccessStatusCode();
         return await ReadJsonAsync<List<BackendPrioridadDto>>(response, cancellationToken) ?? [];
+    }
+
+    public async Task<List<BackendServicioDto>> GetServiciosAsync(CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Get, AppConstants.MetepecBackendUrl + "/servicios");
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        return await ReadJsonAsync<List<BackendServicioDto>>(response, cancellationToken) ?? [];
+    }
+
+    public async Task<List<BackendTipoObligatoriedadEvidenciaDto>> GetTiposObligatoriedadEvidenciaAsync(CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Get, AppConstants.MetepecBackendUrl + "/tipo-obligatoriedad-evidencias");
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        return await ReadJsonAsync<List<BackendTipoObligatoriedadEvidenciaDto>>(response, cancellationToken) ?? [];
     }
 
     public async Task<BackendCanalIngresoDto?> GetCanalIngresoByClaveAsync(string clave, CancellationToken cancellationToken = default)

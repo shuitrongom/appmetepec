@@ -21,6 +21,9 @@ public static class AppConstants
     public const string ClaveEncuestaSolucionTicket = "ENCUESTA_SOLUCION_TICKET";
     public const string ClaveEncuestaExperienciaApp = "ENCUESTA_EXPERIENCIA_APP";
     public const string ClaveCanalIngresoApp = "APP";
+    // Servicio.Requierefoto (catalogo TipoObligatoriedadEvidencia): si el servicio del reporte
+    // tiene esta clave, la app obliga a adjuntar foto antes de enviar (ver ReportPage).
+    public const string ClaveObligatoriedadEvidenciaObligatoria = "OBLIGATORIA";
     public const int DiasMinimosEncuestaExperienciaApp = 8;
     public const int DiasCooldownEncuestaExperienciaApp = 8;
 

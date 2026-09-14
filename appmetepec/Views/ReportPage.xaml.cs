@@ -13,6 +13,10 @@ public partial class ReportPage : ContentPage
     private FileResult? _attachment;
     private string _coordinates = "";
     private List<BackendArticuloConocimientoDto> _articulos = [];
+    // Servicio.Requierefoto == Id del TipoObligatoriedadEvidencia de clave "OBLIGATORIA": si no
+    // se pudo determinar (catalogo no respondio, servicio sin ese campo, etc.) se asume false,
+    // para no bloquear el envio de un reporte por un fallo de red ajeno al ciudadano.
+    private bool _evidenciaObligatoria;
 
     public ReportPage(PreferencesService preferences, MetepecApiService api, NavigationState navigationState, PendingTicketsService pendingTickets)
     {
@@ -43,7 +47,48 @@ public partial class ReportPage : ContentPage
         PhoneEntry.Text = user.Phone;
         EmailEntry.Text = user.Email;
 
+        _evidenciaObligatoria = false;
+        EvidenciaLabel.Text = "Agrega una evidencia:";
+
         _ = CargarArticulosAsync();
+        _ = CargarRequerimientoEvidenciaAsync();
+    }
+
+    // Consulta el servicio del reporte y el catalogo de obligatoriedad de evidencia para saber
+    // si este reporte en particular exige una foto antes de enviarse (ver comentario en
+    // BackendServicioDto.Requierefoto). Best-effort: si cualquiera de las dos consultas falla,
+    // no se obliga la evidencia -- no tiene sentido bloquear el reporte por un problema de red
+    // ajeno a lo que el ciudadano esta reportando.
+    private async Task CargarRequerimientoEvidenciaAsync()
+    {
+        if (_report is null || _report.IdServicio <= 0)
+        {
+            return;
+        }
+
+        try
+        {
+            var serviciosTask = _api.GetServiciosAsync();
+            var tiposTask = _api.GetTiposObligatoriedadEvidenciaAsync();
+            await Task.WhenAll(serviciosTask, tiposTask);
+
+            var servicio = serviciosTask.Result.FirstOrDefault(s => s.Id == _report.IdServicio);
+            var tipoObligatoria = tiposTask.Result.FirstOrDefault(t =>
+                string.Equals(t.Clave, AppConstants.ClaveObligatoriedadEvidenciaObligatoria, StringComparison.OrdinalIgnoreCase));
+
+            _evidenciaObligatoria = servicio?.Requierefoto is not null
+                && tipoObligatoria is not null
+                && servicio.Requierefoto == tipoObligatoria.Id;
+
+            if (_evidenciaObligatoria)
+            {
+                EvidenciaLabel.Text = "Agrega una evidencia (obligatoria):";
+            }
+        }
+        catch
+        {
+            // Se queda en _evidenciaObligatoria = false (ver comentario del metodo).
+        }
     }
 
     private async Task CargarArticulosAsync()
@@ -175,6 +220,12 @@ public partial class ReportPage : ContentPage
         if (string.IsNullOrWhiteSpace(phone) || string.IsNullOrWhiteSpace(address))
         {
             await DisplayAlert("Campos obligatorios", "Captura telefono y direccion.", "Aceptar");
+            return;
+        }
+
+        if (_evidenciaObligatoria && _attachment is null)
+        {
+            await DisplayAlert("Evidencia requerida", "Este tipo de reporte requiere que agregues una foto de evidencia antes de enviarlo.", "Aceptar");
             return;
         }
 
