@@ -93,6 +93,16 @@ public partial class NewsDetailPage : ContentPage
         "<img[^>]*\\bsrc\\s*=\\s*[\"']([^\"']+)[\"'][^>]*/?>",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
+    // URL suelta (texto plano) dentro del contenido -- ej. el admin pega un link de YouTube sin
+    // usar el boton "Insertar enlace" del editor web. Label con TextType="Html" no vuelve
+    // tappable un <a href> incrustado (a diferencia de un WebView), asi que cada URL detectada
+    // se separa en su propio Label con TapGestureRecognizer, igual que ImgTagRegex ya separa las
+    // imagenes. El "(?<![\"'])" evita casar una URL que ya viene dentro de un atributo
+    // href/src (un enlace o imagen real, no texto plano).
+    private static readonly Regex UrlRegex = new(
+        "(?<![\"'])(https?://[^\\s<>\"']+|www\\.[^\\s<>\"']+)",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
     private void RenderContenido(string? html)
     {
         ContentHost.Children.Clear();
@@ -116,8 +126,22 @@ public partial class NewsDetailPage : ContentPage
 
     private void AgregarSegmentoTexto(string segmentoHtml, Style estilo)
     {
-        // Entre dos imagenes seguidas (o al inicio/fin del contenido) puede quedar un segmento
-        // que, sin las etiquetas, es puro espacio en blanco -- no vale la pena un Label vacio.
+        var posicion = 0;
+        foreach (Match match in UrlRegex.Matches(segmentoHtml))
+        {
+            AgregarTextoPlano(segmentoHtml[posicion..match.Index], estilo);
+            AgregarEnlace(match.Value, estilo);
+            posicion = match.Index + match.Length;
+        }
+
+        AgregarTextoPlano(segmentoHtml[posicion..], estilo);
+    }
+
+    private void AgregarTextoPlano(string segmentoHtml, Style estilo)
+    {
+        // Entre dos imagenes/enlaces seguidos (o al inicio/fin del contenido) puede quedar un
+        // segmento que, sin las etiquetas, es puro espacio en blanco -- no vale la pena un Label
+        // vacio.
         var soloTexto = Regex.Replace(segmentoHtml, "<.*?>", string.Empty);
         if (string.IsNullOrWhiteSpace(soloTexto))
         {
@@ -125,6 +149,27 @@ public partial class NewsDetailPage : ContentPage
         }
 
         ContentHost.Children.Add(new Label { Text = segmentoHtml, Style = estilo });
+    }
+
+    private void AgregarEnlace(string url, Style estilo)
+    {
+        var href = url.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? url : $"https://{url}";
+        var label = new Label
+        {
+            Text = url,
+            Style = estilo,
+            TextColor = Color.FromArgb("#1565C0"),
+            TextDecorations = TextDecorations.Underline,
+        };
+        label.GestureRecognizers.Add(new TapGestureRecognizer
+        {
+            Command = new Command(async () =>
+            {
+                try { await Launcher.Default.OpenAsync(href); }
+                catch { /* Best-effort: si no hay app para abrir el link, no debe tronar la pantalla. */ }
+            }),
+        });
+        ContentHost.Children.Add(label);
     }
 
     private void AgregarImagen(string url)
