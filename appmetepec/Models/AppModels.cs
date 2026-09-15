@@ -377,6 +377,18 @@ public sealed class BackendPrioridadDto
     public bool EsDefault { get; set; }
 }
 
+public sealed class BackendVersionAppDto
+{
+    [JsonPropertyName("plataforma")]
+    public string Plataforma { get; set; } = "";
+
+    [JsonPropertyName("versionReciente")]
+    public string VersionReciente { get; set; } = "";
+
+    [JsonPropertyName("mensaje")]
+    public string? Mensaje { get; set; }
+}
+
 public sealed class BackendServicioDto
 {
     [JsonPropertyName("id")]

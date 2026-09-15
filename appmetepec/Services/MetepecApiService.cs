@@ -505,6 +505,24 @@ public sealed class MetepecApiService
         return await ReadJsonAsync<List<BackendPrioridadDto>>(response, cancellationToken) ?? [];
     }
 
+    // Publico (sin JWT, ver VersionAppsController.GetActual): se llama desde el Splash, antes de
+    // que el ciudadano inicie sesion. null si no hay configuracion para esa plataforma o si la
+    // consulta falla -- en ambos casos SplashViewModel simplemente no muestra ningun aviso.
+    public async Task<BackendVersionAppDto?> GetVersionAppActualAsync(string plataforma, CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Get, $"{AppConstants.MetepecBackendUrl}/version-apps/actual/{plataforma}");
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        response.EnsureSuccessStatusCode();
+        return await ReadJsonAsync<BackendVersionAppDto>(response, cancellationToken);
+    }
+
     public async Task<List<BackendServicioDto>> GetServiciosAsync(CancellationToken cancellationToken = default)
     {
         using var message = new HttpRequestMessage(HttpMethod.Get, AppConstants.MetepecBackendUrl + "/servicios");

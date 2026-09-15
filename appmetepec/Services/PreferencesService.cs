@@ -36,6 +36,16 @@ public sealed class PreferencesService
         set => Preferences.Default.Set(nameof(JwtToken), value);
     }
 
+    // Ultima VersionApp.VersionReciente (catalogo del panel web) con la que este dispositivo ya
+    // vio el aviso de "hay una version nueva" (ver SplashViewModel.AvisarSiHayVersionNuevaAsync).
+    // Evita insistir en cada apertura de la app -- solo se vuelve a avisar si el catalogo sube a
+    // una version mas nueva que esta.
+    public string UltimaVersionVista
+    {
+        get => Preferences.Default.Get(nameof(UltimaVersionVista), "");
+        set => Preferences.Default.Set(nameof(UltimaVersionVista), value);
+    }
+
     public int CiudadanoId
     {
         get => Preferences.Default.Get(nameof(CiudadanoId), 0);
