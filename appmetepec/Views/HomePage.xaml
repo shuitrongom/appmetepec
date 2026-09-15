@@ -235,6 +235,12 @@
                                 <TapGestureRecognizer Tapped="OnDrawerLogoutTapped" />
                             </Grid.GestureRecognizers>
                         </Grid>
+
+                        <Label x:Name="DrawerVersionLabel"
+                               HorizontalTextAlignment="Center"
+                               FontSize="12"
+                               TextColor="#AAAAAA"
+                               Margin="0,16,0,10" />
                     </VerticalStackLayout>
                 </VerticalStackLayout>
             </ScrollView>
