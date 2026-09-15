@@ -438,11 +438,11 @@ public sealed class MetepecApiService
         return await ReadJsonAsync<List<BackendPublicacionComentarioDto>>(response, cancellationToken) ?? [];
     }
 
-    public async Task<BackendPublicacionComentarioDto> ComentarPublicacionAsync(int idPublicacion, int idCiudadano, string comentario, long? idComentarioPadre = null, CancellationToken cancellationToken = default)
+    public async Task<BackendPublicacionComentarioDto> ComentarPublicacionAsync(int idPublicacion, int idCiudadano, string comentario, long? idComentarioPadre = null, bool anonimo = false, CancellationToken cancellationToken = default)
     {
         using var message = new HttpRequestMessage(HttpMethod.Post, $"{AppConstants.MetepecBackendUrl}/publicacion-comentarios")
         {
-            Content = JsonContent(new { idPublicacion, idCiudadano, comentario, idComentarioPadre })
+            Content = JsonContent(new { idPublicacion, idCiudadano, comentario, idComentarioPadre, anonimo })
         };
         AddBackendAuthorization(message);
 

@@ -664,6 +664,10 @@ public sealed class BackendPublicacionComentarioDto
 
     [JsonPropertyName("esRespuestaAdmin")]
     public bool EsRespuestaAdmin { get; set; }
+
+    // El ciudadano comento como anonimo; NombreAutor ya viene como "Anónimo" en ese caso.
+    [JsonPropertyName("anonimo")]
+    public bool Anonimo { get; set; }
 }
 
 public sealed class BackendArticuloConocimientoDto

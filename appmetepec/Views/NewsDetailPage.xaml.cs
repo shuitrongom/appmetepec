@@ -234,8 +234,9 @@ public partial class NewsDetailPage : ContentPage
         ((Button)sender).IsEnabled = false;
         try
         {
-            await _api.ComentarPublicacionAsync(_news.id, idCiudadano, texto, _respondiendoAId);
+            await _api.ComentarPublicacionAsync(_news.id, idCiudadano, texto, _respondiendoAId, AnonimoCheckBox.IsChecked);
             CommentEditor.Text = string.Empty;
+            AnonimoCheckBox.IsChecked = false;
             CancelarRespuesta();
             await CargarComentariosAsync();
         }

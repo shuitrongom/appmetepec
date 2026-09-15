@@ -68,10 +68,17 @@
                     </Label>
                 </Grid>
 
-                <Grid x:Name="CommentInputRow" ColumnDefinitions="*,Auto" ColumnSpacing="8" IsVisible="False">
-                    <Editor x:Name="CommentEditor" Placeholder="Escribe un comentario..." AutoSize="TextChanges" MaxLength="500" HeightRequest="42" />
-                    <Button Grid.Column="1" Text="Enviar" Clicked="OnEnviarComentarioClicked" VerticalOptions="Start" BackgroundColor="#28113E" TextColor="White" CornerRadius="18" HeightRequest="42" Padding="16,0" />
-                </Grid>
+                <VerticalStackLayout x:Name="CommentInputRow" Spacing="4" IsVisible="False">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                        <Editor x:Name="CommentEditor" Placeholder="Escribe un comentario..." AutoSize="TextChanges" MaxLength="500" HeightRequest="42" />
+                        <Button Grid.Column="1" Text="Enviar" Clicked="OnEnviarComentarioClicked" VerticalOptions="Start" BackgroundColor="#28113E" TextColor="White" CornerRadius="18" HeightRequest="42" Padding="16,0" />
+                    </Grid>
+                    <HorizontalStackLayout Spacing="4">
+                        <CheckBox x:Name="AnonimoCheckBox" />
+                        <Label Text="Comentar como anónimo" FontSize="12" VerticalOptions="Center"
+                               TextColor="{AppThemeBinding Light=#6B7280, Dark=#9AA5B1}" />
+                    </HorizontalStackLayout>
+                </VerticalStackLayout>
 
                 <ActivityIndicator x:Name="ComentariosBusyIndicator" Color="{AppThemeBinding Light=#28113E, Dark=White}" />
 

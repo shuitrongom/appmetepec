@@ -36,6 +36,14 @@ public partial class RegisterPage : ContentPage
             return;
         }
 
+        // Evita registros como una sola letra (ej. "V"): un nombre/apellido real tiene al menos
+        // 2 caracteres.
+        if (nombre.Length < 2 || apellido.Length < 2)
+        {
+            await DisplayAlert("Datos incompletos", "El nombre y el apellido paterno deben tener al menos 2 letras.", "Aceptar");
+            return;
+        }
+
         if (phone.Length != 10 || !phone.All(char.IsDigit))
         {
             await DisplayAlert("Telefono invalido", "Captura un numero a 10 digitos.", "Aceptar");
