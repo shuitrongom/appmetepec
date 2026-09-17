@@ -103,6 +103,7 @@ public sealed class NewsLetter
     public bool destacada { get; set; }
     public DateTime? fechaInicioEvento { get; set; }
     public DateTime? fechaFinEvento { get; set; }
+    public bool permiteComentarios { get; set; } = true;
 }
 
 public sealed class TokenRecoleccionResponse
@@ -634,6 +635,9 @@ public sealed class BackendPublicacionDto
 
     [JsonPropertyName("fechaFinVigencia")]
     public DateTime? FechaFinVigencia { get; set; }
+
+    [JsonPropertyName("permiteComentarios")]
+    public bool PermiteComentarios { get; set; } = true;
 }
 
 public sealed class BackendPublicacionReaccionDto

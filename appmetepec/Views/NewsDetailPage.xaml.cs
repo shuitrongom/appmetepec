@@ -69,7 +69,10 @@ public partial class NewsDetailPage : ContentPage
 
         var idCiudadano = _preferences.CiudadanoId;
         ReactionRow.IsVisible = idCiudadano > 0;
-        CommentInputRow.IsVisible = idCiudadano > 0;
+        // Ademas de tener sesion, la publicacion debe permitir comentarios (ver
+        // Publicacion.PermiteComentarios, controlado desde el panel web) -- el back-end ya
+        // rechaza el intento igual, esto solo evita mostrar un compositor que va a fallar.
+        CommentInputRow.IsVisible = idCiudadano > 0 && _news.permiteComentarios;
         CommentEditor.Text = string.Empty;
         CancelarRespuesta();
 
@@ -254,6 +257,7 @@ public partial class NewsDetailPage : ContentPage
     // de abrir uno por comentario, mostrando un banner de "Respondiendo a X" para dar contexto.
     private void OnResponderComentarioTapped(object sender, TappedEventArgs e)
     {
+        if (_news?.permiteComentarios == false) return;
         if (sender is not Element element || element.BindingContext is not ComentarioItem item) return;
 
         _respondiendoAId = item.Id;

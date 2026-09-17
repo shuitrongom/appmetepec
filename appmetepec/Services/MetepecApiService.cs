@@ -346,7 +346,8 @@ public sealed class MetepecApiService
                 image = item.ImagenPrincipal,
                 destacada = item.Destacada,
                 fechaInicioEvento = item.FechaInicioEvento,
-                fechaFinEvento = item.FechaFinEvento
+                fechaFinEvento = item.FechaFinEvento,
+                permiteComentarios = item.PermiteComentarios
             })
             .ToList();
     }
