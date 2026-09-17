@@ -92,6 +92,7 @@
                     <Image x:Name="PreviewImage" Source="placeholder_imagepreview.png" HeightRequest="70" WidthRequest="70" Aspect="AspectFill" />
                 </HorizontalStackLayout>
                 <Label x:Name="AttachmentLabel" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" FontSize="12" />
+                <Entry x:Name="EvidenciaDescripcionEntry" Placeholder="Describe brevemente la foto (opcional)" FontSize="13" Margin="0,4,0,0" />
 
                 <Button x:Name="SendButton" Text="ENVIAR" Clicked="OnSendClicked" BackgroundColor="#F89A1C" TextColor="White" FontSize="20" FontAttributes="Bold" WidthRequest="220" HeightRequest="52" HorizontalOptions="Center" />
                 <ActivityIndicator x:Name="BusyIndicator" />

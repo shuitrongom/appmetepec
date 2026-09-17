@@ -260,7 +260,8 @@ public partial class ReportPage : ContentPage
                             RutaArchivo = uploaded.Ruta,
                             TipoMime = uploaded.MimeType,
                             TamanoBytes = uploaded.Peso,
-                            EsEvidenciaInicial = true
+                            EsEvidenciaInicial = true,
+                            Descripcion = string.IsNullOrWhiteSpace(EvidenciaDescripcionEntry.Text) ? null : EvidenciaDescripcionEntry.Text.Trim()
                         }
                     ];
                 }
@@ -378,6 +379,7 @@ public partial class ReportPage : ContentPage
         if (_attachment is not null)
         {
             submission.LocalPhotoPath = await _pendingTickets.SavePhotoAsync(_attachment);
+            submission.PhotoDescription = string.IsNullOrWhiteSpace(EvidenciaDescripcionEntry.Text) ? null : EvidenciaDescripcionEntry.Text.Trim();
         }
 
         await _pendingTickets.SaveAsync(submission);

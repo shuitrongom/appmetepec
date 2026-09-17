@@ -101,7 +101,8 @@ public partial class MyTicketsPage : ContentPage
                             RutaArchivo = uploaded.Ruta,
                             TipoMime = uploaded.MimeType,
                             TamanoBytes = uploaded.Peso,
-                            EsEvidenciaInicial = true
+                            EsEvidenciaInicial = true,
+                            Descripcion = pending.PhotoDescription
                         }
                     ];
                 }

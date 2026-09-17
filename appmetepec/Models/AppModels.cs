@@ -80,6 +80,7 @@ public sealed class PendingTicketSubmission
     public string Coordinates { get; set; } = "";
     public string Comments { get; set; } = "";
     public string? LocalPhotoPath { get; set; }
+    public string? PhotoDescription { get; set; }
     public bool IsBache { get; set; }
     public string? LastError { get; set; }
 }
@@ -465,6 +466,9 @@ public sealed class BackendEvidenciaItemRequest
 
     [JsonPropertyName("esEvidenciaInicial")]
     public bool EsEvidenciaInicial { get; set; }
+
+    [JsonPropertyName("descripcion")]
+    public string? Descripcion { get; set; }
 }
 
 public sealed class BackendTicketDto
@@ -556,6 +560,8 @@ public sealed class BackendTicketObservacionEvidenciaDto
     public string NombreArchivo { get; set; } = "";
     public string RutaArchivo { get; set; } = "";
     public string? TipoMime { get; set; }
+    public string? Descripcion { get; set; }
+    public bool HasDescripcion => !string.IsNullOrWhiteSpace(Descripcion);
 }
 
 public sealed class BackendUploadResult
