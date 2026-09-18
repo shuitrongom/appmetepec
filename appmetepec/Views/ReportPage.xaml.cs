@@ -17,6 +17,10 @@ public partial class ReportPage : ContentPage
     // se pudo determinar (catalogo no respondio, servicio sin ese campo, etc.) se asume false,
     // para no bloquear el envio de un reporte por un fallo de red ajeno al ciudadano.
     private bool _evidenciaObligatoria;
+    // Servicio.ClaveTipoModoCoberturaGeografica == "GEOCERCA": igual que _evidenciaObligatoria,
+    // si no se pudo determinar se asume false (el backend vuelve a validar de todas formas, ver
+    // AppConstants.ClaveModoCoberturaGeocerca).
+    private bool _coberturaGeografica;
 
     public ReportPage(PreferencesService preferences, MetepecApiService api, NavigationState navigationState, PendingTicketsService pendingTickets)
     {
@@ -49,17 +53,21 @@ public partial class ReportPage : ContentPage
 
         _evidenciaObligatoria = false;
         EvidenciaLabel.Text = "Agrega una evidencia:";
+        EvidenciaDescripcionEntry.Placeholder = "Describe brevemente la foto (opcional)";
+        _coberturaGeografica = false;
+        UbicacionRequeridaLabel.IsVisible = false;
 
         _ = CargarArticulosAsync();
-        _ = CargarRequerimientoEvidenciaAsync();
+        _ = CargarRequerimientosAsync();
     }
 
-    // Consulta el servicio del reporte y el catalogo de obligatoriedad de evidencia para saber
-    // si este reporte en particular exige una foto antes de enviarse (ver comentario en
-    // BackendServicioDto.Requierefoto). Best-effort: si cualquiera de las dos consultas falla,
-    // no se obliga la evidencia -- no tiene sentido bloquear el reporte por un problema de red
-    // ajeno a lo que el ciudadano esta reportando.
-    private async Task CargarRequerimientoEvidenciaAsync()
+    // Consulta el servicio del reporte (y el catalogo de obligatoriedad de evidencia) para saber
+    // si este reporte en particular exige una foto y/o una ubicacion antes de enviarse (ver
+    // comentarios en BackendServicioDto.Requierefoto/ClaveTipoModoCoberturaGeografica). Best-effort:
+    // si cualquier consulta falla, no se obliga nada -- no tiene sentido bloquear el reporte por
+    // un problema de red ajeno a lo que el ciudadano esta reportando; el backend vuelve a validar
+    // la cobertura geografica de todas formas al crear el ticket.
+    private async Task CargarRequerimientosAsync()
     {
         if (_report is null || _report.IdServicio <= 0)
         {
@@ -83,11 +91,18 @@ public partial class ReportPage : ContentPage
             if (_evidenciaObligatoria)
             {
                 EvidenciaLabel.Text = "Agrega una evidencia (obligatoria):";
+                // "Opcional" ya no aplica: al menos esta descripcion o los Comentarios generales
+                // se vuelven obligatorios (ver OnSendClicked).
+                EvidenciaDescripcionEntry.Placeholder = "Describe brevemente la foto";
             }
+
+            _coberturaGeografica = string.Equals(
+                servicio?.ClaveTipoModoCoberturaGeografica, AppConstants.ClaveModoCoberturaGeocerca, StringComparison.OrdinalIgnoreCase);
+            UbicacionRequeridaLabel.IsVisible = _coberturaGeografica;
         }
         catch
         {
-            // Se queda en _evidenciaObligatoria = false (ver comentario del metodo).
+            // Se queda en _evidenciaObligatoria/_coberturaGeografica = false (ver comentario del metodo).
         }
     }
 
@@ -229,6 +244,23 @@ public partial class ReportPage : ContentPage
             return;
         }
 
+        // Cuando la evidencia es obligatoria, la foto sola no basta: se exige tambien algo de
+        // texto que le de contexto (los "Comentarios" generales o, en su defecto, la descripcion
+        // especifica de la foto) -- cualquiera de los dos es valido, no se piden ambos.
+        var evidenciaDescripcion = EvidenciaDescripcionEntry.Text?.Trim() ?? "";
+        if (_evidenciaObligatoria && string.IsNullOrWhiteSpace(comments) && string.IsNullOrWhiteSpace(evidenciaDescripcion))
+        {
+            await DisplayAlert("Descripción requerida", "Este tipo de reporte requiere que describas el problema: agrega comentarios o una descripción de la foto antes de enviarlo.", "Aceptar");
+            return;
+        }
+
+        var (coordLatitud, coordLongitud) = ParseCoordinates(_coordinates);
+        if (_coberturaGeografica && (coordLatitud is null || coordLongitud is null))
+        {
+            await DisplayAlert("Ubicacion requerida", "Este tipo de reporte solo se puede levantar dentro de una zona de cobertura especifica. Captura tu ubicacion con el boton \"Elige tu direccion en el mapa\" antes de enviarlo.", "Aceptar");
+            return;
+        }
+
         try
         {
             SendButton.IsEnabled = false;
@@ -261,7 +293,7 @@ public partial class ReportPage : ContentPage
                             TipoMime = uploaded.MimeType,
                             TamanoBytes = uploaded.Peso,
                             EsEvidenciaInicial = true,
-                            Descripcion = string.IsNullOrWhiteSpace(EvidenciaDescripcionEntry.Text) ? null : EvidenciaDescripcionEntry.Text.Trim()
+                            Descripcion = string.IsNullOrWhiteSpace(evidenciaDescripcion) ? null : evidenciaDescripcion
                         }
                     ];
                 }

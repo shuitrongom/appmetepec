@@ -401,6 +401,14 @@ public sealed class BackendServicioDto
     // enviar; cualquier otro valor (u obligatoriedad "Opcional"/"No requerida") no la exige.
     [JsonPropertyName("requierefoto")]
     public int? Requierefoto { get; set; }
+
+    [JsonPropertyName("idTipoModoCoberturaGeografica")]
+    public int IdTipoModoCoberturaGeografica { get; set; }
+
+    // Si coincide con AppConstants.ClaveModoCoberturaGeocerca, ReportPage exige capturar
+    // ubicacion antes de enviar (ver CargarRequerimientosAsync/OnSendClicked).
+    [JsonPropertyName("claveTipoModoCoberturaGeografica")]
+    public string? ClaveTipoModoCoberturaGeografica { get; set; }
 }
 
 public sealed class BackendTipoObligatoriedadEvidenciaDto
