@@ -97,7 +97,9 @@ public partial class MyTicketsPage : ContentPage
                     [
                         new BackendEvidenciaItemRequest
                         {
-                            NombreArchivo = uploaded.NombreOriginal,
+                            // Ver mismo comentario en ReportPage.xaml.cs: nombre amigable, no el
+                            // que le puso la camara/galeria del dispositivo.
+                            NombreArchivo = "Evidencia" + Path.GetExtension(uploaded.NombreOriginal),
                             RutaArchivo = uploaded.Ruta,
                             TipoMime = uploaded.MimeType,
                             TamanoBytes = uploaded.Peso,

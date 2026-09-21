@@ -61,19 +61,16 @@ public sealed partial class SplashViewModel : ObservableObject
                 return;
             }
 
-            // Ya se aviso de esta misma version reciente en un lanzamiento anterior -- no
-            // insistir en cada apertura, solo cuando el catalogo suba a una version aun mas nueva.
-            if (_preferences.UltimaVersionVista == remoto.VersionReciente)
-            {
-                return;
-            }
-
+            // A proposito SIN deduplicar por "ya se avisó de esta version": si el usuario cierra
+            // la app sin actualizar, debe seguir viendo el aviso en cada apertura -- de lo
+            // contrario, quien lo cierra una vez nunca vuelve a enterarse de que sigue en una
+            // version vieja. Solo deja de aparecer cuando de verdad actualiza (AppInfo.VersionString
+            // ya no es menor a VersionReciente).
             var mensaje = string.IsNullOrWhiteSpace(remoto.Mensaje)
                 ? $"Hay una nueva versión de Metepec *7311 disponible ({remoto.VersionReciente}). Actualízala desde la Play Store para seguir disfrutando de las mejoras."
                 : remoto.Mensaje;
 
             await Shell.Current.DisplayAlert("Nueva versión disponible", mensaje, "Entendido");
-            _preferences.UltimaVersionVista = remoto.VersionReciente;
         }
         catch
         {

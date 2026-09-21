@@ -288,7 +288,11 @@ public partial class ReportPage : ContentPage
                     [
                         new BackendEvidenciaItemRequest
                         {
-                            NombreArchivo = uploaded.NombreOriginal,
+                            // Nombre amigable en vez del nombre de archivo que le puso la camara/
+                            // galeria del dispositivo (ej. "1000255651.jpg") -- eso es lo que se
+                            // muestra en el sistema web al revisar el ticket. RutaArchivo (donde
+                            // realmente se guarda/sirve el archivo) no cambia.
+                            NombreArchivo = "Evidencia" + Path.GetExtension(uploaded.NombreOriginal),
                             RutaArchivo = uploaded.Ruta,
                             TipoMime = uploaded.MimeType,
                             TamanoBytes = uploaded.Peso,
