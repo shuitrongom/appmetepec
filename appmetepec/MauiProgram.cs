@@ -6,6 +6,9 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Maui.LifecycleEvents;
 #if ANDROID
 using Plugin.Firebase.Core.Platforms.Android;
+#elif IOS
+using Plugin.Firebase.CloudMessaging;
+using Plugin.Firebase.Core.Platforms.iOS;
 #endif
 
 namespace appmetepec
@@ -32,6 +35,15 @@ namespace appmetepec
                     // cambio de forma entre versiones mayores del paquete.
                     events.AddAndroid(android => android.OnCreate((activity, _) =>
                         CrossFirebase.Initialize(activity)));
+#elif IOS
+                    // En iOS ademas hay que inicializar CloudMessaging para que registre los
+                    // delegados de APNs antes de que termine el arranque.
+                    events.AddiOS(iOS => iOS.WillFinishLaunching((_, _) =>
+                    {
+                        CrossFirebase.Initialize();
+                        FirebaseCloudMessagingImplementation.Initialize();
+                        return false;
+                    }));
 #endif
                 });
 

@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFrameworks>net8.0-android</TargetFrameworks>
+		<TargetFrameworks>net8.0-android;net8.0-ios</TargetFrameworks>
 		<TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net8.0-windows10.0.19041.0</TargetFrameworks>
 		<!-- Uncomment to also build the tizen app. You will need to install tizen by following this: https://github.com/Samsung/Tizen.NET -->
 		<!-- <TargetFrameworks>$(TargetFrameworks);net8.0-tizen</TargetFrameworks> -->
@@ -72,10 +72,19 @@
 		<PackageReference Include="Plugin.Firebase.CloudMessaging" Version="3.1.1" />
 	</ItemGroup>
 
-	<!-- Solo para Android por ahora: falta GoogleService-Info.plist (descargarlo desde Firebase
-	     Console al registrar la app iOS) para habilitar tambien ese target. -->
 	<ItemGroup Condition="'$(TargetFramework)'=='net8.0-android'">
 		<GoogleServicesJson Include="google-services.json" />
 	</ItemGroup>
+
+	<!-- GoogleService-Info.plist se descarga desde Firebase Console al registrar la app iOS
+	     (bundle id com.app.metepec) y va junto a este csproj. Sin el, Firebase no inicializa. -->
+	<ItemGroup Condition="'$(TargetFramework)'=='net8.0-ios'">
+		<BundleResource Include="GoogleService-Info.plist" Condition="Exists('GoogleService-Info.plist')" />
+	</ItemGroup>
+
+	<!-- aps-environment (push). Debe coincidir con el provisioning profile usado al firmar. -->
+	<PropertyGroup Condition="'$(TargetFramework)'=='net8.0-ios'">
+		<CodesignEntitlements>Platforms\iOS\Entitlements.plist</CodesignEntitlements>
+	</PropertyGroup>
 
 </Project>
