@@ -1,4 +1,4 @@
-#if ANDROID
+#if ANDROID || IOS
 using Plugin.Firebase.CloudMessaging;
 #endif
 
@@ -9,9 +9,16 @@ namespace appmetepec.Services;
 // el manejo de Firebase. Deliberadamente no lleva ningun "ya se registro" -- el back-end hace upsert
 // por token, asi que repetir la llamada es inofensivo y evita que un fallo silencioso anterior
 // (permiso no otorgado, Firebase aun inicializando, etc.) deje al dispositivo sin registrar para
-// siempre. Solo tiene efecto en Android por ahora: no hay target iOS habilitado en el proyecto.
+// siempre.
 public class PushRegistrationService
 {
+    // Valor que el back-end guarda en UsuarioDispositivoPush.Plataforma.
+#if IOS
+    public const string Plataforma = "IOS";
+#else
+    public const string Plataforma = "ANDROID";
+#endif
+
     private readonly MetepecApiService _api;
 
     public PushRegistrationService(MetepecApiService api)
@@ -25,6 +32,7 @@ public class PushRegistrationService
 
         try
         {
+#if ANDROID || IOS
 #if ANDROID
             // Android 13+ (API 33) exige que el usuario otorgue el permiso de notificaciones en
             // tiempo de ejecucion -- declararlo en AndroidManifest.xml no basta. Sin este request
@@ -32,16 +40,17 @@ public class PushRegistrationService
             // registra, aunque Firebase este bien configurado.
             var permiso = await Permissions.RequestAsync<Permissions.PostNotifications>();
             if (permiso != PermissionStatus.Granted) return;
+#endif
 
             // Lanza si el dispositivo no puede recibir cloud messages o el usuario no otorgo el
-            // permiso de notificaciones; el catch de abajo absorbe ese caso igual que cualquier
-            // otro fallo del registro.
+            // permiso de notificaciones (en iOS es este mismo metodo el que muestra el dialogo de
+            // permiso); el catch de abajo absorbe ese caso igual que cualquier otro fallo.
             await CrossFirebaseCloudMessaging.Current.CheckIfValidAsync();
 
             var token = await CrossFirebaseCloudMessaging.Current.GetTokenAsync();
             if (string.IsNullOrWhiteSpace(token)) return;
 
-            await _api.RegistrarDispositivoPushAsync(idCiudadano, token, "ANDROID", DeviceInfo.Current.Model, AppInfo.Current.VersionString);
+            await _api.RegistrarDispositivoPushAsync(idCiudadano, token, Plataforma, DeviceInfo.Current.Model, AppInfo.Current.VersionString);
 #endif
         }
         catch (Exception ex)

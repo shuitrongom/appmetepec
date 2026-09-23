@@ -2,7 +2,7 @@ using System.Text.RegularExpressions;
 using appmetepec.Models;
 using appmetepec.Services;
 using CommunityToolkit.Maui.Behaviors;
-#if ANDROID
+#if ANDROID || IOS
 using Plugin.Firebase.CloudMessaging;
 using Plugin.Firebase.CloudMessaging.EventArgs;
 #endif
@@ -38,7 +38,7 @@ public partial class HomePage : ContentPage
             LongPressCommand = new Command(OnLogoLongPressed)
         });
 
-#if ANDROID
+#if ANDROID || IOS
         // Firebase puede rotar el token del dispositivo en cualquier momento (no solo al
         // instalar la app); esta suscripcion vive mientras la app este viva, no solo en Home.
         CrossFirebaseCloudMessaging.Current.TokenChanged += OnFirebaseTokenChanged;
@@ -67,7 +67,7 @@ public partial class HomePage : ContentPage
         await _pushRegistration.RegistrarSiAplicaAsync(_preferences.CiudadanoId);
     }
 
-#if ANDROID
+#if ANDROID || IOS
     private async void OnFirebaseTokenChanged(object? sender, FCMTokenChangedEventArgs e)
     {
         var idCiudadano = _preferences.CiudadanoId;
@@ -75,7 +75,7 @@ public partial class HomePage : ContentPage
 
         try
         {
-            await _api.RegistrarDispositivoPushAsync(idCiudadano, e.Token, "ANDROID", DeviceInfo.Current.Model, AppInfo.Current.VersionString);
+            await _api.RegistrarDispositivoPushAsync(idCiudadano, e.Token, PushRegistrationService.Plataforma, DeviceInfo.Current.Model, AppInfo.Current.VersionString);
         }
         catch (Exception ex)
         {
