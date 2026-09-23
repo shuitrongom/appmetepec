@@ -36,9 +36,12 @@ public partial class TicketDetailPage : ContentPage
         EstatusChip.BackgroundColor = TryParseColor(_ticket.Colorestatus) ?? Color.FromArgb("#8A9BA8");
         ServicioLabel.Text = _ticket.Descservicio ?? "";
         DependenciaLabel.Text = _ticket.Dependencia ?? "";
-        FolioLabel.Text = string.IsNullOrWhiteSpace(_ticket.Folio)
-            ? _ticket.Fechaalta.ToString("dd/MM/yyyy HH:mm")
-            : $"{_ticket.Folio}  •  {_ticket.Fechaalta:dd/MM/yyyy HH:mm}";
+        // _ticket.Folio es un campo de texto libre que casi nunca se captura (queda vacio); el
+        // numero de ticket que el ciudadano de verdad necesita para dar seguimiento es _ticket.Id.
+        var folioTexto = string.IsNullOrWhiteSpace(_ticket.Folio)
+            ? $"Folio {_ticket.Id}"
+            : $"Folio {_ticket.Id} ({_ticket.Folio})";
+        FolioLabel.Text = $"{folioTexto}  •  {_ticket.Fechaalta:dd/MM/yyyy HH:mm}";
 
         await LoadObservacionesAsync(_ticket.Id);
         IniciarTemporizadorEncuestaPendiente();
@@ -137,7 +140,7 @@ public partial class TicketDetailPage : ContentPage
         catch (Exception ex)
         {
             ObservacionesView.ItemsSource = Array.Empty<BackendTicketObservacionDto>();
-            await DisplayAlert("No se pudieron cargar las respuestas", ex.Message, "Aceptar");
+            await DisplayAlert("No se pudieron cargar las respuestas", ErrorMessageHelper.Traducir(ex), "Aceptar");
         }
         finally
         {

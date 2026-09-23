@@ -3,6 +3,10 @@ using appmetepec.ViewModels;
 using appmetepec.Views;
 using CommunityToolkit.Maui;
 using Microsoft.Extensions.Logging;
+using Microsoft.Maui.LifecycleEvents;
+#if ANDROID
+using Plugin.Firebase.Core.Platforms.Android;
+#endif
 
 namespace appmetepec
 {
@@ -18,6 +22,17 @@ namespace appmetepec
                 {
                     fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
                     fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
+                })
+                .ConfigureLifecycleEvents(events =>
+                {
+#if ANDROID
+                    // Debe inicializarse antes de usar CrossFirebaseCloudMessaging (ver
+                    // HomePage.RegistrarPushSiAplicaAsync). Verificar este namespace/metodo
+                    // contra la version de Plugin.Firebase que quede instalada al restaurar --
+                    // cambio de forma entre versiones mayores del paquete.
+                    events.AddAndroid(android => android.OnCreate((activity, _) =>
+                        CrossFirebase.Initialize(activity)));
+#endif
                 });
 
 #if DEBUG
@@ -41,6 +56,7 @@ namespace appmetepec
             builder.Services.AddSingleton(sp => new HttpClient(new AuthExpiredHandler(sp.GetRequiredService<PreferencesService>())));
             builder.Services.AddSingleton<ReportCatalogService>();
             builder.Services.AddSingleton<MetepecApiService>();
+            builder.Services.AddSingleton<PushRegistrationService>();
             builder.Services.AddSingleton<NavigationState>();
             builder.Services.AddSingleton<PendingTicketsService>();
 
@@ -48,6 +64,7 @@ namespace appmetepec
             builder.Services.AddTransient<SplashPage>();
             builder.Services.AddTransient<LoginPage>();
             builder.Services.AddTransient<RegisterPage>();
+            builder.Services.AddTransient<RecoverAccountPage>();
             builder.Services.AddTransient<HomePage>();
             builder.Services.AddTransient<ReportPage>();
             builder.Services.AddTransient<ReportSuccessPage>();

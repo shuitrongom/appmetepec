@@ -2,6 +2,10 @@ using System.Text.RegularExpressions;
 using appmetepec.Models;
 using appmetepec.Services;
 using CommunityToolkit.Maui.Behaviors;
+#if ANDROID
+using Plugin.Firebase.CloudMessaging;
+using Plugin.Firebase.CloudMessaging.EventArgs;
+#endif
 
 namespace appmetepec.Views;
 
@@ -11,16 +15,20 @@ public partial class HomePage : ContentPage
     private readonly MetepecApiService _api;
     private readonly NavigationState _navigationState;
     private readonly PreferencesService _preferences;
+    private readonly PushRegistrationService _pushRegistration;
     private bool _bannerTimerStarted;
     private bool _isDrawerOpen;
+    private bool _newsLoaded;
 
-    public HomePage(ReportCatalogService catalog, MetepecApiService api, NavigationState navigationState, PreferencesService preferences)
+    public HomePage(ReportCatalogService catalog, MetepecApiService api, NavigationState navigationState, PreferencesService preferences, PushRegistrationService pushRegistration)
     {
         InitializeComponent();
         _catalog = catalog;
         _api = api;
         _navigationState = navigationState;
         _preferences = preferences;
+        _pushRegistration = pushRegistration;
+        DrawerVersionLabel.Text = $"v{AppInfo.Current.VersionString}";
         DarkThemeSwitch.IsToggled = _preferences.DarkThemeEnabled;
         SetActiveTab(reportsActive: true);
         BannerCarousel.ItemsSource = BuildBanners();
@@ -29,6 +37,12 @@ public partial class HomePage : ContentPage
             LongPressDuration = 3000,
             LongPressCommand = new Command(OnLogoLongPressed)
         });
+
+#if ANDROID
+        // Firebase puede rotar el token del dispositivo en cualquier momento (no solo al
+        // instalar la app); esta suscripcion vive mientras la app este viva, no solo en Home.
+        CrossFirebaseCloudMessaging.Current.TokenChanged += OnFirebaseTokenChanged;
+#endif
     }
 
     protected override async void OnAppearing()
@@ -39,14 +53,36 @@ public partial class HomePage : ContentPage
             RenderCategories(_catalog.GetCategories());
         }
 
-        if (NewsView.ItemsSource is null)
+        if (!_newsLoaded)
         {
             await LoadNewsAsync();
         }
 
         StartBannerTimer();
         await VerificarEncuestaExperienciaAsync();
+        // El login ya intenta este mismo registro (ver LoginPage.OnLoginClicked); esta llamada es
+        // el respaldo para cuando la app arranca ya logueada (sin pasar por LoginPage) o el intento
+        // del login fallo en silencio. PushRegistrationService hace upsert por token en el back-end,
+        // asi que repetirla en cada OnAppearing es inofensivo.
+        await _pushRegistration.RegistrarSiAplicaAsync(_preferences.CiudadanoId);
     }
+
+#if ANDROID
+    private async void OnFirebaseTokenChanged(object? sender, FCMTokenChangedEventArgs e)
+    {
+        var idCiudadano = _preferences.CiudadanoId;
+        if (idCiudadano <= 0) return;
+
+        try
+        {
+            await _api.RegistrarDispositivoPushAsync(idCiudadano, e.Token, "ANDROID", DeviceInfo.Current.Model, AppInfo.Current.VersionString);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Push] No se pudo actualizar el token rotado: {ex}");
+        }
+    }
+#endif
 
     private async Task VerificarEncuestaExperienciaAsync()
     {
@@ -219,30 +255,72 @@ public partial class HomePage : ContentPage
 
     private static IReadOnlyList<BannerItem> BuildBanners() =>
     [
-        new(Color.FromArgb("#B8D927"), "btn_predial.png", "PREDIAL", "PAGO EN LINEA",
+        /*new(Color.FromArgb("#B8D927"), "btn_predial.png", "PREDIAL", "PAGO EN LINEA",
             Color.FromArgb("#7BCDEB"), "ic_opdapas.png", "OPDAPAS", "PAGO EN LINEA"),
         new(Color.FromArgb("#9B12B3"), "ic_denuncia_ciudadana.png", "DENUNCIAS", "CIUDADANAS",
             Color.FromArgb("#24AEE4"), "btn_visita_camion_basura.png", "MUEVETEX", "Transformamos la movilidad"),
         new(Color.FromArgb("#7BCDEB"), "ic_opdapas.png", "OPDAPAS", "PAGO EN LINEA",
-            Color.FromArgb("#9B12B3"), "ic_denuncia_ciudadana.png", "DENUNCIAS", "CIUDADANAS")
+            Color.FromArgb("#9B12B3"), "ic_denuncia_ciudadana.png", "DENUNCIAS", "CIUDADANAS")*/
+        new(Color.FromArgb("#B8D927"), "btn_predial.png", "PREDIAL", "PAGO EN LINEA",
+            Color.FromArgb("#7BCDEB"), "ic_opdapas.png", "OPDAPAS", "PAGO EN LINEA"),
+
+        new(Color.FromArgb("#7BCDEB"), "ic_opdapas.png", "OPDAPAS", "PAGO EN LINEA",
+            Color.FromArgb("#9B12B3"), "ic_denuncia_ciudadana.png", "DENUNCIAS", "CIUDADANAS"),
+
+        new(Color.FromArgb("#9B12B3"), "ic_denuncia_ciudadana.png", "DENUNCIAS", "CIUDADANAS",
+            Color.FromArgb("#B8D927"), "btn_predial.png", "PREDIAL", "PAGO EN LINEA")
+        
     ];
 
     private NewsLetter? _featuredNews;
+
+    // El primer intento de red justo despues del arranque en frio de la app a veces falla
+    // (el stack de red/DNS del dispositivo todavia esta calentando), aunque la conexion si
+    // funcione bien un par de segundos despues -- por eso "deslizar para refrescar" siempre lo
+    // recupera. Reintentar aqui mismo evita que el ciudadano tenga que descubrir ese gesto.
+    private const int MaxIntentosCargaNoticias = 3;
 
     private async Task LoadNewsAsync()
     {
         try
         {
             BusyIndicator.IsRunning = BusyIndicator.IsVisible = true;
-            var news = await _api.GetPublicacionesAsync();
+
+            List<NewsLetter>? news = null;
+            Exception? ultimoError = null;
+            for (var intento = 1; intento <= MaxIntentosCargaNoticias && news is null; intento++)
+            {
+                try
+                {
+                    news = await _api.GetPublicacionesAsync();
+                }
+                catch (Exception ex)
+                {
+                    ultimoError = ex;
+                    if (intento < MaxIntentosCargaNoticias)
+                    {
+                        await Task.Delay(TimeSpan.FromSeconds(intento));
+                    }
+                }
+            }
+
+            if (news is null)
+            {
+                throw ultimoError!;
+            }
+
             System.Diagnostics.Debug.WriteLine($"[Noticias] {news.Count} publicaciones cargadas.");
             ShowNews(news);
+            _newsLoaded = true;
         }
         catch (Exception ex)
         {
             var status = (ex as HttpRequestException)?.StatusCode;
             System.Diagnostics.Debug.WriteLine($"[Noticias] Error al cargar publicaciones: {ex.GetType().Name} {status} - {ex.Message}");
             ShowNews([]);
+            // _newsLoaded se queda en false a proposito: si el ciudadano vuelve a esta pantalla
+            // mas tarde (navega a otra pantalla y regresa), OnAppearing reintenta solo, sin
+            // depender de que descubra el gesto de "deslizar para refrescar".
         }
         finally
         {
@@ -380,6 +458,20 @@ public partial class HomePage : ContentPage
         await Shell.Current.GoToAsync(nameof(AlertaNaranjaPage));
     }
 
+    // Mismo numero que OpenReportAsync usa para el reporte "Llamada" (*7311), pero accesible
+    // directo desde el encabezado sin tener que entrar a un reporte primero.
+    private async void OnLlamarTapped(object sender, TappedEventArgs e)
+    {
+        try
+        {
+            await Launcher.Default.OpenAsync("tel:*7311");
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlert("No se pudo iniciar la llamada", ErrorMessageHelper.Traducir(ex), "Aceptar");
+        }
+    }
+
     private async void OnMenuTapped(object sender, TappedEventArgs e)
     {
         try
@@ -396,7 +488,7 @@ public partial class HomePage : ContentPage
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[Menu] Error al abrir/cerrar el drawer: {ex}");
-            await DisplayAlert("Menu", ex.Message, "Aceptar");
+            await DisplayAlert("Menu", ErrorMessageHelper.Traducir(ex), "Aceptar");
         }
     }
 

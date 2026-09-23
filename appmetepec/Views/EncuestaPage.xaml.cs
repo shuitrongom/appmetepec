@@ -80,7 +80,7 @@ public partial class EncuestaPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlert("No se pudo cargar la encuesta", ex.Message, "Aceptar");
+            await DisplayAlert("No se pudo cargar la encuesta", ErrorMessageHelper.Traducir(ex), "Aceptar");
         }
         finally
         {
@@ -285,7 +285,7 @@ public partial class EncuestaPage : ContentPage
                 }
                 catch (Exception ex)
                 {
-                    await DisplayAlert("Encuesta enviada", $"Tu encuesta se registro, pero no se pudo confirmar el cierre del reporte: {ex.Message}", "Aceptar");
+                    await DisplayAlert("Encuesta enviada", $"Tu encuesta se registro, pero no se pudo confirmar el cierre del reporte: {ErrorMessageHelper.Traducir(ex)}", "Aceptar");
                     await Shell.Current.GoToAsync("..");
                     return;
                 }
@@ -306,7 +306,7 @@ public partial class EncuestaPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlert("No se pudo enviar la encuesta", ex.Message, "Aceptar");
+            await DisplayAlert("No se pudo enviar la encuesta", ErrorMessageHelper.Traducir(ex), "Aceptar");
         }
         finally
         {

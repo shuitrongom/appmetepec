@@ -15,6 +15,12 @@
 
                 <Image x:Name="LogoImage" Grid.Column="1" Source="placeholder.png" HeightRequest="50" WidthRequest="100" Aspect="AspectFit" />
 
+                <Image Grid.Column="2" Source="phone_call_green.png" HeightRequest="32" WidthRequest="32" Aspect="AspectFit" HorizontalOptions="End" VerticalOptions="Center">
+                    <Image.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnLlamarTapped" />
+                    </Image.GestureRecognizers>
+                </Image>
+
                 <!--HorizontalStackLayout Grid.Column="2" Spacing="6" HorizontalOptions="End" VerticalOptions="Center">
                     <Label Text="ALERTA DE&#10;GENERO" FontSize="10" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#555, Dark=#C7CDD3}" HorizontalTextAlignment="End" VerticalOptions="Center" />
                     <Image Source="ic_alerta_on.png" HeightRequest="30" WidthRequest="30" />
@@ -229,6 +235,12 @@
                                 <TapGestureRecognizer Tapped="OnDrawerLogoutTapped" />
                             </Grid.GestureRecognizers>
                         </Grid>
+
+                        <Label x:Name="DrawerVersionLabel"
+                               HorizontalTextAlignment="Center"
+                               FontSize="12"
+                               TextColor="#AAAAAA"
+                               Margin="0,16,0,10" />
                     </VerticalStackLayout>
                 </VerticalStackLayout>
             </ScrollView>

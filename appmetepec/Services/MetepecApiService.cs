@@ -126,6 +126,76 @@ public sealed class MetepecApiService
         return await ReadJsonAsync<BackendRegistroResponse>(response, cancellationToken);
     }
 
+    // Flujo publico "olvide mi contrasena" (recuperacion de cuenta por correo ya registrado).
+    // El token siempre se regresa aunque el correo no exista (para no filtrar cuentas), asi que
+    // este metodo no lanza por 400: solo EnsureSuccessStatusCode contra errores reales de servidor.
+    public async Task<BackendSolicitarRecuperacionResponse?> SolicitarRecuperacionAsync(string email, CancellationToken cancellationToken = default)
+    {
+        using var response = await _httpClient.PostAsync(
+            AppConstants.MetepecBackendUrl + "/seguridad/recuperar-password/solicitar",
+            JsonContent(new { email }),
+            cancellationToken);
+        response.EnsureSuccessStatusCode();
+        return await ReadJsonAsync<BackendSolicitarRecuperacionResponse>(response, cancellationToken);
+    }
+
+    public async Task<bool> VerificarCodigoRecuperacionAsync(string email, string token, string codigo, CancellationToken cancellationToken = default)
+    {
+        using var response = await _httpClient.PostAsync(
+            AppConstants.MetepecBackendUrl + "/seguridad/recuperar-password/verificar",
+            JsonContent(new { email, token, codigo }),
+            cancellationToken);
+        return response.IsSuccessStatusCode;
+    }
+
+    // Regresa null si se restablecio correctamente, o el mensaje de error del backend en caso contrario.
+    public async Task<string?> RestablecerPasswordAsync(string email, string token, string nuevaContrasena, CancellationToken cancellationToken = default)
+    {
+        using var response = await _httpClient.PostAsync(
+            AppConstants.MetepecBackendUrl + "/seguridad/recuperar-password/restablecer",
+            JsonContent(new { email, token, nuevaContrasena }),
+            cancellationToken);
+
+        if (response.IsSuccessStatusCode) return null;
+
+        var body = await ReadJsonAsync<ErrorsResponse>(response, cancellationToken);
+        return body?.errors is { Length: > 0 } errores ? errores[0] : "No se pudo restablecer la contraseña.";
+    }
+
+    // Flujo publico "verificar mi correo antes de registrarme". Igual que SolicitarRecuperacionAsync,
+    // el token siempre se regresa aunque el correo ya este bloqueado (Bloqueado=true en la respuesta),
+    // asi que este metodo no lanza por 400.
+    public async Task<BackendSolicitarVerificacionEmailResponse?> SolicitarVerificacionEmailAsync(string email, CancellationToken cancellationToken = default)
+    {
+        using var response = await _httpClient.PostAsync(
+            AppConstants.MetepecBackendUrl + "/seguridad/verificar-correo/solicitar",
+            JsonContent(new { email }),
+            cancellationToken);
+        response.EnsureSuccessStatusCode();
+        return await ReadJsonAsync<BackendSolicitarVerificacionEmailResponse>(response, cancellationToken);
+    }
+
+    public async Task<bool> VerificarCodigoEmailAsync(string email, string token, string codigo, CancellationToken cancellationToken = default)
+    {
+        using var response = await _httpClient.PostAsync(
+            AppConstants.MetepecBackendUrl + "/seguridad/verificar-correo/verificar",
+            JsonContent(new { email, token, codigo }),
+            cancellationToken);
+        return response.IsSuccessStatusCode;
+    }
+
+    // Usado cuando el login falla: si la credencial (usuario o correo) corresponde a una cuenta
+    // activa, se le pregunta al ciudadano "eres tu?" antes de ofrecer el flujo de recuperacion.
+    public async Task<BackendIdentificarUsuarioResponse?> IdentificarUsuarioAsync(string credential, CancellationToken cancellationToken = default)
+    {
+        using var response = await _httpClient.PostAsync(
+            AppConstants.MetepecBackendUrl + "/seguridad/identificar-usuario",
+            JsonContent(new { credential }),
+            cancellationToken);
+        response.EnsureSuccessStatusCode();
+        return await ReadJsonAsync<BackendIdentificarUsuarioResponse>(response, cancellationToken);
+    }
+
     public async Task<int?> GetMyCiudadanoAsync(CancellationToken cancellationToken = default)
     {
         var result = await GetMyCiudadanoDetailsAsync(cancellationToken);
@@ -253,9 +323,18 @@ public sealed class MetepecApiService
         using var response = await _httpClient.SendAsync(message, cancellationToken);
         response.EnsureSuccessStatusCode();
         var result = await ReadJsonAsync<List<BackendPublicacionDto>>(response, cancellationToken);
+        // El back-end guarda estas fechas en hora local de Mexico (TicketingServiceHelpers.Now()),
+        // no UTC -- hay que comparar contra la misma zona sin importar donde este el dispositivo,
+        // para no desfasar la vigencia varias horas.
+        var ahora = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTime.UtcNow, "America/Mexico_City");
 
         return (result ?? [])
-            .Where(item => item.Publicada && item.Activo)
+            // El back-end no despublica sola una publicacion vencida (Publicada se queda en true
+            // para siempre, "Finalizada" es solo un estado visual del panel admin -- ver
+            // PublicacionService.CalcularEstado); appmetepec debe filtrar la vigencia el mismo.
+            .Where(item => item.Publicada && item.Activo
+                && (item.FechaInicioVigencia is null || item.FechaInicioVigencia.Value <= ahora)
+                && (item.FechaFinVigencia is null || item.FechaFinVigencia.Value > ahora))
             .OrderByDescending(item => item.FechaPublicacion)
             .Select(item => new NewsLetter
             {
@@ -267,9 +346,143 @@ public sealed class MetepecApiService
                 image = item.ImagenPrincipal,
                 destacada = item.Destacada,
                 fechaInicioEvento = item.FechaInicioEvento,
-                fechaFinEvento = item.FechaFinEvento
+                fechaFinEvento = item.FechaFinEvento,
+                permiteComentarios = item.PermiteComentarios
             })
             .ToList();
+    }
+
+    // El back-end incrementa Publicacion.Vistas solo cuando GetById lo consulta un usuario
+    // con rol Ciudadano (ver PublicacionService.GetByIdAsync). El listado (GetPublicacionesAsync)
+    // no cuenta como vista; hay que golpear este endpoint al abrir el detalle de una noticia.
+    // Best-effort: si falla, no debe afectar la experiencia de lectura de la noticia.
+    public async Task RegistrarVistaPublicacionAsync(int idPublicacion, int idCiudadano, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var message = new HttpRequestMessage(HttpMethod.Get, $"{AppConstants.MetepecBackendUrl}/publicaciones/{idPublicacion}");
+            AddBackendAuthorization(message);
+            using var response = await _httpClient.SendAsync(message, cancellationToken);
+        }
+        catch
+        {
+            // Ignorado a proposito: es solo telemetria de lectura, no debe interrumpir al usuario.
+        }
+
+        // Ademas del contador simple (Vistas), registra el ciudadano en PublicacionVista para que
+        // el panel de administracion pueda contar ciudadanos unicos, no solo aperturas totales.
+        if (idCiudadano <= 0) return;
+        try
+        {
+            using var message = new HttpRequestMessage(HttpMethod.Post, $"{AppConstants.MetepecBackendUrl}/publicacion-vistas")
+            {
+                Content = JsonContent(new { idPublicacion, idCiudadano })
+            };
+            AddBackendAuthorization(message);
+            using var response = await _httpClient.SendAsync(message, cancellationToken);
+        }
+        catch
+        {
+            // Ignorado a proposito: es solo telemetria de lectura, no debe interrumpir al usuario.
+        }
+    }
+
+    public async Task<string?> GetMiReaccionPublicacionAsync(int idPublicacion, int idCiudadano, CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Get, $"{AppConstants.MetepecBackendUrl}/publicacion-reacciones/{idPublicacion}/{idCiudadano}");
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NotFound) return null;
+        response.EnsureSuccessStatusCode();
+
+        var result = await ReadJsonAsync<BackendPublicacionReaccionDto>(response, cancellationToken);
+        return result?.Tipo;
+    }
+
+    // tipo: "Like" o "Dislike". Reaccionar de nuevo con un tipo distinto reemplaza la reaccion
+    // anterior (un ciudadano solo puede tener una reaccion activa por publicacion).
+    public async Task<string?> ReaccionarPublicacionAsync(int idPublicacion, int idCiudadano, string tipo, CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Post, $"{AppConstants.MetepecBackendUrl}/publicacion-reacciones")
+        {
+            Content = JsonContent(new { idPublicacion, idCiudadano, tipo })
+        };
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        var result = await ReadJsonAsync<BackendPublicacionReaccionDto>(response, cancellationToken);
+        return result?.Tipo;
+    }
+
+    public async Task QuitarReaccionPublicacionAsync(int idPublicacion, int idCiudadano, CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Delete, $"{AppConstants.MetepecBackendUrl}/publicacion-reacciones/{idPublicacion}/{idCiudadano}");
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        if (response.StatusCode != HttpStatusCode.NotFound)
+        {
+            response.EnsureSuccessStatusCode();
+        }
+    }
+
+    public async Task<List<BackendPublicacionComentarioDto>> GetComentariosPublicacionAsync(int idPublicacion, CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Get, $"{AppConstants.MetepecBackendUrl}/publicacion-comentarios/publicacion/{idPublicacion}");
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        return await ReadJsonAsync<List<BackendPublicacionComentarioDto>>(response, cancellationToken) ?? [];
+    }
+
+    public async Task<BackendPublicacionComentarioDto> ComentarPublicacionAsync(int idPublicacion, int idCiudadano, string comentario, long? idComentarioPadre = null, bool anonimo = false, CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Post, $"{AppConstants.MetepecBackendUrl}/publicacion-comentarios")
+        {
+            Content = JsonContent(new { idPublicacion, idCiudadano, comentario, idComentarioPadre, anonimo })
+        };
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.BadRequest)
+        {
+            var body = await ReadJsonAsync<ErrorResponse>(response, cancellationToken);
+            throw new InvalidOperationException(body?.error ?? "No se pudo publicar el comentario.");
+        }
+
+        response.EnsureSuccessStatusCode();
+        return await ReadJsonAsync<BackendPublicacionComentarioDto>(response, cancellationToken)
+            ?? throw new InvalidOperationException("No se pudo publicar el comentario.");
+    }
+
+    public async Task<bool> EliminarComentarioPublicacionAsync(long idComentario, int idCiudadano, CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Delete, $"{AppConstants.MetepecBackendUrl}/publicacion-comentarios/{idComentario}/{idCiudadano}");
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NotFound) return false;
+        response.EnsureSuccessStatusCode();
+        return true;
+    }
+
+    // Se llama en cada arranque de la app (una vez que se tiene el token de Firebase y el
+    // ciudadano esta identificado): es un upsert por token en el back-end, asi que reenviar el
+    // mismo token en cada arranque es seguro y no crea filas duplicadas.
+    public async Task RegistrarDispositivoPushAsync(int idCiudadano, string token, string plataforma, string? modelo, string? versionApp, CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Post, $"{AppConstants.MetepecBackendUrl}/usuario-dispositivos-push")
+        {
+            Content = JsonContent(new { idCiudadano, token, plataforma, modelo, versionApp })
+        };
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        response.EnsureSuccessStatusCode();
     }
 
     public async Task<List<BackendArticuloConocimientoDto>> GetArticulosConocimientoAsync(CancellationToken cancellationToken = default)
@@ -291,6 +504,44 @@ public sealed class MetepecApiService
         using var response = await _httpClient.SendAsync(message, cancellationToken);
         response.EnsureSuccessStatusCode();
         return await ReadJsonAsync<List<BackendPrioridadDto>>(response, cancellationToken) ?? [];
+    }
+
+    // Publico (sin JWT, ver VersionAppsController.GetActual): se llama desde el Splash, antes de
+    // que el ciudadano inicie sesion. null si no hay configuracion para esa plataforma o si la
+    // consulta falla -- en ambos casos SplashViewModel simplemente no muestra ningun aviso.
+    public async Task<BackendVersionAppDto?> GetVersionAppActualAsync(string plataforma, CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Get, $"{AppConstants.MetepecBackendUrl}/version-apps/actual/{plataforma}");
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        response.EnsureSuccessStatusCode();
+        return await ReadJsonAsync<BackendVersionAppDto>(response, cancellationToken);
+    }
+
+    public async Task<List<BackendServicioDto>> GetServiciosAsync(CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Get, AppConstants.MetepecBackendUrl + "/servicios");
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        return await ReadJsonAsync<List<BackendServicioDto>>(response, cancellationToken) ?? [];
+    }
+
+    public async Task<List<BackendTipoObligatoriedadEvidenciaDto>> GetTiposObligatoriedadEvidenciaAsync(CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Get, AppConstants.MetepecBackendUrl + "/tipo-obligatoriedad-evidencias");
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        return await ReadJsonAsync<List<BackendTipoObligatoriedadEvidenciaDto>>(response, cancellationToken) ?? [];
     }
 
     public async Task<BackendCanalIngresoDto?> GetCanalIngresoByClaveAsync(string clave, CancellationToken cancellationToken = default)

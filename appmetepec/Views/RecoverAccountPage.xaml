@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="appmetepec.Views.RecoverAccountPage"
+             Title="Recuperar cuenta"
+             Shell.NavBarIsVisible="False"
+             Shell.TabBarIsVisible="False"
+             BackgroundColor="White"
+             BackgroundImageSource="bg5.png">
+    <ScrollView>
+        <VerticalStackLayout Padding="30,50,30,28" Spacing="20">
+
+            <Image Source="logo.png" HeightRequest="120" Aspect="AspectFit" HorizontalOptions="Center" />
+            <Label Text="Recuperar cuenta" FontSize="22" FontAttributes="Bold" TextColor="#28113E" HorizontalTextAlignment="Center" />
+
+            <VerticalStackLayout x:Name="EmailPanel" Spacing="14">
+                <Label Text="Escribe el correo con el que te registraste. Si existe una cuenta, te enviaremos un codigo de verificacion." FontSize="14" TextColor="#555555" HorizontalTextAlignment="Center" />
+                <Border Stroke="#DDD" StrokeThickness="1" BackgroundColor="#F4FAFD" Padding="0">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="10" />
+                    </Border.StrokeShape>
+                    <Entry x:Name="EmailEntry" Placeholder="Correo Electronico" Keyboard="Email" FontSize="18" BackgroundColor="Transparent" TextColor="#555" HorizontalTextAlignment="Center" HeightRequest="52" />
+                </Border>
+
+                <Button x:Name="SolicitarButton"
+                        Text="ENVIAR CODIGO"
+                        Clicked="OnSolicitarClicked"
+                        BackgroundColor="#F89A1C"
+                        TextColor="White"
+                        FontSize="20"
+                        FontAttributes="Bold"
+                        HeightRequest="58"
+                        Margin="0,10,0,0" />
+            </VerticalStackLayout>
+
+            <VerticalStackLayout x:Name="CodePanel" Spacing="14" IsVisible="False">
+                <Label Text="Te enviamos un codigo de verificacion a tu correo." FontSize="15" TextColor="#555555" HorizontalTextAlignment="Center" />
+                <Border Stroke="#DDD" StrokeThickness="1" BackgroundColor="#F4FAFD" Padding="0">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="10" />
+                    </Border.StrokeShape>
+                    <Entry x:Name="CodeEntry" Placeholder="Codigo de verificacion" Keyboard="Numeric" MaxLength="6" FontSize="20" BackgroundColor="Transparent" TextColor="#555" HorizontalTextAlignment="Center" HeightRequest="52" />
+                </Border>
+                <Label x:Name="TimerLabel" Text="0:59" FontSize="28" FontAttributes="Bold" TextColor="#F89A1C" HorizontalTextAlignment="Center" />
+
+                <Button x:Name="VerifyButton"
+                        Text="VERIFICAR"
+                        Clicked="OnVerifyClicked"
+                        BackgroundColor="#F89A1C"
+                        TextColor="White"
+                        FontSize="20"
+                        FontAttributes="Bold"
+                        HeightRequest="58" />
+
+                <Label x:Name="ResendLabel" Text="VOLVER A ENVIAR CODIGO" FontSize="13" FontAttributes="Bold" TextColor="#555555" Opacity="0.3" HorizontalTextAlignment="Center">
+                    <Label.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnResendTapped" />
+                    </Label.GestureRecognizers>
+                </Label>
+                <Label Text="CAMBIAR CORREO" FontSize="13" FontAttributes="Bold" TextColor="#555555" HorizontalTextAlignment="Center">
+                    <Label.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnModifyEmailTapped" />
+                    </Label.GestureRecognizers>
+                </Label>
+            </VerticalStackLayout>
+
+            <VerticalStackLayout x:Name="NewPasswordPanel" Spacing="14" IsVisible="False">
+                <Label Text="Escribe tu nueva contrasena." FontSize="15" TextColor="#555555" HorizontalTextAlignment="Center" />
+                <Border Stroke="#DDD" StrokeThickness="1" BackgroundColor="#F4FAFD" Padding="0">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="10" />
+                    </Border.StrokeShape>
+                    <Grid ColumnDefinitions="*,50" HeightRequest="52">
+                        <Entry x:Name="NewPasswordEntry"
+                               Grid.Column="0"
+                               Placeholder="Nueva contrasena"
+                               IsPassword="True"
+                               FontSize="18"
+                               BackgroundColor="Transparent"
+                               TextColor="#555"
+                               HorizontalTextAlignment="Center"
+                               HeightRequest="52" />
+                        <Label x:Name="NewPasswordEyeLabel"
+                               Grid.Column="1"
+                               Text="👁"
+                               FontSize="20"
+                               VerticalOptions="Center"
+                               HorizontalOptions="Center"
+                               TextColor="#BBBBBB">
+                            <Label.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="OnToggleNewPasswordTapped" />
+                            </Label.GestureRecognizers>
+                        </Label>
+                    </Grid>
+                </Border>
+                <Border Stroke="#DDD" StrokeThickness="1" BackgroundColor="#F4FAFD" Padding="0">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="10" />
+                    </Border.StrokeShape>
+                    <Grid ColumnDefinitions="*,50" HeightRequest="52">
+                        <Entry x:Name="ConfirmPasswordEntry"
+                               Grid.Column="0"
+                               Placeholder="Confirmar contrasena"
+                               IsPassword="True"
+                               FontSize="18"
+                               BackgroundColor="Transparent"
+                               TextColor="#555"
+                               HorizontalTextAlignment="Center"
+                               HeightRequest="52" />
+                        <Label x:Name="ConfirmPasswordEyeLabel"
+                               Grid.Column="1"
+                               Text="👁"
+                               FontSize="20"
+                               VerticalOptions="Center"
+                               HorizontalOptions="Center"
+                               TextColor="#BBBBBB">
+                            <Label.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="OnToggleConfirmPasswordTapped" />
+                            </Label.GestureRecognizers>
+                        </Label>
+                    </Grid>
+                </Border>
+
+                <Button x:Name="RestablecerButton"
+                        Text="GUARDAR CONTRASENA"
+                        Clicked="OnRestablecerClicked"
+                        BackgroundColor="#F89A1C"
+                        TextColor="White"
+                        FontSize="20"
+                        FontAttributes="Bold"
+                        HeightRequest="58" />
+            </VerticalStackLayout>
+
+            <ActivityIndicator x:Name="BusyIndicator" IsRunning="False" IsVisible="False" Color="#F89A1C" HorizontalOptions="Center" />
+
+            <Label Text="Volver a inicio de sesion" FontSize="16" TextColor="#F89A1C" HorizontalTextAlignment="Center" Margin="0,10,0,0">
+                <Label.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnBackToLoginTapped" />
+                </Label.GestureRecognizers>
+            </Label>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

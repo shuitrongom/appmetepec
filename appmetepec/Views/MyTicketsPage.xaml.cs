@@ -42,7 +42,7 @@ public partial class MyTicketsPage : ContentPage
         {
             TicketsView.ItemsSource = Array.Empty<BackendTicketDto>();
             ReportsCountLabel.Text = string.Empty;
-            await DisplayAlert("No se pudieron cargar tus reportes", ex.Message, "Aceptar");
+            await DisplayAlert("No se pudieron cargar tus reportes", ErrorMessageHelper.Traducir(ex), "Aceptar");
         }
         finally
         {
@@ -97,11 +97,14 @@ public partial class MyTicketsPage : ContentPage
                     [
                         new BackendEvidenciaItemRequest
                         {
-                            NombreArchivo = uploaded.NombreOriginal,
+                            // Ver mismo comentario en ReportPage.xaml.cs: nombre amigable, no el
+                            // que le puso la camara/galeria del dispositivo.
+                            NombreArchivo = "Evidencia" + Path.GetExtension(uploaded.NombreOriginal),
                             RutaArchivo = uploaded.Ruta,
                             TipoMime = uploaded.MimeType,
                             TamanoBytes = uploaded.Peso,
-                            EsEvidenciaInicial = true
+                            EsEvidenciaInicial = true,
+                            Descripcion = pending.PhotoDescription
                         }
                     ];
                 }
@@ -161,7 +164,7 @@ public partial class MyTicketsPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlert("No se pudo enviar", ex.Message, "Aceptar");
+            await DisplayAlert("No se pudo enviar", ErrorMessageHelper.Traducir(ex), "Aceptar");
         }
         finally
         {

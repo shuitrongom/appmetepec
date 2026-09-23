@@ -13,6 +13,14 @@ public partial class ReportPage : ContentPage
     private FileResult? _attachment;
     private string _coordinates = "";
     private List<BackendArticuloConocimientoDto> _articulos = [];
+    // Servicio.Requierefoto == Id del TipoObligatoriedadEvidencia de clave "OBLIGATORIA": si no
+    // se pudo determinar (catalogo no respondio, servicio sin ese campo, etc.) se asume false,
+    // para no bloquear el envio de un reporte por un fallo de red ajeno al ciudadano.
+    private bool _evidenciaObligatoria;
+    // Servicio.ClaveTipoModoCoberturaGeografica == "GEOCERCA": igual que _evidenciaObligatoria,
+    // si no se pudo determinar se asume false (el backend vuelve a validar de todas formas, ver
+    // AppConstants.ClaveModoCoberturaGeocerca).
+    private bool _coberturaGeografica;
 
     public ReportPage(PreferencesService preferences, MetepecApiService api, NavigationState navigationState, PendingTicketsService pendingTickets)
     {
@@ -43,7 +51,59 @@ public partial class ReportPage : ContentPage
         PhoneEntry.Text = user.Phone;
         EmailEntry.Text = user.Email;
 
+        _evidenciaObligatoria = false;
+        EvidenciaLabel.Text = "Agrega una evidencia:";
+        EvidenciaDescripcionEntry.Placeholder = "Describe brevemente la foto (opcional)";
+        _coberturaGeografica = false;
+        UbicacionRequeridaLabel.IsVisible = false;
+
         _ = CargarArticulosAsync();
+        _ = CargarRequerimientosAsync();
+    }
+
+    // Consulta el servicio del reporte (y el catalogo de obligatoriedad de evidencia) para saber
+    // si este reporte en particular exige una foto y/o una ubicacion antes de enviarse (ver
+    // comentarios en BackendServicioDto.Requierefoto/ClaveTipoModoCoberturaGeografica). Best-effort:
+    // si cualquier consulta falla, no se obliga nada -- no tiene sentido bloquear el reporte por
+    // un problema de red ajeno a lo que el ciudadano esta reportando; el backend vuelve a validar
+    // la cobertura geografica de todas formas al crear el ticket.
+    private async Task CargarRequerimientosAsync()
+    {
+        if (_report is null || _report.IdServicio <= 0)
+        {
+            return;
+        }
+
+        try
+        {
+            var serviciosTask = _api.GetServiciosAsync();
+            var tiposTask = _api.GetTiposObligatoriedadEvidenciaAsync();
+            await Task.WhenAll(serviciosTask, tiposTask);
+
+            var servicio = serviciosTask.Result.FirstOrDefault(s => s.Id == _report.IdServicio);
+            var tipoObligatoria = tiposTask.Result.FirstOrDefault(t =>
+                string.Equals(t.Clave, AppConstants.ClaveObligatoriedadEvidenciaObligatoria, StringComparison.OrdinalIgnoreCase));
+
+            _evidenciaObligatoria = servicio?.Requierefoto is not null
+                && tipoObligatoria is not null
+                && servicio.Requierefoto == tipoObligatoria.Id;
+
+            if (_evidenciaObligatoria)
+            {
+                EvidenciaLabel.Text = "Agrega una evidencia (obligatoria):";
+                // "Opcional" ya no aplica: al menos esta descripcion o los Comentarios generales
+                // se vuelven obligatorios (ver OnSendClicked).
+                EvidenciaDescripcionEntry.Placeholder = "Describe brevemente la foto";
+            }
+
+            _coberturaGeografica = string.Equals(
+                servicio?.ClaveTipoModoCoberturaGeografica, AppConstants.ClaveModoCoberturaGeocerca, StringComparison.OrdinalIgnoreCase);
+            UbicacionRequeridaLabel.IsVisible = _coberturaGeografica;
+        }
+        catch
+        {
+            // Se queda en _evidenciaObligatoria/_coberturaGeografica = false (ver comentario del metodo).
+        }
     }
 
     private async Task CargarArticulosAsync()
@@ -118,7 +178,7 @@ public partial class ReportPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlert("Ubicacion", ex.Message, "Aceptar");
+            await DisplayAlert("Ubicacion", ErrorMessageHelper.Traducir(ex), "Aceptar");
         }
     }
 
@@ -130,7 +190,7 @@ public partial class ReportPage : ContentPage
                 ? new[] { "Tomar foto", "Elegir de la galeria" }
                 : new[] { "Elegir de la galeria" };
 
-            var choice = await DisplayActionSheet("Agrega un testigo", "Cancelar", null, options);
+            var choice = await DisplayActionSheet("Agrega una evidencia", "Cancelar", null, options);
 
             FileResult? result = choice switch
             {
@@ -150,7 +210,7 @@ public partial class ReportPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlert("No se pudo agregar el testigo", ex.Message, "Aceptar");
+            await DisplayAlert("No se pudo agregar la evidencia", ErrorMessageHelper.Traducir(ex), "Aceptar");
         }
     }
 
@@ -175,6 +235,29 @@ public partial class ReportPage : ContentPage
         if (string.IsNullOrWhiteSpace(phone) || string.IsNullOrWhiteSpace(address))
         {
             await DisplayAlert("Campos obligatorios", "Captura telefono y direccion.", "Aceptar");
+            return;
+        }
+
+        if (_evidenciaObligatoria && _attachment is null)
+        {
+            await DisplayAlert("Evidencia requerida", "Este tipo de reporte requiere que agregues una foto de evidencia antes de enviarlo.", "Aceptar");
+            return;
+        }
+
+        // Cuando la evidencia es obligatoria, la foto sola no basta: se exige tambien algo de
+        // texto que le de contexto (los "Comentarios" generales o, en su defecto, la descripcion
+        // especifica de la foto) -- cualquiera de los dos es valido, no se piden ambos.
+        var evidenciaDescripcion = EvidenciaDescripcionEntry.Text?.Trim() ?? "";
+        if (_evidenciaObligatoria && string.IsNullOrWhiteSpace(comments) && string.IsNullOrWhiteSpace(evidenciaDescripcion))
+        {
+            await DisplayAlert("Descripción requerida", "Este tipo de reporte requiere que describas el problema: agrega comentarios o una descripción de la foto antes de enviarlo.", "Aceptar");
+            return;
+        }
+
+        var (coordLatitud, coordLongitud) = ParseCoordinates(_coordinates);
+        if (_coberturaGeografica && (coordLatitud is null || coordLongitud is null))
+        {
+            await DisplayAlert("Ubicacion requerida", "Este tipo de reporte solo se puede levantar dentro de una zona de cobertura especifica. Captura tu ubicacion con el boton \"Elige tu direccion en el mapa\" antes de enviarlo.", "Aceptar");
             return;
         }
 
@@ -205,11 +288,16 @@ public partial class ReportPage : ContentPage
                     [
                         new BackendEvidenciaItemRequest
                         {
-                            NombreArchivo = uploaded.NombreOriginal,
+                            // Nombre amigable en vez del nombre de archivo que le puso la camara/
+                            // galeria del dispositivo (ej. "1000255651.jpg") -- eso es lo que se
+                            // muestra en el sistema web al revisar el ticket. RutaArchivo (donde
+                            // realmente se guarda/sirve el archivo) no cambia.
+                            NombreArchivo = "Evidencia" + Path.GetExtension(uploaded.NombreOriginal),
                             RutaArchivo = uploaded.Ruta,
                             TipoMime = uploaded.MimeType,
                             TamanoBytes = uploaded.Peso,
-                            EsEvidenciaInicial = true
+                            EsEvidenciaInicial = true,
+                            Descripcion = string.IsNullOrWhiteSpace(evidenciaDescripcion) ? null : evidenciaDescripcion
                         }
                     ];
                 }
@@ -283,15 +371,16 @@ public partial class ReportPage : ContentPage
         }
         catch (Exception ex)
         {
+            var mensajeError = ErrorMessageHelper.Traducir(ex);
             var guardar = await DisplayAlert(
                 "No se pudo enviar",
-                $"{ex.Message}\n\n¿Quieres guardar este reporte para volver a intentarlo despues?",
+                $"{mensajeError}\n\n¿Quieres guardar este reporte para volver a intentarlo despues?",
                 "Guardar",
                 "Cancelar");
 
             if (guardar)
             {
-                await GuardarReportePendienteAsync(name, email, phone, address, comments, ex.Message);
+                await GuardarReportePendienteAsync(name, email, phone, address, comments, mensajeError);
             }
         }
         finally
@@ -326,6 +415,7 @@ public partial class ReportPage : ContentPage
         if (_attachment is not null)
         {
             submission.LocalPhotoPath = await _pendingTickets.SavePhotoAsync(_attachment);
+            submission.PhotoDescription = string.IsNullOrWhiteSpace(EvidenciaDescripcionEntry.Text) ? null : EvidenciaDescripcionEntry.Text.Trim();
         }
 
         await _pendingTickets.SaveAsync(submission);

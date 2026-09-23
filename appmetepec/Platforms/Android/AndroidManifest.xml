@@ -8,4 +8,6 @@
 	<uses-permission android:name="android.permission.CAMERA" />
 	<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
 	<uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+	<!-- Requerido desde Android 13 (API 33) para poder mostrar las notificaciones push de Firebase. -->
+	<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 </manifest>

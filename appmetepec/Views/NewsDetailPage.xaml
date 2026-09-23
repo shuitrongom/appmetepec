@@ -4,6 +4,20 @@
              x:Class="appmetepec.Views.NewsDetailPage"
              Title="Noticia"
              Shell.NavBarIsVisible="False">
+    <ContentPage.Resources>
+        <!-- Estilo de los segmentos de texto que arma RenderContenido() en el code-behind: antes
+             el contenido completo se ponia con un solo Label TextType="Html", pero ese control NO
+             soporta imagenes (una imagen insertada en el editor web se veia como un cuadrito vacio
+             en la app). Ahora el contenido se parte en segmentos de texto e Image alternados,
+             respetando el orden original, y cada Label de texto usa este mismo estilo. -->
+        <Style x:Key="ContentSegmentLabelStyle" TargetType="Label">
+            <Setter Property="TextType" Value="Html" />
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="TextColor" Value="{AppThemeBinding Light=#28113E, Dark=#E0E0E0}" />
+            <Setter Property="LineBreakMode" Value="WordWrap" />
+            <Setter Property="LineHeight" Value="1.3" />
+        </Style>
+    </ContentPage.Resources>
     <Grid RowDefinitions="Auto,*">
         <Grid BackgroundColor="{AppThemeBinding Light=White, Dark=#1f1f1f}" Padding="25,12" ColumnDefinitions="40,*,40">
             <Label Text="‹" FontSize="30" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" VerticalTextAlignment="Center" HorizontalTextAlignment="Center">
@@ -15,7 +29,8 @@
             <!--Image Grid.Column="2" Source="ic_alerta_on.png" HeightRequest="30" WidthRequest="30" /-->
         </Grid>
 
-        <ScrollView Grid.Row="1">
+        <RefreshView Grid.Row="1" Refreshing="OnRefreshing">
+        <ScrollView>
             <VerticalStackLayout Padding="20" Spacing="10">
                 <Image x:Name="NewsImage" HeightRequest="220" Aspect="AspectFill" IsVisible="False" />
 
@@ -31,10 +46,111 @@
                     <Label Grid.Column="1" x:Name="SubtitleLabel" FontSize="14" FontAttributes="Italic" TextColor="{AppThemeBinding Light=#4B5563, Dark=#C7CDD3}" VerticalOptions="Center" />
                 </Grid>
 
-                <Label x:Name="ContentLabel" TextType="Html" FontSize="16" TextColor="{AppThemeBinding Light=#28113E, Dark=#E0E0E0}" LineBreakMode="WordWrap" Margin="0,6,0,0" LineHeight="1.3" />
+                <VerticalStackLayout x:Name="ContentHost" Spacing="10" Margin="0,6,0,0" />
 
                 <Button x:Name="OpenUrlButton" Text="Abrir enlace" Clicked="OnOpenUrlClicked" BackgroundColor="#111827" TextColor="White" IsVisible="False" Margin="0,16,0,0" />
+
+                <HorizontalStackLayout x:Name="ReactionRow" Spacing="10" IsVisible="False" Margin="0,20,0,0">
+                    <Button x:Name="LikeButton" Text="&#128077; Me gusta" Clicked="OnLikeTapped" FontSize="13" CornerRadius="18" HeightRequest="42" Padding="16,0" BackgroundColor="#F1EEFB" TextColor="#28113E" />
+                    <Button x:Name="DislikeButton" Text="&#128078; No me gusta" Clicked="OnDislikeTapped" FontSize="13" CornerRadius="18" HeightRequest="42" Padding="16,0" BackgroundColor="#F1EEFB" TextColor="#28113E" />
+                </HorizontalStackLayout>
+
+                <BoxView HeightRequest="1" Color="{AppThemeBinding Light=#EEE, Dark=#3A3A3A}" Margin="0,20,0,0" />
+
+                <Label Text="COMENTARIOS" FontSize="14" FontAttributes="Bold" CharacterSpacing="0.5" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" Margin="0,10,0,0" />
+
+                <Grid x:Name="ReplyBanner" ColumnDefinitions="*,Auto" IsVisible="False" Margin="0,0,0,4">
+                    <Label x:Name="ReplyBannerLabel" FontSize="12" FontAttributes="Italic" TextColor="{AppThemeBinding Light=#6B7280, Dark=#9AA5B1}" VerticalOptions="Center" />
+                    <Label Grid.Column="1" Text="Cancelar &#10005;" FontSize="12" TextColor="#7C4DFF" VerticalOptions="Center">
+                        <Label.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnCancelarRespuestaTapped" />
+                        </Label.GestureRecognizers>
+                    </Label>
+                </Grid>
+
+                <VerticalStackLayout x:Name="CommentInputRow" Spacing="4" IsVisible="False">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                        <Editor x:Name="CommentEditor" Placeholder="Escribe un comentario..." AutoSize="TextChanges" MaxLength="500" HeightRequest="42" />
+                        <Button Grid.Column="1" Text="Enviar" Clicked="OnEnviarComentarioClicked" VerticalOptions="Start" BackgroundColor="#28113E" TextColor="White" CornerRadius="18" HeightRequest="42" Padding="16,0" />
+                    </Grid>
+                    <HorizontalStackLayout Spacing="4">
+                        <CheckBox x:Name="AnonimoCheckBox" />
+                        <Label Text="Comentar como anónimo" FontSize="12" VerticalOptions="Center"
+                               TextColor="{AppThemeBinding Light=#6B7280, Dark=#9AA5B1}" />
+                    </HorizontalStackLayout>
+                </VerticalStackLayout>
+
+                <ActivityIndicator x:Name="ComentariosBusyIndicator" Color="{AppThemeBinding Light=#28113E, Dark=White}" />
+
+                <CollectionView x:Name="ComentariosView">
+                    <CollectionView.EmptyView>
+                        <Label Text="Sé el primero en comentar." FontSize="13" TextColor="{AppThemeBinding Light=#8A9BA8, Dark=#B0B8C1}" />
+                    </CollectionView.EmptyView>
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <Border Padding="12" StrokeThickness="1">
+                                <Border.StrokeShape>
+                                    <RoundRectangle CornerRadius="8" />
+                                </Border.StrokeShape>
+                                <!-- Cualquier respuesta dentro de un hilo (de un ciudadano o del admin) se
+                                     indenta y se tinta distinto, estilo Facebook, para distinguirla de un
+                                     comentario nuevo (raiz). El badge/color "ADMIN" es aparte (EsRespuestaAdmin). -->
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Stroke" Value="{AppThemeBinding Light=#EEE, Dark=#3A3A3A}" />
+                                        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=White, Dark=#2A2A2A}" />
+                                        <Setter Property="Margin" Value="0,0,0,8" />
+                                        <Style.Triggers>
+                                            <DataTrigger TargetType="Border" Binding="{Binding EsRespuesta}" Value="True">
+                                                <Setter Property="Stroke" Value="{AppThemeBinding Light=#D9CFF0, Dark=#4A3D6B}" />
+                                                <Setter Property="BackgroundColor" Value="{AppThemeBinding Light=#F1EEFB, Dark=#2A2440}" />
+                                                <Setter Property="Margin" Value="28,0,0,8" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <VerticalStackLayout Spacing="4">
+                                    <Grid ColumnDefinitions="*,Auto,Auto,Auto">
+                                        <HorizontalStackLayout Spacing="6">
+                                            <Label Text="{Binding NombreCiudadano}" FontAttributes="Bold" FontSize="13" LineBreakMode="TailTruncation">
+                                                <Label.Style>
+                                                    <Style TargetType="Label">
+                                                        <Setter Property="TextColor" Value="{AppThemeBinding Light=#28113E, Dark=White}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger TargetType="Label" Binding="{Binding EsRespuestaAdmin}" Value="True">
+                                                                <Setter Property="TextColor" Value="#7C4DFF" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Label.Style>
+                                            </Label>
+                                            <Border BackgroundColor="#7C4DFF" Padding="7,2" VerticalOptions="Center" IsVisible="{Binding EsRespuestaAdmin}">
+                                                <Border.StrokeShape>
+                                                    <RoundRectangle CornerRadius="8" />
+                                                </Border.StrokeShape>
+                                                <Label Text="ADMIN" TextColor="White" FontSize="9" FontAttributes="Bold" CharacterSpacing="0.5" />
+                                            </Border>
+                                        </HorizontalStackLayout>
+                                        <Label Grid.Column="1" Text="{Binding FechaComentario, StringFormat='{0:dd/MM/yyyy HH:mm}'}" FontSize="11" TextColor="{AppThemeBinding Light=#8A9BA8, Dark=#B0B8C1}" VerticalOptions="Center" Margin="8,0,0,0" />
+                                        <Label Grid.Column="2" Text="&#8617;" FontSize="15" TextColor="#7C4DFF" Margin="8,0,0,0">
+                                            <Label.GestureRecognizers>
+                                                <TapGestureRecognizer Tapped="OnResponderComentarioTapped" />
+                                            </Label.GestureRecognizers>
+                                        </Label>
+                                        <Label Grid.Column="3" Text="&#128465;" FontSize="14" IsVisible="{Binding EsPropio}" Margin="8,0,0,0">
+                                            <Label.GestureRecognizers>
+                                                <TapGestureRecognizer Tapped="OnEliminarComentarioTapped" />
+                                            </Label.GestureRecognizers>
+                                        </Label>
+                                    </Grid>
+                                    <Label Text="{Binding Comentario}" FontSize="13" TextColor="{AppThemeBinding Light=#333, Dark=#E0E0E0}" LineBreakMode="WordWrap" />
+                                </VerticalStackLayout>
+                            </Border>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
             </VerticalStackLayout>
         </ScrollView>
+        </RefreshView>
     </Grid>
 </ContentPage>

@@ -58,6 +58,7 @@
                     <Button Text="Elige tu direccion en el mapa" Clicked="OnUseLocationClicked" ImageSource="ic_marker.png" BackgroundColor="#A6CE39" TextColor="White" FontSize="10" WidthRequest="160" HeightRequest="36" HorizontalOptions="Start" VerticalOptions="End" />
                 </Grid>
                 <Label x:Name="CoordinatesLabel" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" FontSize="12" />
+                <Label x:Name="UbicacionRequeridaLabel" Text="Este reporte solo se puede levantar dentro de una zona de cobertura especifica: captura tu ubicacion antes de enviarlo." TextColor="#C0392B" FontSize="11" IsVisible="False" />
 
                 <Border Stroke="{AppThemeBinding Light=#DDD, Dark=#3A3A3A}" StrokeThickness="1" BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" Padding="0">
                     <Border.StrokeShape>
@@ -82,7 +83,7 @@
                     </CollectionView.ItemTemplate>
                 </CollectionView>
 
-                <Label Text="Agrega un testigo:" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" FontSize="12" />
+                <Label x:Name="EvidenciaLabel" Text="Agrega una evidencia:" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" FontSize="12" />
                 <HorizontalStackLayout Spacing="14">
                     <Image Source="btn_camara.png" HeightRequest="50" WidthRequest="50">
                         <Image.GestureRecognizers>
@@ -92,6 +93,12 @@
                     <Image x:Name="PreviewImage" Source="placeholder_imagepreview.png" HeightRequest="70" WidthRequest="70" Aspect="AspectFill" />
                 </HorizontalStackLayout>
                 <Label x:Name="AttachmentLabel" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" FontSize="12" />
+                <Border Stroke="{AppThemeBinding Light=#DDD, Dark=#3A3A3A}" StrokeThickness="1" BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" Padding="10,0" Margin="0,4,0,0">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="8" />
+                    </Border.StrokeShape>
+                    <Entry x:Name="EvidenciaDescripcionEntry" Placeholder="Describe brevemente la foto (opcional)" FontSize="13" BackgroundColor="Transparent" TextColor="{AppThemeBinding Light=#333, Dark=White}" />
+                </Border>
 
                 <Button x:Name="SendButton" Text="ENVIAR" Clicked="OnSendClicked" BackgroundColor="#F89A1C" TextColor="White" FontSize="20" FontAttributes="Bold" WidthRequest="220" HeightRequest="52" HorizontalOptions="Center" />
                 <ActivityIndicator x:Name="BusyIndicator" />

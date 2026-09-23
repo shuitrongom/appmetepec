@@ -21,6 +21,14 @@ public static class AppConstants
     public const string ClaveEncuestaSolucionTicket = "ENCUESTA_SOLUCION_TICKET";
     public const string ClaveEncuestaExperienciaApp = "ENCUESTA_EXPERIENCIA_APP";
     public const string ClaveCanalIngresoApp = "APP";
+    // Servicio.Requierefoto (catalogo TipoObligatoriedadEvidencia): si el servicio del reporte
+    // tiene esta clave, la app obliga a adjuntar foto antes de enviar (ver ReportPage).
+    public const string ClaveObligatoriedadEvidenciaObligatoria = "OBLIGATORIA";
+    // Servicio.ClaveTipoModoCoberturaGeografica (catalogo TipoModoCoberturaGeografica): si el
+    // servicio del reporte tiene esta clave, la app obliga a capturar ubicacion antes de enviar
+    // (ver ReportPage) -- el backend vuelve a validarlo de todas formas (TicketService.CreateAsync/
+    // GeocercaService.ValidarCoberturaAsync), esto solo evita un envio que sabemos va a rechazarse.
+    public const string ClaveModoCoberturaGeocerca = "GEOCERCA";
     public const int DiasMinimosEncuestaExperienciaApp = 8;
     public const int DiasCooldownEncuestaExperienciaApp = 8;
 

@@ -62,7 +62,10 @@
                                         </CollectionView.ItemsLayout>
                                         <CollectionView.ItemTemplate>
                                             <DataTemplate>
-                                                <Image Source="{Binding RutaArchivo}" HeightRequest="80" WidthRequest="80" Aspect="AspectFill" />
+                                                <VerticalStackLayout Spacing="2" WidthRequest="80">
+                                                    <Image Source="{Binding RutaArchivo}" HeightRequest="80" WidthRequest="80" Aspect="AspectFill" />
+                                                    <Label Text="{Binding Descripcion}" IsVisible="{Binding HasDescripcion}" FontSize="10" LineBreakMode="TailTruncation" MaxLines="2" TextColor="{AppThemeBinding Light=#666, Dark=#B0B8C1}" />
+                                                </VerticalStackLayout>
                                             </DataTemplate>
                                         </CollectionView.ItemTemplate>
                                     </CollectionView>

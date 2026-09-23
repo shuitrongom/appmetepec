@@ -80,6 +80,7 @@ public sealed class PendingTicketSubmission
     public string Coordinates { get; set; } = "";
     public string Comments { get; set; } = "";
     public string? LocalPhotoPath { get; set; }
+    public string? PhotoDescription { get; set; }
     public bool IsBache { get; set; }
     public string? LastError { get; set; }
 }
@@ -102,6 +103,7 @@ public sealed class NewsLetter
     public bool destacada { get; set; }
     public DateTime? fechaInicioEvento { get; set; }
     public DateTime? fechaFinEvento { get; set; }
+    public bool permiteComentarios { get; set; } = true;
 }
 
 public sealed class TokenRecoleccionResponse
@@ -243,6 +245,11 @@ public sealed class BackendRegisterRequest
     [JsonPropertyName("email")]
     public string Email { get; set; } = "";
 
+    // Token de SolicitarVerificacionEmailAsync, confirmado por VerificarCodigoEmailAsync antes de
+    // registrar. El back-end lo vuelve a validar en CiudadanoService.RegistrarAsync.
+    [JsonPropertyName("token")]
+    public string Token { get; set; } = "";
+
     [JsonPropertyName("nombre")]
     public string Nombre { get; set; } = "";
 
@@ -270,6 +277,47 @@ public sealed class BackendRegistroUsuarioDto
 public sealed class ErrorResponse
 {
     public string? error { get; set; }
+}
+
+public sealed class ErrorsResponse
+{
+    public string[]? errors { get; set; }
+}
+
+public sealed class BackendSolicitarRecuperacionResponse
+{
+    [JsonPropertyName("token")]
+    public string Token { get; set; } = "";
+
+    [JsonPropertyName("mensaje")]
+    public string Mensaje { get; set; } = "";
+
+    [JsonPropertyName("bloqueado")]
+    public bool Bloqueado { get; set; }
+}
+
+public sealed class BackendIdentificarUsuarioResponse
+{
+    [JsonPropertyName("existe")]
+    public bool Existe { get; set; }
+
+    [JsonPropertyName("nombreCorto")]
+    public string? NombreCorto { get; set; }
+
+    [JsonPropertyName("email")]
+    public string? Email { get; set; }
+}
+
+public sealed class BackendSolicitarVerificacionEmailResponse
+{
+    [JsonPropertyName("token")]
+    public string Token { get; set; } = "";
+
+    [JsonPropertyName("mensaje")]
+    public string Mensaje { get; set; } = "";
+
+    [JsonPropertyName("bloqueado")]
+    public bool Bloqueado { get; set; }
 }
 
 public sealed class BackendCreateTicketRequest
@@ -331,6 +379,47 @@ public sealed class BackendPrioridadDto
     public bool EsDefault { get; set; }
 }
 
+public sealed class BackendVersionAppDto
+{
+    [JsonPropertyName("plataforma")]
+    public string Plataforma { get; set; } = "";
+
+    [JsonPropertyName("versionReciente")]
+    public string VersionReciente { get; set; } = "";
+
+    [JsonPropertyName("mensaje")]
+    public string? Mensaje { get; set; }
+}
+
+public sealed class BackendServicioDto
+{
+    [JsonPropertyName("id")]
+    public int Id { get; set; }
+
+    // Null = sin definir (no obliga evidencia). Si coincide con el Id del
+    // TipoObligatoriedadEvidencia de clave "OBLIGATORIA", ReportPage exige la foto antes de
+    // enviar; cualquier otro valor (u obligatoriedad "Opcional"/"No requerida") no la exige.
+    [JsonPropertyName("requierefoto")]
+    public int? Requierefoto { get; set; }
+
+    [JsonPropertyName("idTipoModoCoberturaGeografica")]
+    public int IdTipoModoCoberturaGeografica { get; set; }
+
+    // Si coincide con AppConstants.ClaveModoCoberturaGeocerca, ReportPage exige capturar
+    // ubicacion antes de enviar (ver CargarRequerimientosAsync/OnSendClicked).
+    [JsonPropertyName("claveTipoModoCoberturaGeografica")]
+    public string? ClaveTipoModoCoberturaGeografica { get; set; }
+}
+
+public sealed class BackendTipoObligatoriedadEvidenciaDto
+{
+    [JsonPropertyName("id")]
+    public int Id { get; set; }
+
+    [JsonPropertyName("clave")]
+    public string Clave { get; set; } = "";
+}
+
 public sealed class BackendTicketServicioItemRequest
 {
     [JsonPropertyName("idServicio")]
@@ -386,6 +475,9 @@ public sealed class BackendEvidenciaItemRequest
 
     [JsonPropertyName("esEvidenciaInicial")]
     public bool EsEvidenciaInicial { get; set; }
+
+    [JsonPropertyName("descripcion")]
+    public string? Descripcion { get; set; }
 }
 
 public sealed class BackendTicketDto
@@ -477,6 +569,8 @@ public sealed class BackendTicketObservacionEvidenciaDto
     public string NombreArchivo { get; set; } = "";
     public string RutaArchivo { get; set; } = "";
     public string? TipoMime { get; set; }
+    public string? Descripcion { get; set; }
+    public bool HasDescripcion => !string.IsNullOrWhiteSpace(Descripcion);
 }
 
 public sealed class BackendUploadResult
@@ -543,6 +637,67 @@ public sealed class BackendPublicacionDto
 
     [JsonPropertyName("fechaPublicacion")]
     public DateTime? FechaPublicacion { get; set; }
+
+    [JsonPropertyName("fechaInicioVigencia")]
+    public DateTime? FechaInicioVigencia { get; set; }
+
+    [JsonPropertyName("fechaFinVigencia")]
+    public DateTime? FechaFinVigencia { get; set; }
+
+    [JsonPropertyName("permiteComentarios")]
+    public bool PermiteComentarios { get; set; } = true;
+}
+
+public sealed class BackendPublicacionReaccionDto
+{
+    [JsonPropertyName("idPublicacion")]
+    public int IdPublicacion { get; set; }
+
+    [JsonPropertyName("idCiudadano")]
+    public int IdCiudadano { get; set; }
+
+    [JsonPropertyName("tipo")]
+    public string Tipo { get; set; } = "";
+
+    [JsonPropertyName("fechaReaccion")]
+    public DateTime FechaReaccion { get; set; }
+}
+
+public sealed class BackendPublicacionComentarioDto
+{
+    [JsonPropertyName("id")]
+    public long Id { get; set; }
+
+    [JsonPropertyName("idPublicacion")]
+    public int IdPublicacion { get; set; }
+
+    // Nullable: una respuesta hecha desde el panel web (IdUsuario) no trae ciudadano.
+    [JsonPropertyName("idCiudadano")]
+    public int? IdCiudadano { get; set; }
+
+    [JsonPropertyName("idUsuario")]
+    public int? IdUsuario { get; set; }
+
+    [JsonPropertyName("idComentarioPadre")]
+    public long? IdComentarioPadre { get; set; }
+
+    [JsonPropertyName("comentario")]
+    public string Comentario { get; set; } = "";
+
+    [JsonPropertyName("fechaComentario")]
+    public DateTime FechaComentario { get; set; }
+
+    // Antes "nombreCiudadano": el back-end lo renombro porque ahora tambien puede ser el nombre
+    // de un agente/administrador que respondio desde el panel web (ver EsRespuestaAdmin).
+    [JsonPropertyName("nombreAutor")]
+    public string? NombreAutor { get; set; }
+
+    [JsonPropertyName("esRespuestaAdmin")]
+    public bool EsRespuestaAdmin { get; set; }
+
+    // El ciudadano comento como anonimo; NombreAutor ya viene como "Anónimo" en ese caso.
+    [JsonPropertyName("anonimo")]
+    public bool Anonimo { get; set; }
 }
 
 public sealed class BackendArticuloConocimientoDto

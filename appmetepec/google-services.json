@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "854022282440",
+    "project_id": "metepec-notificaciones",
+    "storage_bucket": "metepec-notificaciones.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:854022282440:android:1105c75d5a540113cc19fd",
+        "android_client_info": {
+          "package_name": "com.app.metepec"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCWZu_NFVCkldtaOLtQruP96Ly5fcQ-Nhg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

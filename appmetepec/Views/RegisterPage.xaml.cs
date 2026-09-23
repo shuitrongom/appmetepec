@@ -7,16 +7,20 @@ public partial class RegisterPage : ContentPage
 {
     private readonly PreferencesService _preferences;
     private readonly MetepecApiService _api;
+    private readonly NavigationState _navigationState;
     private string _phone = "";
+    private string _email = "";
+    private string _emailVerificationToken = "";
     private int _secondsLeft;
     private bool _timerActive;
     private bool _canResend;
 
-    public RegisterPage(PreferencesService preferences, MetepecApiService api)
+    public RegisterPage(PreferencesService preferences, MetepecApiService api, NavigationState navigationState)
     {
         InitializeComponent();
         _preferences = preferences;
         _api = api;
+        _navigationState = navigationState;
     }
 
     private async void OnRegisterClicked(object sender, EventArgs e)
@@ -29,6 +33,14 @@ public partial class RegisterPage : ContentPage
         if (string.IsNullOrWhiteSpace(nombre) || string.IsNullOrWhiteSpace(apellido))
         {
             await DisplayAlert("Datos incompletos", "Captura tu nombre y apellido paterno.", "Aceptar");
+            return;
+        }
+
+        // Evita registros como una sola letra (ej. "V"): un nombre/apellido real tiene al menos
+        // 2 caracteres.
+        if (nombre.Length < 2 || apellido.Length < 2)
+        {
+            await DisplayAlert("Datos incompletos", "El nombre y el apellido paterno deben tener al menos 2 letras.", "Aceptar");
             return;
         }
 
@@ -45,16 +57,34 @@ public partial class RegisterPage : ContentPage
         }
 
         _phone = phone;
+        _email = email;
 
-        // NOTA: la verificacion por SMS (Twilio) queda deshabilitada temporalmente porque requiere
-        // credenciales de Twilio que no deben vivir en la app movil (ver AppConstants.TwilioAccountSid).
-        // Cuando se mueva la verificacion al backend, restaurar este flujo:
-        //   await _api.SendTwilioCodeAsync(_phone);
-        //   FormPanel.IsVisible = false;
-        //   CodePanel.IsVisible = true;
-        //   StartCodeTimer();
-        // y que OnVerifyClicked llame a CompleteRegistrationAsync() tras validar el codigo.
-        await CompleteRegistrationAsync();
+        try
+        {
+            RegisterButton.IsEnabled = false;
+            BusyIndicator.IsRunning = BusyIndicator.IsVisible = true;
+
+            var solicitud = await _api.SolicitarVerificacionEmailAsync(_email);
+            if (solicitud?.Bloqueado == true)
+            {
+                await DisplayAlert("No se pudo enviar el codigo", solicitud.Mensaje, "Aceptar");
+                return;
+            }
+
+            _emailVerificationToken = solicitud?.Token ?? "";
+            FormPanel.IsVisible = false;
+            CodePanel.IsVisible = true;
+            StartCodeTimer();
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlert("No se pudo enviar el codigo", ErrorMessageHelper.Traducir(ex), "Aceptar");
+        }
+        finally
+        {
+            RegisterButton.IsEnabled = true;
+            BusyIndicator.IsRunning = BusyIndicator.IsVisible = false;
+        }
     }
 
     private async Task CompleteRegistrationAsync()
@@ -67,6 +97,7 @@ public partial class RegisterPage : ContentPage
             var registro = await _api.RegisterAsync(new BackendRegisterRequest
             {
                 Email = EmailEntry.Text?.Trim() ?? "",
+                Token = _emailVerificationToken,
                 Nombre = NombreEntry.Text?.Trim() ?? "",
                 Apaterno = ApellidoEntry.Text?.Trim() ?? "",
                 Telefonomovil = _phone
@@ -82,13 +113,9 @@ public partial class RegisterPage : ContentPage
                 return;
             }
 
-            // El ciudadano ya no elige usuario/contrasena: se le muestran una sola vez aqui,
-            // recien generados, para que los guarde antes de continuar.
-            await DisplayAlert(
-                "Registro completado",
-                $"Guarda estos datos para iniciar sesion despues:\n\nUsuario: {username}\nContraseña: {password}",
-                "Entendido");
-
+            // El ciudadano ya no elige (ni necesita ver) su usuario/contrasena: se autentica en
+            // automatico con lo que genero el backend. Si alguna vez los olvida, los recupera por
+            // correo desde LoginPage (ver OfrecerRecuperacionAsync).
             var (latitud, longitud) = await IntentarObtenerUbicacionAsync();
             var login = await _api.LoginAsync(username, password, latitud, longitud);
             if (login is null)
@@ -113,7 +140,30 @@ public partial class RegisterPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlert("No se pudo completar el registro", ex.Message, "Aceptar");
+            // Heuristica sobre el mensaje del backend (identityResult.Errors de ASP.NET Identity,
+            // sin codigo de error estructurado que distinguir): si menciona correo/email, es casi
+            // seguro DuplicateEmail. Se ofrece el flujo de recuperacion en vez de solo tronar.
+            var esCorreoDuplicado = ex.Message.Contains("correo", StringComparison.OrdinalIgnoreCase)
+                || ex.Message.Contains("email", StringComparison.OrdinalIgnoreCase);
+
+            if (esCorreoDuplicado)
+            {
+                var irARecuperar = await DisplayAlert(
+                    "El correo ya esta registrado",
+                    "Ya existe una cuenta con ese correo electronico. Si no recuerdas tu usuario o contrasena, puedes recuperar tu cuenta.",
+                    "Recuperar cuenta",
+                    "Cancelar");
+
+                if (irARecuperar)
+                {
+                    _navigationState.RecoverAccountEmail = EmailEntry.Text?.Trim();
+                    await Shell.Current.GoToAsync(nameof(RecoverAccountPage));
+                }
+            }
+            else
+            {
+                await DisplayAlert("No se pudo completar el registro", ErrorMessageHelper.Traducir(ex), "Aceptar");
+            }
         }
         finally
         {
@@ -142,7 +192,7 @@ public partial class RegisterPage : ContentPage
         var code = CodeEntry.Text?.Trim() ?? "";
         if (string.IsNullOrWhiteSpace(code))
         {
-            await DisplayAlert("Codigo requerido", "Captura el codigo que recibiste por SMS.", "Aceptar");
+            await DisplayAlert("Codigo requerido", "Captura el codigo que recibiste por correo.", "Aceptar");
             return;
         }
 
@@ -151,7 +201,7 @@ public partial class RegisterPage : ContentPage
             VerifyButton.IsEnabled = false;
             BusyIndicator.IsRunning = BusyIndicator.IsVisible = true;
 
-            var valid = await _api.VerifyTwilioCodeAsync(_phone, code);
+            var valid = await _api.VerificarCodigoEmailAsync(_email, _emailVerificationToken, code);
             if (!valid)
             {
                 await DisplayAlert("Codigo incorrecto", "El codigo de verificacion es incorrecto.", "Aceptar");
@@ -165,7 +215,7 @@ public partial class RegisterPage : ContentPage
             StopCodeTimer();
             CodePanel.IsVisible = false;
             FormPanel.IsVisible = true;
-            await DisplayAlert("No se pudo completar el registro", ex.Message, "Aceptar");
+            await DisplayAlert("No se pudo completar el registro", ErrorMessageHelper.Traducir(ex), "Aceptar");
         }
         finally
         {
@@ -183,12 +233,19 @@ public partial class RegisterPage : ContentPage
 
         try
         {
-            await _api.SendTwilioCodeAsync(_phone);
+            var solicitud = await _api.SolicitarVerificacionEmailAsync(_email);
+            if (solicitud?.Bloqueado == true)
+            {
+                await DisplayAlert("No se pudo reenviar el codigo", solicitud.Mensaje, "Aceptar");
+                return;
+            }
+
+            _emailVerificationToken = solicitud?.Token ?? "";
             StartCodeTimer();
         }
         catch (Exception ex)
         {
-            await DisplayAlert("No se pudo reenviar el codigo", ex.Message, "Aceptar");
+            await DisplayAlert("No se pudo reenviar el codigo", ErrorMessageHelper.Traducir(ex), "Aceptar");
         }
     }
 
