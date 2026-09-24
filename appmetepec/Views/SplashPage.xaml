@@ -5,11 +5,18 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
     xmlns:viewmodels="clr-namespace:appmetepec.ViewModels"
+    x:Name="SplashRoot"
     x:DataType="viewmodels:SplashViewModel"
     Shell.NavBarIsVisible="False">
 
     <ContentPage.Behaviors>
-        <toolkit:EventToCommandBehavior EventName="Loaded" Command="{Binding InitializeCommand}" />
+        <!-- Desde CommunityToolkit.Maui 10 los behaviors ya no heredan el BindingContext de la
+             pagina; sin asignarlo explicitamente InitializeCommand nunca se ejecuta y la app se
+             queda en el splash. -->
+        <toolkit:EventToCommandBehavior
+            EventName="Loaded"
+            BindingContext="{Binding Path=BindingContext, Source={x:Reference SplashRoot}, x:DataType=ContentPage}"
+            Command="{Binding InitializeCommand}" />
     </ContentPage.Behaviors>
 
     <Grid>

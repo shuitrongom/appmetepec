@@ -49,6 +49,8 @@ namespace appmetepec
 
 #if DEBUG
             builder.Logging.AddDebug();
+            // Permite inspeccionar el mapa (HybridWebView) desde chrome://inspect en la PC.
+            builder.Services.AddHybridWebViewDeveloperTools();
 #endif
 
 #if ANDROID
@@ -71,6 +73,7 @@ namespace appmetepec
             builder.Services.AddSingleton<PushRegistrationService>();
             builder.Services.AddSingleton<NavigationState>();
             builder.Services.AddSingleton<PendingTicketsService>();
+            builder.Services.AddSingleton<GeocodingService>();
 
             builder.Services.AddTransient<SplashViewModel>();
             builder.Services.AddTransient<SplashPage>();

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="appmetepec.Views.MapPickerPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    BackgroundColor="{AppThemeBinding Light=White, Dark=#1E1E1E}">
+
+    <Grid RowDefinitions="Auto,*,Auto">
+
+        <!-- Busqueda de direccion (Nominatim, ver GeocodingService) -->
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" ColumnSpacing="8" Padding="12,12,12,8">
+            <Border Stroke="{AppThemeBinding Light=#DDD, Dark=#3A3A3A}" StrokeThickness="1" BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" Padding="0">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="8" />
+                </Border.StrokeShape>
+                <Entry x:Name="SearchEntry" Placeholder="Buscar direccion" FontSize="13" ReturnType="Search" Completed="OnSearchClicked" BackgroundColor="Transparent" TextColor="{AppThemeBinding Light=#333, Dark=White}" HeightRequest="44" />
+            </Border>
+            <Button Grid.Column="1" x:Name="SearchButton" Text="Buscar" Clicked="OnSearchClicked" BackgroundColor="#A6CE39" TextColor="White" FontSize="13" HeightRequest="44" />
+        </Grid>
+
+        <HybridWebView Grid.Row="1" x:Name="MapView" HybridRoot="mapa" DefaultFile="index.html" RawMessageReceived="OnMapMessageReceived" />
+
+        <VerticalStackLayout Grid.Row="2" Padding="12" Spacing="8">
+            <Label Text="Toca el mapa o arrastra el marcador para elegir la ubicacion." FontSize="11" TextColor="{AppThemeBinding Light=#777, Dark=#BBB}" />
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                <ActivityIndicator x:Name="BusyIndicator" IsRunning="False" IsVisible="False" Color="#F89A1C" HeightRequest="18" WidthRequest="18" />
+                <Label Grid.Column="1" x:Name="AddressLabel" Text="Sin ubicacion seleccionada" FontSize="12" TextColor="{AppThemeBinding Light=#333, Dark=White}" />
+            </Grid>
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                <Button Text="Cancelar" Clicked="OnCancelClicked" BackgroundColor="{AppThemeBinding Light=#E0E0E0, Dark=#3A3A3A}" TextColor="{AppThemeBinding Light=#333, Dark=White}" FontSize="15" HeightRequest="46" />
+                <Button Grid.Column="1" x:Name="AcceptButton" Text="Aceptar" Clicked="OnAcceptClicked" IsEnabled="False" BackgroundColor="#F89A1C" TextColor="White" FontSize="15" FontAttributes="Bold" HeightRequest="46" />
+            </Grid>
+        </VerticalStackLayout>
+    </Grid>
+</ContentPage>

@@ -55,7 +55,8 @@
                         </Border.StrokeShape>
                         <Editor x:Name="AddressEditor" Placeholder="Direccion" FontSize="12" AutoSize="TextChanges" HeightRequest="110" BackgroundColor="Transparent" TextColor="{AppThemeBinding Light=#333, Dark=White}" HorizontalTextAlignment="Center" />
                     </Border>
-                    <Button Text="Elige tu direccion en el mapa" Clicked="OnUseLocationClicked" ImageSource="ic_marker.png" BackgroundColor="#A6CE39" TextColor="White" FontSize="10" WidthRequest="160" HeightRequest="36" HorizontalOptions="Start" VerticalOptions="End" />
+                    <Button Text="Usar mi ubicacion" Clicked="OnUseLocationClicked" ImageSource="ic_marker.png" BackgroundColor="#A6CE39" TextColor="White" FontSize="10" WidthRequest="140" HeightRequest="36" HorizontalOptions="Start" VerticalOptions="End" />
+                    <Button Text="Elegir en el mapa" Clicked="OnPickOnMapClicked" ImageSource="ic_marker.png" BackgroundColor="#F89A1C" TextColor="White" FontSize="10" WidthRequest="140" HeightRequest="36" HorizontalOptions="End" VerticalOptions="End" />
                 </Grid>
                 <Label x:Name="CoordinatesLabel" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" FontSize="12" />
                 <Label x:Name="UbicacionRequeridaLabel" Text="Este reporte solo se puede levantar dentro de una zona de cobertura especifica: captura tu ubicacion antes de enviarlo." TextColor="#C0392B" FontSize="11" IsVisible="False" />

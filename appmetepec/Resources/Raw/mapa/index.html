@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <link rel="stylesheet" href="leaflet.css" />
+    <style>
+        html, body, #map { height: 100%; margin: 0; padding: 0; }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+
+    <!-- Puente de MAUI HybridWebView (window.HybridWebView.SendRawMessage). -->
+    <script src="_framework/hybridwebview.js"></script>
+    <script src="leaflet.js"></script>
+    <script>
+        // Mismo mapa que el map-picker de la web (front-end shared/map-picker): tiles de
+        // OpenStreetMap y marcador rojo arrastrable. La geocodificacion (Nominatim) la hace C#
+        // (ver MapPickerPage), aqui solo se reportan las coordenadas elegidas.
+        var map = null;
+        var marker = null;
+        // Ultima seleccion del ciudadano. C# la consulta periodicamente con ultimaSeleccion()
+        // (ver MapPickerPage.RevisarSeleccionAsync) porque el aviso por SendRawMessage no llega
+        // de forma confiable en todos los dispositivos Android; seq evita procesarla dos veces.
+        var seleccion = { seq: 0, lat: 0, lng: 0 };
+
+        function ultimaSeleccion() {
+            return seleccion.seq + '|' + seleccion.lat + '|' + seleccion.lng;
+        }
+
+        var icono = L.divIcon({
+            html: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="36" height="44">' +
+                  '<defs><filter id="sombra" x="-40%" y="-40%" width="180%" height="180%">' +
+                  '<feDropShadow dx="0" dy="2" stdDeviation="1.5" flood-opacity="0.45"/></filter></defs>' +
+                  '<path filter="url(#sombra)" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#d32f2f"/>' +
+                  '</svg>',
+            className: '',
+            iconSize: [36, 44],
+            iconAnchor: [18, 44]
+        });
+
+        function enviar(obj) {
+            try {
+                if (window.HybridWebView) {
+                    window.HybridWebView.SendRawMessage(JSON.stringify(obj));
+                }
+            } catch (e) {
+                console.error('HybridWebView.SendRawMessage fallo', e);
+            }
+        }
+
+        function notificarSeleccion(lat, lng) {
+            seleccion = { seq: seleccion.seq + 1, lat: lat, lng: lng };
+            enviar({ tipo: 'seleccion', seq: seleccion.seq, lat: lat, lng: lng });
+        }
+
+        // Llamada desde C#: centra el mapa y, si conMarcador, coloca el marcador ahi. No cuenta
+        // como seleccion (C# ya conoce esas coordenadas).
+        function centrar(lat, lng, zoom, conMarcador) {
+            map.setView([lat, lng], zoom);
+            if (conMarcador) {
+                colocarMarcador(lat, lng);
+            }
+            return 'ok';
+        }
+
+        function colocarMarcador(lat, lng) {
+            if (marker) {
+                marker.setLatLng([lat, lng]);
+                return;
+            }
+
+            marker = L.marker([lat, lng], { draggable: true, icon: icono }).addTo(map);
+            marker.on('dragend', function () {
+                var pos = marker.getLatLng();
+                notificarSeleccion(pos.lat, pos.lng);
+            });
+        }
+
+        map = L.map('map', { zoomControl: true }).setView([19.259167, -99.618611], 14);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            maxZoom: 19
+        }).addTo(map);
+
+        map.on('click', function (e) {
+            colocarMarcador(e.latlng.lat, e.latlng.lng);
+            notificarSeleccion(e.latlng.lat, e.latlng.lng);
+        });
+
+        enviar({ tipo: 'listo' });
+    </script>
+</body>
+</html>
