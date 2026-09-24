@@ -36,13 +36,21 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      # Muestra las versiones de Xcode disponibles y selecciona la mas
-      # reciente instalada en el runner (evita fijar una ruta que no exista).
-      - name: Select latest Xcode
+      # Selecciona una version de Xcode COMPLETA y estable. En macos-14 la mas
+      # confiable para el SDK iOS de .NET 8 es Xcode 15.4. Si no existe, cae a
+      # la mas reciente disponible. Verifica que el SDK de iOS este presente.
+      - name: Select Xcode
         run: |
-          ls /Applications | grep Xcode || true
-          sudo xcode-select -s "$(ls -d /Applications/Xcode_*.app | sort -V | tail -n 1)"
+          ls -d /Applications/Xcode_*.app || true
+          if [ -d "/Applications/Xcode_15.4.app" ]; then
+            XC="/Applications/Xcode_15.4.app"
+          else
+            XC="$(ls -d /Applications/Xcode_*.app | sort -V | tail -n 1)"
+          fi
+          echo "Usando $XC"
+          sudo xcode-select -s "$XC"
           xcodebuild -version
+          xcodebuild -showsdks | grep -i iphoneos
 
       # El .csproj declara varios TargetFrameworks (android;ios;...). Aunque
       # solo publicamos ios, MSBuild evalua todos los targets, asi que hay que
