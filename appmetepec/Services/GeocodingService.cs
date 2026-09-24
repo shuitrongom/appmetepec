@@ -21,7 +21,7 @@ public sealed class GeocodingService
     public GeocodingService()
     {
         _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
-        _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd($"Metepec7311/{AppInfo.Current.VersionString} (com.app.metepec)");
+        _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd($"Metepec7311/{AppInfo.Current.VersionString} ({AppInfo.Current.PackageName})");
         _httpClient.DefaultRequestHeaders.AcceptLanguage.ParseAdd("es");
     }
 

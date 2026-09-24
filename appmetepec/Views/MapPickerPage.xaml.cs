@@ -22,12 +22,80 @@ public partial class MapPickerPage : ContentPage
     private string _direccion = "";
     // Descarta respuestas de Nominatim que llegan despues de que el ciudadano ya movio el marcador.
     private int _consultaActual;
+    // Ultimo seq de index.html ya procesado (ver ultimaSeleccion() alla).
+    private int _ultimoSeq;
+    private bool _mapaListo;
+    private bool _revisando;
+    private readonly IDispatcherTimer _timer;
 
     private MapPickerPage(GeocodingService geocoding, (double Lat, double Lng)? inicial)
     {
         InitializeComponent();
         _geocoding = geocoding;
         _inicial = inicial;
+
+        // El aviso mapa -> C# (SendRawMessage / RawMessageReceived) no llega en todos los Android,
+        // mientras que C# -> mapa (EvaluateJavaScriptAsync) si funciona. Por eso C# consulta
+        // periodicamente si el mapa ya cargo y si hay una seleccion nueva.
+        _timer = Dispatcher.CreateTimer();
+        _timer.Interval = TimeSpan.FromMilliseconds(600);
+        _timer.Tick += async (_, _) => await RevisarMapaAsync();
+    }
+
+    protected override void OnAppearing()
+    {
+        base.OnAppearing();
+        _timer.Start();
+    }
+
+    protected override void OnDisappearing()
+    {
+        _timer.Stop();
+        base.OnDisappearing();
+    }
+
+    private async Task RevisarMapaAsync()
+    {
+        if (_revisando) return;
+        _revisando = true;
+        try
+        {
+            if (!_mapaListo)
+            {
+                if (LimpiarResultado(await MapView.EvaluateJavaScriptAsync("typeof ultimaSeleccion")) != "function") return;
+                _mapaListo = true;
+                await CentrarAlIniciarAsync();
+                return;
+            }
+
+            var partes = LimpiarResultado(await MapView.EvaluateJavaScriptAsync("ultimaSeleccion()")).Split('|');
+            if (partes.Length == 3
+                && int.TryParse(partes[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out var seq)
+                && double.TryParse(partes[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var lat)
+                && double.TryParse(partes[2], NumberStyles.Float, CultureInfo.InvariantCulture, out var lng))
+            {
+                await ProcesarSeleccionAsync(seq, lat, lng);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[MapPicker] No se pudo consultar el mapa: {ex}");
+        }
+        finally
+        {
+            _revisando = false;
+        }
+    }
+
+    // Segun la plataforma EvaluateJavaScriptAsync regresa el string con comillas JSON o sin ellas.
+    private static string LimpiarResultado(string? resultado) =>
+        (resultado ?? "").Trim().Trim('"').Replace("\\\"", "\"");
+
+    private async Task ProcesarSeleccionAsync(int seq, double lat, double lng)
+    {
+        if (seq <= _ultimoSeq) return;
+        _ultimoSeq = seq;
+        await SeleccionarAsync(lat, lng, null);
     }
 
     public static async Task<MapLocation?> PickAsync(INavigation navigation, GeocodingService geocoding, (double Lat, double Lng)? inicial)
@@ -51,14 +119,10 @@ public partial class MapPickerPage : ContentPage
             {
                 using var doc = JsonDocument.Parse(mensaje);
                 var root = doc.RootElement;
-                switch (root.GetProperty("tipo").GetString())
+                // "listo" se ignora: el centrado inicial lo dispara RevisarMapaAsync.
+                if (root.GetProperty("tipo").GetString() == "seleccion")
                 {
-                    case "listo":
-                        await CentrarAlIniciarAsync();
-                        break;
-                    case "seleccion":
-                        await SeleccionarAsync(root.GetProperty("lat").GetDouble(), root.GetProperty("lng").GetDouble(), null);
-                        break;
+                    await ProcesarSeleccionAsync(root.GetProperty("seq").GetInt32(), root.GetProperty("lat").GetDouble(), root.GetProperty("lng").GetDouble());
                 }
             }
             catch (Exception ex)

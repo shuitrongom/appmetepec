@@ -24,7 +24,7 @@
 		<ApplicationTitle>Metepec *7311</ApplicationTitle>
 
 		<!-- App Identifier -->
-		<ApplicationId>com.app.metepec</ApplicationId>
+		<ApplicationId>mx.gob.edomex.metepec.gc</ApplicationId>
 
 		<!-- Versions -->
 		<ApplicationDisplayVersion>1.2.0</ApplicationDisplayVersion>
@@ -74,7 +74,7 @@
 	</ItemGroup>
 
 	<!-- GoogleService-Info.plist se descarga desde Firebase Console al registrar la app iOS
-	     (bundle id com.app.metepec) y va junto a este csproj. Sin el, Firebase no inicializa. -->
+	     (bundle id mx.gob.edomex.metepec.gc) y va junto a este csproj. Sin el, Firebase no inicializa. -->
 	<ItemGroup Condition="'$(TargetFramework)'=='net9.0-ios'">
 		<BundleResource Include="GoogleService-Info.plist" Condition="Exists('GoogleService-Info.plist')" />
 	</ItemGroup>
