@@ -44,8 +44,12 @@ jobs:
           sudo xcode-select -s "$(ls -d /Applications/Xcode_*.app | sort -V | tail -n 1)"
           xcodebuild -version
 
-      - name: Install MAUI iOS workload
-        run: dotnet workload install maui-ios
+      # El .csproj declara varios TargetFrameworks (android;ios;...). Aunque
+      # solo publicamos ios, MSBuild evalua todos los targets, asi que hay que
+      # tener los workloads que el proyecto espera. 'workload restore' instala
+      # exactamente los que el proyecto declara (maui = android + ios).
+      - name: Install MAUI workloads
+        run: dotnet workload restore ${{ env.PROJECT }}
 
       # --- Firma de codigo -------------------------------------------------
       # Importa el certificado .p12 a un keychain temporal y el provisioning
