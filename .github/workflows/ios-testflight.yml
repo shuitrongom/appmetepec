@@ -81,7 +81,7 @@ jobs:
 
       # --- Compilacion -----------------------------------------------------
       - name: Restore
-        run: dotnet restore ${{ env.PROJECT }} -p:TargetFramework=net8.0-ios
+        run: dotnet restore ${{ env.PROJECT }} -p:TargetFramework=net8.0-ios -p:CheckEolTargetFramework=false
 
       - name: Build & publish IPA
         run: |
@@ -90,6 +90,7 @@ jobs:
             -c ${{ env.CONFIGURATION }} \
             -p:ArchiveOnBuild=true \
             -p:RuntimeIdentifier=ios-arm64 \
+            -p:CheckEolTargetFramework=false \
             -p:CodesignKey="${{ secrets.IOS_SIGNING_IDENTITY }}" \
             -p:CodesignProvision="$PROFILE_NAME" \
             -p:ApplicationId=${{ env.BUNDLE_ID }} \
