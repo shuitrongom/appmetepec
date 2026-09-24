@@ -58,8 +58,8 @@ jobs:
       # Tambien instalamos el workload de android que el proyecto declara.
       - name: Install MAUI workloads
         run: |
-          dotnet workload install ios --version 26.0.9769 --skip-manifest-update || \
-          dotnet workload install ios --version 26.0.9752 --skip-manifest-update
+          dotnet workload install ios --version 26.0.9769 || \
+          dotnet workload install ios --version 26.0.9752
           dotnet workload install android
           dotnet workload list
 
