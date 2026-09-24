@@ -102,6 +102,15 @@ jobs:
           PROFILE_NAME=$(/usr/libexec/PlistBuddy -c "Print :Name" $RUNNER_TEMP/profile.plist)
           echo "PROFILE_NAME=$PROFILE_NAME" >> "$GITHUB_ENV"
 
+      # Version de display > 1.2.7 (produccion) y un build number UNICO basado
+      # en fecha/hora, para que TestFlight nunca rechace por duplicado. Estos
+      # valores solo se pasan a la build de iOS; el .csproj no cambia, asi que
+      # Android (produccion en Play Store) conserva su versionado intacto.
+      - name: Compute version
+        run: |
+          echo "DISPLAY_VERSION=1.2.8" >> "$GITHUB_ENV"
+          echo "BUILD_NUMBER=$(date +%Y%m%d%H%M)" >> "$GITHUB_ENV"
+
       # --- Compilacion -----------------------------------------------------
       - name: Restore
         run: dotnet restore ${{ env.PROJECT }} -p:TargetFramework=net9.0-ios
@@ -116,6 +125,8 @@ jobs:
             -p:CodesignKey="${{ secrets.IOS_SIGNING_IDENTITY }}" \
             -p:CodesignProvision="$PROFILE_NAME" \
             -p:ApplicationId=${{ env.BUNDLE_ID }} \
+            -p:ApplicationDisplayVersion=${{ env.DISPLAY_VERSION }} \
+            -p:ApplicationVersion=${{ env.BUILD_NUMBER }} \
             -o $RUNNER_TEMP/output
 
       - name: Locate IPA
