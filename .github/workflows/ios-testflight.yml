@@ -36,12 +36,16 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      # Selecciona una version de Xcode estable para el SDK de iOS de .NET 8.
-      - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode_15.4.app
+      # Muestra las versiones de Xcode disponibles y selecciona la mas
+      # reciente instalada en el runner (evita fijar una ruta que no exista).
+      - name: Select latest Xcode
+        run: |
+          ls /Applications | grep Xcode || true
+          sudo xcode-select -s "$(ls -d /Applications/Xcode_*.app | sort -V | tail -n 1)"
+          xcodebuild -version
 
       - name: Install MAUI iOS workload
-        run: dotnet workload install maui-ios --version 8.0.61
+        run: dotnet workload install maui-ios
 
       # --- Firma de codigo -------------------------------------------------
       # Importa el certificado .p12 a un keychain temporal y el provisioning
