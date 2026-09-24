@@ -25,10 +25,10 @@ env:
 
 jobs:
   build-ios:
-    # macos-15 trae Xcode 16 completo, que empareja con el SDK iOS 18 que usa
-    # el workload de .NET (Microsoft.iOS.Sdk 18.x). Con Xcode 15.4 el linker
-    # falla porque el SDK de .NET referencia APIs de iOS 18.
-    runs-on: macos-15
+    # Apple exige (desde 2025/2026) compilar con el SDK de iOS 26 / Xcode 26
+    # para subir a App Store Connect. El runner macos-26 (Tahoe) trae Xcode 26
+    # y el SDK iOS 26 preinstalados.
+    runs-on: macos-26
 
     steps:
       - name: Checkout
@@ -39,16 +39,12 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      # Selecciona Xcode 16.x (empareja con el SDK iOS 18 de .NET). Prefiere
-      # 16.4/16.3/16.2/16.1/16.0 si existen; si no, cae a la mas reciente.
-      # Verifica que el SDK de iphoneos este presente (evita el fallo de actool).
+      # Selecciona Xcode 26.x (requerido por Apple y por el workload iOS 26 de
+      # .NET). Toma la version 26 mas reciente disponible en el runner.
       - name: Select Xcode
         run: |
           ls -d /Applications/Xcode_*.app || true
-          XC=""
-          for v in 16.4 16.3 16.2 16.1 16.0; do
-            if [ -d "/Applications/Xcode_${v}.app" ]; then XC="/Applications/Xcode_${v}.app"; break; fi
-          done
+          XC="$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -n 1)"
           if [ -z "$XC" ]; then XC="$(ls -d /Applications/Xcode_*.app | sort -V | tail -n 1)"; fi
           echo "Usando $XC"
           sudo xcode-select -s "$XC"
