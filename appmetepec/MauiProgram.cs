@@ -71,6 +71,7 @@ namespace appmetepec
             builder.Services.AddSingleton<PushRegistrationService>();
             builder.Services.AddSingleton<NavigationState>();
             builder.Services.AddSingleton<PendingTicketsService>();
+            builder.Services.AddSingleton<GeocodingService>();
 
             builder.Services.AddTransient<SplashViewModel>();
             builder.Services.AddTransient<SplashPage>();

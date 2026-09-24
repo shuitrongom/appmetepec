@@ -48,7 +48,9 @@ public sealed record ScreenReport(
     bool CommentsRequired,
     bool WitnessRequired,
     bool AudioRequired,
-    ZendeskDependencia Dependencia,
+    // Nombre de la dependencia tal como viene de la BD (GET api/servicios/catalogo-reportes);
+    // antes era ZendeskDependencia (ver catalogo hardcodeado comentado en ReportCatalogService).
+    string Dependencia,
     int IdSeccion = 0,
     int IdRequest = 0,
     int IdRequestGroup = 0,
@@ -63,6 +65,35 @@ public sealed record DependenciaCategoria(
     int IdDependencia,
     string Nombre,
     IList<ScreenReport> Reportes);
+
+// GET api/servicios/catalogo-reportes: solo dependencias y servicios activos, ya ordenados por
+// Dependencia.Orden (el back-end descarta las dependencias sin servicios activos).
+public sealed class BackendCatalogoReporteDependenciaDto
+{
+    [JsonPropertyName("id")]
+    public int Id { get; set; }
+
+    [JsonPropertyName("nombre")]
+    public string Nombre { get; set; } = "";
+
+    [JsonPropertyName("orden")]
+    public int Orden { get; set; }
+
+    [JsonPropertyName("servicios")]
+    public List<BackendCatalogoReporteServicioDto> Servicios { get; set; } = [];
+}
+
+public sealed class BackendCatalogoReporteServicioDto
+{
+    [JsonPropertyName("id")]
+    public int Id { get; set; }
+
+    [JsonPropertyName("nombre")]
+    public string Nombre { get; set; } = "";
+
+    [JsonPropertyName("descripcion")]
+    public string Descripcion { get; set; } = "";
+}
 
 public sealed record UserProfile(string Name, string Email, string Phone);
 

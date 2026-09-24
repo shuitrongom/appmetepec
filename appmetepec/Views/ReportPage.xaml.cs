@@ -21,19 +21,30 @@ public partial class ReportPage : ContentPage
     // si no se pudo determinar se asume false (el backend vuelve a validar de todas formas, ver
     // AppConstants.ClaveModoCoberturaGeocerca).
     private bool _coberturaGeografica;
+    private readonly GeocodingService _geocoding;
+    // Al cerrar el modal del mapa se vuelve a disparar OnAppearing; sin esto se reiniciaria el
+    // formulario (nombre/telefono/correo editados por el ciudadano, requerimientos, etc.).
+    private bool _volviendoDelMapa;
 
-    public ReportPage(PreferencesService preferences, MetepecApiService api, NavigationState navigationState, PendingTicketsService pendingTickets)
+    public ReportPage(PreferencesService preferences, MetepecApiService api, NavigationState navigationState, PendingTicketsService pendingTickets, GeocodingService geocoding)
     {
         InitializeComponent();
         _preferences = preferences;
         _api = api;
         _navigationState = navigationState;
         _pendingTickets = pendingTickets;
+        _geocoding = geocoding;
     }
 
     protected override void OnAppearing()
     {
         base.OnAppearing();
+        if (_volviendoDelMapa)
+        {
+            _volviendoDelMapa = false;
+            return;
+        }
+
         _report = _navigationState.SelectedReport;
         if (_report is null)
         {
@@ -179,6 +190,25 @@ public partial class ReportPage : ContentPage
         catch (Exception ex)
         {
             await DisplayAlert("Ubicacion", ErrorMessageHelper.Traducir(ex), "Aceptar");
+        }
+    }
+
+    // Igual que el map-picker de la web: el ciudadano elige el punto en un mapa (Leaflet) y se
+    // llenan las coordenadas y, si Nominatim la encontro, la direccion.
+    private async void OnPickOnMapClicked(object sender, EventArgs e)
+    {
+        var (lat, lng) = ParseCoordinates(_coordinates);
+        (double, double)? inicial = lat is not null && lng is not null ? ((double)lat.Value, (double)lng.Value) : null;
+
+        _volviendoDelMapa = true;
+        var seleccion = await MapPickerPage.PickAsync(Navigation, _geocoding, inicial);
+        if (seleccion is null) return;
+
+        _coordinates = string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{seleccion.Latitud},{seleccion.Longitud}");
+        CoordinatesLabel.Text = _coordinates;
+        if (!string.IsNullOrWhiteSpace(seleccion.Direccion))
+        {
+            AddressEditor.Text = seleccion.Direccion;
         }
     }
 
@@ -342,7 +372,7 @@ public partial class ReportPage : ContentPage
                 Descripcion = comments,
                 Correoelectronico = email,
                 Numerotelefonico = phone,
-                Dependencia = _report.Dependencia.DisplayName(),
+                Dependencia = _report.Dependencia,
                 Idservicio = _report.IdServicio,
                 Ubicacion = new BackendTicketUbicacionRequest
                 {
@@ -401,7 +431,7 @@ public partial class ReportPage : ContentPage
         {
             Title = _report.Title,
             IdServicio = _report.IdServicio,
-            Dependencia = _report.Dependencia.DisplayName(),
+            Dependencia = _report.Dependencia,
             Name = name,
             Email = email,
             Phone = phone,
