@@ -51,12 +51,17 @@ jobs:
           xcodebuild -version
           xcodebuild -showsdks | grep -i iphoneos
 
-      # El .csproj declara varios TargetFrameworks (android;ios;...). Aunque
-      # solo publicamos ios, MSBuild evalua todos los targets, asi que hay que
-      # tener los workloads que el proyecto espera. 'workload restore' instala
-      # exactamente los que el proyecto declara (maui = android + ios).
+      # Instala explicitamente el pack de .NET para iOS version 26 (compatible
+      # con Xcode 26). 'workload restore' dejaba la 18.0, que NO habla con
+      # Xcode 26 (falla actool/SDK). Estos packs 26.0.x corren sobre el SDK
+      # .NET 8 sin cambiar el TargetFramework, asi Android (net8.0) no se toca.
+      # Tambien instalamos el workload de android que el proyecto declara.
       - name: Install MAUI workloads
-        run: dotnet workload restore ${{ env.PROJECT }}
+        run: |
+          dotnet workload install ios --version 26.0.9769 --skip-manifest-update || \
+          dotnet workload install ios --version 26.0.9752 --skip-manifest-update
+          dotnet workload install android
+          dotnet workload list
 
       # --- Firma de codigo -------------------------------------------------
       # Importa el certificado .p12 a un keychain temporal y el provisioning
