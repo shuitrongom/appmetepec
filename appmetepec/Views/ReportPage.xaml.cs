@@ -342,7 +342,7 @@ public partial class ReportPage : ContentPage
                 Descripcion = comments,
                 Correoelectronico = email,
                 Numerotelefonico = phone,
-                Dependencia = _report.Dependencia.DisplayName(),
+                Dependencia = _report.Dependencia,
                 Idservicio = _report.IdServicio,
                 Ubicacion = new BackendTicketUbicacionRequest
                 {
@@ -401,7 +401,7 @@ public partial class ReportPage : ContentPage
         {
             Title = _report.Title,
             IdServicio = _report.IdServicio,
-            Dependencia = _report.Dependencia.DisplayName(),
+            Dependencia = _report.Dependencia,
             Name = name,
             Email = email,
             Phone = phone,

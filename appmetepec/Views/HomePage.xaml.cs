@@ -19,6 +19,8 @@ public partial class HomePage : ContentPage
     private bool _bannerTimerStarted;
     private bool _isDrawerOpen;
     private bool _newsLoaded;
+    private bool _categoriesLoaded;
+    private bool _loadingCategories;
 
     public HomePage(ReportCatalogService catalog, MetepecApiService api, NavigationState navigationState, PreferencesService preferences, PushRegistrationService pushRegistration)
     {
@@ -48,9 +50,11 @@ public partial class HomePage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-        if (CategoriesHost.Children.Count == 0)
+        // Se reintenta en cada OnAppearing mientras no se haya podido traer el catalogo del API
+        // (sin conexion al abrir la app, por ejemplo).
+        if (!_categoriesLoaded)
         {
-            RenderCategories(_catalog.GetCategories());
+            await LoadCategoriesAsync();
         }
 
         if (!_newsLoaded)
@@ -181,6 +185,42 @@ public partial class HomePage : ContentPage
             BannerCarousel.Position = (BannerCarousel.Position + 1) % banners.Count;
             return true;
         });
+    }
+
+    // El catalogo de servicios viene de la BD (ver ReportCatalogService.GetCategoriesAsync).
+    private async Task LoadCategoriesAsync()
+    {
+        if (_loadingCategories) return;
+        _loadingCategories = true;
+
+        try
+        {
+            if (CategoriesHost.Children.Count == 0)
+            {
+                CategoriesHost.Children.Add(new ActivityIndicator { IsRunning = true, Color = Color.FromArgb("#F89A1C"), HorizontalOptions = LayoutOptions.Center });
+            }
+
+            var (categories, serviciosCargados) = await _catalog.GetCategoriesAsync();
+            _categoriesLoaded = serviciosCargados;
+            RenderCategories(categories);
+
+            if (!serviciosCargados)
+            {
+                var aviso = new Label
+                {
+                    Text = "No se pudieron cargar los servicios. Toca aqui para reintentar.",
+                    FontSize = 16,
+                    TextColor = Color.FromArgb("#555555"),
+                    HorizontalTextAlignment = TextAlignment.Center
+                };
+                aviso.GestureRecognizers.Add(new TapGestureRecognizer { Command = new Command(async () => await LoadCategoriesAsync()) });
+                CategoriesHost.Children.Insert(0, aviso);
+            }
+        }
+        finally
+        {
+            _loadingCategories = false;
+        }
     }
 
     private void RenderCategories(IReadOnlyList<DependenciaCategoria> categories)

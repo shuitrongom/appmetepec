@@ -534,6 +534,16 @@ public sealed class MetepecApiService
         return await ReadJsonAsync<List<BackendServicioDto>>(response, cancellationToken) ?? [];
     }
 
+    public async Task<List<BackendCatalogoReporteDependenciaDto>> GetCatalogoReportesAsync(CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Get, AppConstants.MetepecBackendUrl + "/servicios/catalogo-reportes");
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        return await ReadJsonAsync<List<BackendCatalogoReporteDependenciaDto>>(response, cancellationToken) ?? [];
+    }
+
     public async Task<List<BackendTipoObligatoriedadEvidenciaDto>> GetTiposObligatoriedadEvidenciaAsync(CancellationToken cancellationToken = default)
     {
         using var message = new HttpRequestMessage(HttpMethod.Get, AppConstants.MetepecBackendUrl + "/tipo-obligatoriedad-evidencias");
