@@ -15,7 +15,7 @@ on:
       - 'v*'
 
 env:
-  DOTNET_VERSION: '8.0.x'
+  DOTNET_VERSION: '9.0.x'
   PROJECT: appmetepec/appmetepec.csproj
   # Bundle id TEMPORAL para pruebas en la cuenta de Sergio (com.app.metepec ya
   # esta tomado por la cuenta final de Metepec). Al pasar a la cuenta final se
@@ -51,16 +51,12 @@ jobs:
           xcodebuild -version
           xcodebuild -showsdks | grep -i iphoneos
 
-      # Instala explicitamente el pack de .NET para iOS version 26 (compatible
-      # con Xcode 26). 'workload restore' dejaba la 18.0, que NO habla con
-      # Xcode 26 (falla actool/SDK). Estos packs 26.0.x corren sobre el SDK
-      # .NET 8 sin cambiar el TargetFramework, asi Android (net8.0) no se toca.
-      # Tambien instalamos el workload de android que el proyecto declara.
+      # Con .NET 9 + Xcode 26, 'workload restore' instala los workloads que el
+      # proyecto declara (maui: android + ios) en la version compatible con el
+      # SDK .NET 9 y Xcode 26. Al final lista lo instalado para verificar.
       - name: Install MAUI workloads
         run: |
-          dotnet workload install ios --version 26.0.9769 || \
-          dotnet workload install ios --version 26.0.9752
-          dotnet workload install android
+          dotnet workload restore ${{ env.PROJECT }}
           dotnet workload list
 
       # --- Firma de codigo -------------------------------------------------
@@ -97,16 +93,15 @@ jobs:
 
       # --- Compilacion -----------------------------------------------------
       - name: Restore
-        run: dotnet restore ${{ env.PROJECT }} -p:TargetFramework=net8.0-ios -p:CheckEolTargetFramework=false
+        run: dotnet restore ${{ env.PROJECT }} -p:TargetFramework=net9.0-ios
 
       - name: Build & publish IPA
         run: |
           dotnet publish ${{ env.PROJECT }} \
-            -f net8.0-ios \
+            -f net9.0-ios \
             -c ${{ env.CONFIGURATION }} \
             -p:ArchiveOnBuild=true \
             -p:RuntimeIdentifier=ios-arm64 \
-            -p:CheckEolTargetFramework=false \
             -p:CodesignKey="${{ secrets.IOS_SIGNING_IDENTITY }}" \
             -p:CodesignProvision="$PROFILE_NAME" \
             -p:ApplicationId=${{ env.BUNDLE_ID }} \
