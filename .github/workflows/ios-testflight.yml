@@ -39,13 +39,19 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      # Selecciona Xcode 26.x (requerido por Apple y por el workload iOS 26 de
-      # .NET). Toma la version 26 mas reciente disponible en el runner.
-      - name: Select Xcode
+      # El workload ".NET for iOS 26.5" exige Xcode 26.5 EXACTO (no 26.6). Es la
+      # via soportada segun dotnet/macios (issue 25658): usar la version de
+      # Xcode que empareja con el workload publicado. El runner macos-26 trae
+      # varias versiones de Xcode 26 instaladas a la vez; elegimos 26.5.
+      - name: Select Xcode 26.5
         run: |
+          echo "Versiones de Xcode disponibles:"
           ls -d /Applications/Xcode_*.app || true
-          XC="$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -n 1)"
-          if [ -z "$XC" ]; then XC="$(ls -d /Applications/Xcode_*.app | sort -V | tail -n 1)"; fi
+          XC="$(ls -d /Applications/Xcode_26.5*.app 2>/dev/null | sort -V | tail -n 1)"
+          if [ -z "$XC" ]; then
+            echo "Xcode 26.5 no encontrado; usando la 26.x mas reciente como respaldo."
+            XC="$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -n 1)"
+          fi
           echo "Usando $XC"
           sudo xcode-select -s "$XC"
           xcodebuild -version
