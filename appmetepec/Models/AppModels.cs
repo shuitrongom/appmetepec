@@ -59,7 +59,9 @@ public sealed record ScreenReport(
     int IdArea = 0,
     int IdForm = 0,
     string IconSource = "ic_otros.png",
-    int IdServicio = 0);
+    int IdServicio = 0,
+    // Servicio.MensajeCierre: frase que ReportSuccessPage muestra despues del folio (null = generico).
+    string? MensajeCierre = null);
 
 public sealed record DependenciaCategoria(
     int IdDependencia,
@@ -93,6 +95,9 @@ public sealed class BackendCatalogoReporteServicioDto
 
     [JsonPropertyName("descripcion")]
     public string Descripcion { get; set; } = "";
+
+    [JsonPropertyName("mensajeCierre")]
+    public string? MensajeCierre { get; set; }
 }
 
 public sealed record UserProfile(string Name, string Email, string Phone);
