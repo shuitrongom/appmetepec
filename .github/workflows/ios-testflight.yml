@@ -17,10 +17,10 @@ on:
 env:
   DOTNET_VERSION: '9.0.x'
   PROJECT: appmetepec/appmetepec.csproj
-  # Bundle id TEMPORAL para pruebas en la cuenta de Sergio (com.app.metepec ya
-  # esta tomado por la cuenta final de Metepec). Al pasar a la cuenta final se
-  # regresa este valor a com.app.metepec.
-  BUNDLE_ID: com.gob.metepec
+  # Bundle id real de la app del Ayuntamiento (misma que "Metepec *7311" de
+  # produccion). El GoogleService-Info.plist debe corresponder a este bundle
+  # para que Firebase no crashee al arrancar.
+  BUNDLE_ID: mx.gob.edomex.metepec.gc
   CONFIGURATION: Release
 
 jobs:
