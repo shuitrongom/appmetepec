@@ -17,7 +17,10 @@ on:
 env:
   DOTNET_VERSION: '8.0.x'
   PROJECT: appmetepec/appmetepec.csproj
-  BUNDLE_ID: com.app.metepec
+  # Bundle id TEMPORAL para pruebas en la cuenta de Sergio (com.app.metepec ya
+  # esta tomado por la cuenta final de Metepec). Al pasar a la cuenta final se
+  # regresa este valor a com.app.metepec.
+  BUNDLE_ID: com.gob.metepec
   CONFIGURATION: Release
 
 jobs:
