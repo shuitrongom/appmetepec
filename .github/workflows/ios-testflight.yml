@@ -39,23 +39,28 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      # El workload ".NET for iOS 26.5" exige Xcode 26.5 EXACTO (no 26.6). Es la
-      # via soportada segun dotnet/macios (issue 25658): usar la version de
-      # Xcode que empareja con el workload publicado. El runner macos-26 trae
-      # varias versiones de Xcode 26 instaladas a la vez; elegimos 26.5.
+      # El workload ".NET for iOS 26.5" exige Xcode 26.5. Preferimos el bundle
+      # "Xcode_26.5.app" (instalacion completa) sobre "Xcode_26.5.0.app", que en
+      # el runner puede estar incompleto (le falta MacOSX.sdk que usa actool).
+      # Apuntamos a Contents/Developer y forzamos runFirstLaunch para activar
+      # los componentes/SDKs. Verificamos que el SDK de macOS exista.
       - name: Select Xcode 26.5
         run: |
           echo "Versiones de Xcode disponibles:"
           ls -d /Applications/Xcode_*.app || true
-          XC="$(ls -d /Applications/Xcode_26.5*.app 2>/dev/null | sort -V | tail -n 1)"
-          if [ -z "$XC" ]; then
-            echo "Xcode 26.5 no encontrado; usando la 26.x mas reciente como respaldo."
-            XC="$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -n 1)"
-          fi
+          XC=""
+          for cand in /Applications/Xcode_26.5.app /Applications/Xcode_26.5.0.app; do
+            if [ -d "$cand" ]; then XC="$cand"; break; fi
+          done
+          if [ -z "$XC" ]; then XC="$(ls -d /Applications/Xcode_26.5*.app 2>/dev/null | sort -V | head -n 1)"; fi
           echo "Usando $XC"
-          sudo xcode-select -s "$XC"
+          sudo xcode-select -s "$XC/Contents/Developer"
+          sudo xcodebuild -runFirstLaunch || true
           xcodebuild -version
-          xcodebuild -showsdks | grep -i iphoneos
+          echo "SDKs instalados:"
+          xcodebuild -showsdks
+          echo "Verificando SDK de macOS (necesario para actool):"
+          ls "$XC/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/" || true
 
       # Con .NET 9 + Xcode 26, 'workload restore' instala los workloads que el
       # proyecto declara (maui: android + ios) en la version compatible con el
