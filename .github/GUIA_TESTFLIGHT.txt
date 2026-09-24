@@ -1,0 +1,90 @@
+========================================================================
+ GUIA: Generar IPA y subir a TestFlight desde GitHub Actions (sin Mac)
+========================================================================
+
+El workflow .github/workflows/ios-testflight.yml compila la app en un
+runner macOS de GitHub, firma la IPA y la sube a TestFlight. Tu no
+necesitas una Mac.
+
+Para que funcione, hay que cargar unos SECRETOS en GitHub:
+  Repo en GitHub  >  Settings  >  Secrets and variables  >  Actions
+  >  New repository secret
+
+------------------------------------------------------------------------
+ SECRETOS NECESARIOS
+------------------------------------------------------------------------
+
+1) IOS_CERTIFICATE_P12_BASE64
+   Tu certificado de DISTRIBUCION (Apple Distribution) exportado como .p12.
+   - Se genera en developer.apple.com > Certificates, o en Xcode.
+   - Como no tienes Mac, se puede crear con una CSR generada en Windows
+     (openssl) y descargar el .cer, luego convertir a .p12 (ver mas abajo).
+   - Convertir a base64 (en Windows, PowerShell):
+       [Convert]::ToBase64String([IO.File]::ReadAllBytes("cert.p12")) > cert.b64.txt
+   - Pega el contenido de cert.b64.txt como valor del secreto.
+
+2) IOS_CERTIFICATE_PASSWORD
+   La contrasena que pusiste al exportar el .p12.
+
+3) KEYCHAIN_PASSWORD
+   Cualquier contrasena temporal (la inventas tu, ej. "CI-temporal-2026").
+   Solo se usa para el keychain efimero del runner.
+
+4) IOS_PROVISIONING_PROFILE_BASE64
+   El provisioning profile de tipo "App Store" (.mobileprovision) para el
+   bundle id com.app.metepec, con Push Notifications habilitado.
+   - Se descarga de developer.apple.com > Profiles.
+   - Convertir a base64 igual que el .p12.
+
+5) IOS_SIGNING_IDENTITY
+   El nombre del certificado tal cual aparece, ej:
+       "Apple Distribution: NOMBRE (TEAMID)"
+
+6) ASC_KEY_ID
+   ID de la App Store Connect API Key.
+   App Store Connect > Users and Access > Integrations > App Store Connect API.
+
+7) ASC_ISSUER_ID
+   El Issuer ID que aparece en esa misma pantalla.
+
+8) ASC_API_KEY_BASE64
+   El archivo AuthKey_XXXX.p8 que descargas al crear la API Key, en base64.
+   (Solo se puede descargar UNA vez, guardalo bien.)
+
+------------------------------------------------------------------------
+ REQUISITOS PREVIOS EN APPLE DEVELOPER / APP STORE CONNECT
+------------------------------------------------------------------------
+
+- El App ID "com.app.metepec" debe existir en tu cuenta, con la capacidad
+  Push Notifications activada.
+- Debe existir una app en App Store Connect con ese bundle id (para que
+  TestFlight tenga donde recibir la build).
+- Si el bundle id com.app.metepec ya lo usa otra cuenta, usa un bundle id
+  temporal tuyo (ej. com.migracionsegura.metepec) SOLO para estas pruebas
+  y cambia BUNDLE_ID en el workflow. Al pasar a la cuenta final se
+  regresa a com.app.metepec.
+
+------------------------------------------------------------------------
+ COMO DISPARAR UNA BUILD
+------------------------------------------------------------------------
+
+Opcion A (manual):
+  Repo en GitHub > pestana Actions > "iOS - Build & TestFlight" > Run workflow
+
+Opcion B (por tag):
+  git tag v1.2.0
+  git push origin v1.2.0
+
+Al terminar:
+  - La IPA queda como artefacto descargable en la pagina del run.
+  - La build aparece en App Store Connect > TestFlight tras unos minutos
+    de "procesamiento". Ahi agregas a los testers.
+
+------------------------------------------------------------------------
+ CAMBIO A LA CUENTA FINAL (la de Agustin)
+------------------------------------------------------------------------
+
+Cuando lleguen las claves de la cuenta final, solo se reemplazan los
+8 secretos por los de esa cuenta (certificado, perfil, API key). El
+codigo de la app NO cambia. Si el bundle id final es distinto, se
+ajusta BUNDLE_ID en el workflow.

@@ -1,0 +1,127 @@
+name: iOS - Build & TestFlight
+
+# Compila la app MAUI para iOS en un runner macOS de GitHub, firma la IPA
+# con el certificado/perfil de la cuenta Apple Developer y la sube a TestFlight.
+#
+# NO requiere una Mac local. Todo corre en los runners macOS de GitHub.
+#
+# Se dispara manualmente (workflow_dispatch) para que tu controles cuando se
+# genera una build, y tambien al hacer push de un tag "v*" (ej. v1.2.0).
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  PROJECT: appmetepec/appmetepec.csproj
+  BUNDLE_ID: com.app.metepec
+  CONFIGURATION: Release
+
+jobs:
+  build-ios:
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      # Selecciona una version de Xcode estable para el SDK de iOS de .NET 8.
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_15.4.app
+
+      - name: Install MAUI iOS workload
+        run: dotnet workload install maui-ios --version 8.0.61
+
+      # --- Firma de codigo -------------------------------------------------
+      # Importa el certificado .p12 a un keychain temporal y el provisioning
+      # profile al directorio donde Xcode/msbuild lo buscan.
+      - name: Import signing certificate
+        env:
+          P12_BASE64: ${{ secrets.IOS_CERTIFICATE_P12_BASE64 }}
+          P12_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          CERT_PATH=$RUNNER_TEMP/cert.p12
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+
+          echo "$P12_BASE64" | base64 --decode > "$CERT_PATH"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERT_PATH" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH" login.keychain
+
+      - name: Install provisioning profile
+        env:
+          PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+        run: |
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          echo "$PROFILE_BASE64" | base64 --decode > "$HOME/Library/MobileDevice/Provisioning Profiles/build.mobileprovision"
+          # Extrae el nombre (Name) del perfil para pasarlo a msbuild.
+          security cms -D -i "$HOME/Library/MobileDevice/Provisioning Profiles/build.mobileprovision" > $RUNNER_TEMP/profile.plist
+          PROFILE_NAME=$(/usr/libexec/PlistBuddy -c "Print :Name" $RUNNER_TEMP/profile.plist)
+          echo "PROFILE_NAME=$PROFILE_NAME" >> "$GITHUB_ENV"
+
+      # --- Compilacion -----------------------------------------------------
+      - name: Restore
+        run: dotnet restore ${{ env.PROJECT }} -p:TargetFramework=net8.0-ios
+
+      - name: Build & publish IPA
+        run: |
+          dotnet publish ${{ env.PROJECT }} \
+            -f net8.0-ios \
+            -c ${{ env.CONFIGURATION }} \
+            -p:ArchiveOnBuild=true \
+            -p:RuntimeIdentifier=ios-arm64 \
+            -p:CodesignKey="${{ secrets.IOS_SIGNING_IDENTITY }}" \
+            -p:CodesignProvision="$PROFILE_NAME" \
+            -p:ApplicationId=${{ env.BUNDLE_ID }} \
+            -o $RUNNER_TEMP/output
+
+      - name: Locate IPA
+        run: |
+          IPA_PATH=$(find $RUNNER_TEMP/output -name "*.ipa" | head -n 1)
+          if [ -z "$IPA_PATH" ]; then
+            echo "No se encontro ninguna IPA. Revisa el log de compilacion."
+            exit 1
+          fi
+          echo "IPA_PATH=$IPA_PATH" >> "$GITHUB_ENV"
+          echo "IPA encontrada: $IPA_PATH"
+
+      # Guarda la IPA como artefacto descargable (respaldo por si quieres
+      # instalarla manualmente ademas de subirla a TestFlight).
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: appmetepec-ios-ipa
+          path: ${{ env.IPA_PATH }}
+          retention-days: 30
+
+      # --- Subida a TestFlight ---------------------------------------------
+      # Usa una API Key de App Store Connect (App Store Connect > Users and
+      # Access > Integrations > App Store Connect API).
+      - name: Upload to TestFlight
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_BASE64: ${{ secrets.ASC_API_KEY_BASE64 }}
+        run: |
+          # xcrun altool/notarytool usan un archivo AuthKey en ~/.appstoreconnect
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "$ASC_KEY_BASE64" | base64 --decode > ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8
+
+          xcrun altool --upload-app \
+            --type ios \
+            --file "$IPA_PATH" \
+            --apiKey "$ASC_KEY_ID" \
+            --apiIssuer "$ASC_ISSUER_ID"
