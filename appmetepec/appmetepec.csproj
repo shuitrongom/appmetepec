@@ -65,8 +65,12 @@
 		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="9.0.0" />
 		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
 		<PackageReference Include="CommunityToolkit.Maui" Version="11.2.0" />
-		<PackageReference Include="Plugin.Firebase.Core" Version="3.1.1" />
-		<PackageReference Include="Plugin.Firebase.CloudMessaging" Version="3.1.1" />
+		<!-- 4.0.x: reempaqueta los frameworks nativos de Firebase iOS de forma
+		     consistente (Core y Messaging alineados). La 3.1.1 causaba crash al
+		     arranque: "Symbol not found: _OBJC_CLASS_$_FIRDependency". Core y
+		     CloudMessaging DEBEN ir a la par. -->
+		<PackageReference Include="Plugin.Firebase.Core" Version="4.0.0" />
+		<PackageReference Include="Plugin.Firebase.CloudMessaging" Version="4.0.1" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(TargetFramework)'=='net9.0-android'">
