@@ -61,7 +61,10 @@ public sealed record ScreenReport(
     string IconSource = "ic_otros.png",
     int IdServicio = 0,
     // Servicio.MensajeCierre: frase que ReportSuccessPage muestra despues del folio (null = generico).
-    string? MensajeCierre = null);
+    string? MensajeCierre = null,
+    // Servicio.AplicaAvisoVialidadEstatal: ReportPage consulta api/vialidades-estatales/validar
+    // al capturar la ubicacion y avisa si el punto cae sobre una vialidad estatal.
+    bool AplicaAvisoVialidadEstatal = false);
 
 public sealed record DependenciaCategoria(
     int IdDependencia,
@@ -98,6 +101,31 @@ public sealed class BackendCatalogoReporteServicioDto
 
     [JsonPropertyName("mensajeCierre")]
     public string? MensajeCierre { get; set; }
+
+    [JsonPropertyName("aplicaAvisoVialidadEstatal")]
+    public bool AplicaAvisoVialidadEstatal { get; set; }
+}
+
+// POST api/vialidades-estatales/validar
+public sealed class BackendValidarVialidadEstatalRequest
+{
+    [JsonPropertyName("idServicio")]
+    public int IdServicio { get; set; }
+
+    [JsonPropertyName("latitud")]
+    public decimal Latitud { get; set; }
+
+    [JsonPropertyName("longitud")]
+    public decimal Longitud { get; set; }
+}
+
+public sealed class BackendValidacionVialidadEstatalDto
+{
+    [JsonPropertyName("enVialidadEstatal")]
+    public bool EnVialidadEstatal { get; set; }
+
+    [JsonPropertyName("nombre")]
+    public string? Nombre { get; set; }
 }
 
 public sealed record UserProfile(string Name, string Email, string Phone);
