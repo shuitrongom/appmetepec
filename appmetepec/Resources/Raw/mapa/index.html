@@ -20,6 +20,14 @@
         // (ver MapPickerPage), aqui solo se reportan las coordenadas elegidas.
         var map = null;
         var marker = null;
+        // Ultima seleccion del ciudadano. C# la consulta periodicamente con ultimaSeleccion()
+        // (ver MapPickerPage.RevisarSeleccionAsync) porque el aviso por SendRawMessage no llega
+        // de forma confiable en todos los dispositivos Android; seq evita procesarla dos veces.
+        var seleccion = { seq: 0, lat: 0, lng: 0 };
+
+        function ultimaSeleccion() {
+            return seleccion.seq + '|' + seleccion.lat + '|' + seleccion.lng;
+        }
 
         var icono = L.divIcon({
             html: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="36" height="44">' +
@@ -33,21 +41,28 @@
         });
 
         function enviar(obj) {
-            if (window.HybridWebView) {
-                window.HybridWebView.SendRawMessage(JSON.stringify(obj));
+            try {
+                if (window.HybridWebView) {
+                    window.HybridWebView.SendRawMessage(JSON.stringify(obj));
+                }
+            } catch (e) {
+                console.error('HybridWebView.SendRawMessage fallo', e);
             }
         }
 
         function notificarSeleccion(lat, lng) {
-            enviar({ tipo: 'seleccion', lat: lat, lng: lng });
+            seleccion = { seq: seleccion.seq + 1, lat: lat, lng: lng };
+            enviar({ tipo: 'seleccion', seq: seleccion.seq, lat: lat, lng: lng });
         }
 
-        // Llamada desde C#: centra el mapa y, si conMarcador, coloca el marcador ahi.
+        // Llamada desde C#: centra el mapa y, si conMarcador, coloca el marcador ahi. No cuenta
+        // como seleccion (C# ya conoce esas coordenadas).
         function centrar(lat, lng, zoom, conMarcador) {
             map.setView([lat, lng], zoom);
             if (conMarcador) {
                 colocarMarcador(lat, lng);
             }
+            return 'ok';
         }
 
         function colocarMarcador(lat, lng) {

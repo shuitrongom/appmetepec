@@ -7,9 +7,9 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:854022282440:android:1105c75d5a540113cc19fd",
+        "mobilesdk_app_id": "1:854022282440:android:7fa01cf5af1bb0cacc19fd",
         "android_client_info": {
-          "package_name": "com.app.metepec"
+          "package_name": "mx.gob.edomex.metepec.gc"
         }
       },
       "oauth_client": [],
