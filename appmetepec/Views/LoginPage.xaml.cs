@@ -17,7 +17,7 @@ public partial class LoginPage : ContentPage
         _api = api;
         _navigationState = navigationState;
         _pushRegistration = pushRegistration;
-        VersionLabel.Text = $"v{AppInfo.Current.VersionString}";
+        VersionLabel.Text = $"Versión {AppInfo.Current.VersionString}";
     }
 
     private async void OnLoginClicked(object sender, EventArgs e)

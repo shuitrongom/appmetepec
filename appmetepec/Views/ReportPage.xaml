@@ -59,6 +59,12 @@
                     <Button Text="Elegir en el mapa" Clicked="OnPickOnMapClicked" ImageSource="ic_marker.png" BackgroundColor="#F89A1C" TextColor="White" FontSize="10" WidthRequest="140" HeightRequest="36" HorizontalOptions="End" VerticalOptions="End" />
                 </Grid>
                 <Label x:Name="CoordinatesLabel" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" FontSize="12" />
+                <Border x:Name="VialidadEstatalAviso" IsVisible="False" Stroke="#F89A1C" StrokeThickness="1" BackgroundColor="{AppThemeBinding Light=#FFF4E5, Dark=#3A2A12}" Padding="10,8">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="8" />
+                    </Border.StrokeShape>
+                    <Label Text="Esta ubicación está sobre una vialidad estatal. Su atención corresponde al Gobierno del Estado de México; la Gerencia de la Ciudad podrá canalizar tu reporte a la autoridad responsable." TextColor="{AppThemeBinding Light=#8A4B00, Dark=#FFD08A}" FontSize="12" />
+                </Border>
                 <Label x:Name="UbicacionRequeridaLabel" Text="Este reporte solo se puede levantar dentro de una zona de cobertura especifica: captura tu ubicacion antes de enviarlo." TextColor="#C0392B" FontSize="11" IsVisible="False" />
 
                 <Border Stroke="{AppThemeBinding Light=#DDD, Dark=#3A3A3A}" StrokeThickness="1" BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" Padding="0">

@@ -30,7 +30,7 @@ public partial class HomePage : ContentPage
         _navigationState = navigationState;
         _preferences = preferences;
         _pushRegistration = pushRegistration;
-        DrawerVersionLabel.Text = $"v{AppInfo.Current.VersionString}";
+        DrawerVersionLabel.Text = $"Versión {AppInfo.Current.VersionString}";
         DarkThemeSwitch.IsToggled = _preferences.DarkThemeEnabled;
         SetActiveTab(reportsActive: true);
         BannerCarousel.ItemsSource = BuildBanners();
@@ -177,7 +177,7 @@ public partial class HomePage : ContentPage
         _bannerTimerStarted = true;
         Dispatcher.StartTimer(TimeSpan.FromSeconds(4), () =>
         {
-            if (BannerCarousel.ItemsSource is not IReadOnlyList<BannerItem> banners || banners.Count == 0)
+            if (BannerCarousel.ItemsSource is not IReadOnlyList<object> banners || banners.Count == 0)
             {
                 return true;
             }
@@ -372,6 +372,14 @@ public partial class HomePage : ContentPage
     // muestra como tarjeta grande con imagen de fondo; el resto en la lista compacta.
     private void ShowNews(List<NewsLetter> news)
     {
+        // news ya viene filtrada a solo vigentes (ver MetepecApiService.GetPublicacionesAsync);
+        // aqui ademas se agregan al slider de arriba las que esten marcadas Destacada, despues de
+        // los banners promocionales fijos (no los reemplaza).
+        BannerCarousel.ItemsSource = BuildBanners()
+            .Cast<object>()
+            .Concat(news.Where(n => n.destacada))
+            .ToList();
+
         _featuredNews = news.FirstOrDefault(n => n.destacada) ?? news.FirstOrDefault();
 
         if (_featuredNews is null)
@@ -428,6 +436,14 @@ public partial class HomePage : ContentPage
     {
         _navigationState.SelectedNews = news;
         await Shell.Current.GoToAsync(nameof(NewsDetailPage));
+    }
+
+    // Slide de noticia destacada dentro del BannerCarousel de arriba (ver ShowNews/NewsBannerTemplate
+    // en HomePage.xaml) -- mismo destino que tocar la noticia en la lista de la pestaña Noticias.
+    private async void OnBannerNewsTapped(object sender, TappedEventArgs e)
+    {
+        if (sender is not VisualElement { BindingContext: NewsLetter news }) return;
+        await AbrirNoticiaAsync(news);
     }
 
     private async void OnRefreshing(object sender, EventArgs e)
