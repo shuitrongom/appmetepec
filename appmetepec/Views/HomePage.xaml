@@ -1,9 +1,60 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:views="clr-namespace:appmetepec.Views"
              x:Class="appmetepec.Views.HomePage"
              Title="Metepec *7311"
              Shell.NavBarIsVisible="False">
+    <ContentPage.Resources>
+        <DataTemplate x:Key="PromoBannerTemplate">
+            <Grid HeightRequest="64" ColumnDefinitions="*,*" ColumnSpacing="0">
+                <Grid BackgroundColor="{Binding LeftBackground}" Padding="14,0" ColumnDefinitions="42,*">
+                    <Image Source="{Binding LeftIcon}" HeightRequest="42" WidthRequest="42" VerticalOptions="Center" />
+                    <VerticalStackLayout Grid.Column="1" Spacing="0" VerticalOptions="Center">
+                        <Label Text="{Binding LeftTitle}" FontSize="19" FontAttributes="Bold" TextColor="White" />
+                        <Label Text="{Binding LeftSubtitle}" FontSize="11" FontAttributes="Bold" TextColor="White" />
+                    </VerticalStackLayout>
+                </Grid>
+                <Grid Grid.Column="1" BackgroundColor="{Binding RightBackground}" Padding="14,0" ColumnDefinitions="42,*">
+                    <Image Source="{Binding RightIcon}" HeightRequest="42" WidthRequest="42" VerticalOptions="Center" />
+                    <VerticalStackLayout Grid.Column="1" Spacing="0" VerticalOptions="Center">
+                        <Label Text="{Binding RightTitle}" FontSize="19" FontAttributes="Bold" TextColor="White" />
+                        <Label Text="{Binding RightSubtitle}" FontSize="11" FontAttributes="Bold" TextColor="White" />
+                    </VerticalStackLayout>
+                </Grid>
+            </Grid>
+        </DataTemplate>
+
+        <!-- Noticia destacada+vigente agregada al final del carrusel (ver HomePage.ShowNews):
+             una sola por slide (no pareada como los banners promocionales), con la misma imagen
+             miniatura + titulo que ya usa la lista de la pestaña Noticias (NewsView), para que se
+             reconozca como el mismo tipo de contenido. -->
+        <DataTemplate x:Key="NewsBannerTemplate">
+            <Grid HeightRequest="64" ColumnDefinitions="56,*" ColumnSpacing="12" Padding="14,0"
+                  BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                <Grid.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnBannerNewsTapped" />
+                </Grid.GestureRecognizers>
+                <Border StrokeThickness="0" Padding="0" HeightRequest="48" WidthRequest="48" HorizontalOptions="Start" VerticalOptions="Center">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="8" />
+                    </Border.StrokeShape>
+                    <Image Source="{Binding image}" Aspect="AspectFill" HeightRequest="48" WidthRequest="48" />
+                </Border>
+                <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+                    <Label Text="NOTICIA DESTACADA" FontSize="10" FontAttributes="Bold" TextColor="#F89A1C" />
+                    <Label Text="{Binding title}" FontAttributes="Bold" FontSize="14"
+                           TextColor="{AppThemeBinding Light=#28113E, Dark=White}"
+                           LineBreakMode="TailTruncation" MaxLines="1" />
+                </VerticalStackLayout>
+            </Grid>
+        </DataTemplate>
+
+        <views:BannerTemplateSelector x:Key="BannerSelector"
+                                       PromoTemplate="{StaticResource PromoBannerTemplate}"
+                                       NewsTemplate="{StaticResource NewsBannerTemplate}" />
+    </ContentPage.Resources>
+
     <Grid RowDefinitions="Auto,*,75">
         <VerticalStackLayout Grid.Row="0" Spacing="0" BackgroundColor="{AppThemeBinding Light=White, Dark=#1f1f1f}">
             <Grid Padding="25,12" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
@@ -35,27 +86,8 @@
                           IsBounceEnabled="True"
                           Loop="True"
                           PeekAreaInsets="0"
-                          HorizontalScrollBarVisibility="Never">
-                <CarouselView.ItemTemplate>
-                    <DataTemplate>
-                        <Grid HeightRequest="64" ColumnDefinitions="*,*" ColumnSpacing="0">
-                            <Grid BackgroundColor="{Binding LeftBackground}" Padding="14,0" ColumnDefinitions="42,*">
-                                <Image Source="{Binding LeftIcon}" HeightRequest="42" WidthRequest="42" VerticalOptions="Center" />
-                                <VerticalStackLayout Grid.Column="1" Spacing="0" VerticalOptions="Center">
-                                    <Label Text="{Binding LeftTitle}" FontSize="19" FontAttributes="Bold" TextColor="White" />
-                                    <Label Text="{Binding LeftSubtitle}" FontSize="11" FontAttributes="Bold" TextColor="White" />
-                                </VerticalStackLayout>
-                            </Grid>
-                            <Grid Grid.Column="1" BackgroundColor="{Binding RightBackground}" Padding="14,0" ColumnDefinitions="42,*">
-                                <Image Source="{Binding RightIcon}" HeightRequest="42" WidthRequest="42" VerticalOptions="Center" />
-                                <VerticalStackLayout Grid.Column="1" Spacing="0" VerticalOptions="Center">
-                                    <Label Text="{Binding RightTitle}" FontSize="19" FontAttributes="Bold" TextColor="White" />
-                                    <Label Text="{Binding RightSubtitle}" FontSize="11" FontAttributes="Bold" TextColor="White" />
-                                </VerticalStackLayout>
-                            </Grid>
-                        </Grid>
-                    </DataTemplate>
-                </CarouselView.ItemTemplate>
+                          HorizontalScrollBarVisibility="Never"
+                          ItemTemplate="{StaticResource BannerSelector}">
             </CarouselView>
         </VerticalStackLayout>
 

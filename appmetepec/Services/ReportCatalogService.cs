@@ -44,7 +44,9 @@ public sealed class ReportCatalogService
             {
                 // Servicio.Descripcion se muestra como instrucciones en ReportPage (vacia = se oculta).
                 category.Reportes.Add(new ScreenReport(servicio.Nombre, servicio.Descripcion?.Trim() ?? "", true, true, true, false,
-                    dependencia.Nombre, IconSource: GuessIcon(servicio.Nombre), IdServicio: servicio.Id));
+                    dependencia.Nombre, IconSource: GuessIcon(servicio.Nombre), IdServicio: servicio.Id,
+                    MensajeCierre: string.IsNullOrWhiteSpace(servicio.MensajeCierre) ? null : servicio.MensajeCierre.Trim(),
+                    AplicaAvisoVialidadEstatal: servicio.AplicaAvisoVialidadEstatal));
             }
 
             if (category.Reportes.Count > 0)

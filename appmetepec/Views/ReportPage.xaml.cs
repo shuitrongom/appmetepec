@@ -67,6 +67,7 @@ public partial class ReportPage : ContentPage
         EvidenciaDescripcionEntry.Placeholder = "Describe brevemente la foto (opcional)";
         _coberturaGeografica = false;
         UbicacionRequeridaLabel.IsVisible = false;
+        VialidadEstatalAviso.IsVisible = false;
 
         _ = CargarArticulosAsync();
         _ = CargarRequerimientosAsync();
@@ -186,6 +187,7 @@ public partial class ReportPage : ContentPage
 
             _coordinates = $"{location.Latitude},{location.Longitude}";
             CoordinatesLabel.Text = _coordinates;
+            _ = VerificarVialidadEstatalAsync();
         }
         catch (Exception ex)
         {
@@ -209,6 +211,41 @@ public partial class ReportPage : ContentPage
         if (!string.IsNullOrWhiteSpace(seleccion.Direccion))
         {
             AddressEditor.Text = seleccion.Direccion;
+        }
+
+        _ = VerificarVialidadEstatalAsync();
+    }
+
+    // Aviso informativo (no bloquea el envio): si el servicio lo tiene activado y el punto cae
+    // sobre una vialidad del catalogo "Vialidades estatales", se le indica al ciudadano que la
+    // atencion corresponde al Gobierno del Estado. Best-effort: si el API falla, no se muestra.
+    private int _consultaVialidad;
+    private async Task VerificarVialidadEstatalAsync()
+    {
+        var consulta = ++_consultaVialidad;
+        VialidadEstatalAviso.IsVisible = false;
+
+        var (lat, lng) = ParseCoordinates(_coordinates);
+        if (_report is null || !_report.AplicaAvisoVialidadEstatal || _report.IdServicio <= 0 || lat is null || lng is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var resultado = await _api.ValidarVialidadEstatalAsync(new BackendValidarVialidadEstatalRequest
+            {
+                IdServicio = _report.IdServicio,
+                Latitud = lat.Value,
+                Longitud = lng.Value
+            });
+
+            if (consulta != _consultaVialidad) return;
+            VialidadEstatalAviso.IsVisible = resultado?.EnVialidadEstatal == true;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[VialidadEstatal] No se pudo validar la ubicacion: {ex}");
         }
     }
 
