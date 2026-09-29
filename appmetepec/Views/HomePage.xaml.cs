@@ -30,7 +30,7 @@ public partial class HomePage : ContentPage
         _navigationState = navigationState;
         _preferences = preferences;
         _pushRegistration = pushRegistration;
-        DrawerVersionLabel.Text = $"v{AppInfo.Current.VersionString}";
+        DrawerVersionLabel.Text = $"Versión {AppInfo.Current.VersionString}";
         DarkThemeSwitch.IsToggled = _preferences.DarkThemeEnabled;
         SetActiveTab(reportsActive: true);
         BannerCarousel.ItemsSource = BuildBanners();
