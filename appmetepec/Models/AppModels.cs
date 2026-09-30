@@ -475,6 +475,21 @@ public sealed class BackendServicioDto
     public string? ClaveTipoModoCoberturaGeografica { get; set; }
 }
 
+// Mismo catalogo que usa ticket-create.ts (onServicioSelected) en la web para precargar el
+// "cuerpo correo": aqui solo se necesitan los campos para replicar ese mismo texto en el
+// mensaje inicial visible al ciudadano (ver ReportPage.xaml.cs).
+public sealed class BackendMacroServicioDto
+{
+    [JsonPropertyName("idservicio")]
+    public int Idservicio { get; set; }
+
+    [JsonPropertyName("cuerpo")]
+    public string? Cuerpo { get; set; }
+
+    [JsonPropertyName("activo")]
+    public bool Activo { get; set; }
+}
+
 public sealed class BackendTipoObligatoriedadEvidenciaDto
 {
     [JsonPropertyName("id")]

@@ -534,6 +534,16 @@ public sealed class MetepecApiService
         return await ReadJsonAsync<List<BackendServicioDto>>(response, cancellationToken) ?? [];
     }
 
+    public async Task<List<BackendMacroServicioDto>> GetMacroServiciosAsync(CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Get, AppConstants.MetepecBackendUrl + "/macro-servicios");
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        return await ReadJsonAsync<List<BackendMacroServicioDto>>(response, cancellationToken) ?? [];
+    }
+
     // Informativo (no bloquea el reporte): true si el punto cae sobre una vialidad estatal y el
     // servicio tiene activado el aviso. Ver VialidadesEstatalesController.Validar (back-end).
     public async Task<BackendValidacionVialidadEstatalDto?> ValidarVialidadEstatalAsync(BackendValidarVialidadEstatalRequest request, CancellationToken cancellationToken = default)
