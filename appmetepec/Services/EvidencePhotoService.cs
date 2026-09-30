@@ -1,3 +1,5 @@
+using Microsoft.Maui.Graphics;
+using Microsoft.Maui.Graphics.Platform;
 using Microsoft.Maui.Media;
 using Microsoft.Maui.Storage;
 
@@ -54,23 +56,21 @@ public sealed class EvidencePhotoService
 
         Directory.CreateDirectory(_workingDirectory);
 
-        // Conservamos la extension original (jpg/heic/png) para que el MIME y el
-        // visor sean correctos; el nombre se hace unico para no pisar capturas previas.
-        var extension = Path.GetExtension(result.FileName);
-        if (string.IsNullOrWhiteSpace(extension))
-        {
-            extension = ".jpg";
-        }
+        // SIEMPRE se re-codifica a JPEG. La camara de iOS entrega HEIC (formato de
+        // Apple); ese HEIC es el que rompia la subida (el backend no lo procesa y la
+        // peticion terminaba como "error de conexion"), mientras que galeria (JPEG) y
+        // Android (JPEG) funcionaban. Normalizar a JPEG aqui elimina el problema de
+        // raiz para todas las plataformas y ademas reduce el peso del archivo.
+        var localPath = Path.Combine(_workingDirectory, $"{Guid.NewGuid():N}.jpg");
 
-        var localPath = Path.Combine(_workingDirectory, $"{Guid.NewGuid():N}{extension}");
-
-        // Copia byte a byte del stream del picker a nuestro archivo. Esta es la
-        // operacion que "fuerza" a que el contenido exista realmente en disco;
-        // es lo que resuelve el archivo vacio de la camara en iOS.
         await using (var source = await result.OpenReadAsync().ConfigureAwait(false))
-        await using (var target = File.Create(localPath))
         {
-            await source.CopyToAsync(target, cancellationToken).ConfigureAwait(false);
+            // Decodifica cualquier formato de entrada (HEIC/PNG/JPEG) y lo vuelve a
+            // exportar como JPEG (calidad 0.85) usando el motor grafico nativo de la
+            // plataforma. SaveAsync es la API documentada de IImage para persistir.
+            using var image = PlatformImage.FromStream(source);
+            await using var target = File.Create(localPath);
+            await image.SaveAsync(target, ImageFormat.Jpeg, 0.85f).ConfigureAwait(false);
         }
 
         var info = new FileInfo(localPath);
@@ -83,11 +83,7 @@ public sealed class EvidencePhotoService
                 "La foto no se pudo leer del dispositivo. Intenta tomarla de nuevo o elígela desde la galería.");
         }
 
-        var contentType = string.IsNullOrWhiteSpace(result.ContentType)
-            ? ResolveContentType(extension)
-            : result.ContentType;
-
-        return new EvidencePhoto(localPath, Path.GetFileName(localPath), contentType, info.Length);
+        return new EvidencePhoto(localPath, Path.GetFileName(localPath), "image/jpeg", info.Length);
     }
 
     /// <summary>Borra un archivo de evidencia temporal (best-effort).</summary>
@@ -113,13 +109,4 @@ public sealed class EvidencePhotoService
             // Es cache; si no se puede borrar ahora, el SO lo recupera despues.
         }
     }
-
-    private static string ResolveContentType(string extension) => extension.ToLowerInvariant() switch
-    {
-        ".jpg" or ".jpeg" => "image/jpeg",
-        ".png" => "image/png",
-        ".heic" or ".heif" => "image/heic",
-        ".webp" => "image/webp",
-        _ => "application/octet-stream"
-    };
 }
