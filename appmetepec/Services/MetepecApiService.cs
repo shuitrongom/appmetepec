@@ -247,7 +247,26 @@ public sealed class MetepecApiService
         AddBackendAuthorization(message);
 
         using var response = await _httpClient.SendAsync(message, cancellationToken);
-        response.EnsureSuccessStatusCode();
+
+        // Si el backend rechaza el archivo (formato no aceptado, tamano, etc.) devuelve un
+        // 4xx/5xx con un cuerpo que explica el motivo. Antes se hacia EnsureSuccessStatusCode()
+        // a secas, que convertia ese rechazo en un HttpRequestException generico que la UI
+        // mostraba como "No se pudo conectar con el servidor" (mensaje enganoso). Ahora leemos
+        // el cuerpo real y lo propagamos como InvalidOperationException (ErrorMessageHelper lo
+        // deja pasar tal cual), para que el usuario/soporte vea la causa verdadera.
+        if (!response.IsSuccessStatusCode)
+        {
+            string detalle = "";
+            try
+            {
+                detalle = await response.Content.ReadAsStringAsync(cancellationToken);
+            }
+            catch { /* si no hay cuerpo legible, usamos el status */ }
+
+            throw new InvalidOperationException(
+                $"El servidor rechazo la evidencia (HTTP {(int)response.StatusCode}). {detalle}".Trim());
+        }
+
         return await ReadJsonAsync<BackendUploadResult>(response, cancellationToken);
     }
 

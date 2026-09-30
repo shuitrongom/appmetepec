@@ -70,19 +70,27 @@ public sealed class EvidencePhotoService
         }
 
         var extension = Path.GetExtension(result.FileName);
-        var esHeic = extension.Equals(".heic", StringComparison.OrdinalIgnoreCase)
-                     || extension.Equals(".heif", StringComparison.OrdinalIgnoreCase);
+        var yaEsJpeg = extension.Equals(".jpg", StringComparison.OrdinalIgnoreCase)
+                       || extension.Equals(".jpeg", StringComparison.OrdinalIgnoreCase);
 
         byte[] finalBytes;
         string finalExtension;
         string finalContentType;
 
 #if IOS
-        // La camara de iOS entrega HEIC (formato de Apple que el backend no procesa). Lo
-        // convertimos a JPEG con la API NATIVA de iOS (UIImage/AsJPEG, motor Core Graphics de
-        // Apple) -- confiable, a diferencia de Microsoft.Maui.Graphics que corrompia la imagen.
-        // Asi iOS termina subiendo JPEG igual que Android. Galeria (que ya da JPEG) NO entra aqui.
-        if (esHeic)
+        // En iOS la foto (camara Y galeria) puede llegar como HEIC o PNG; el backend espera
+        // JPEG (como el que produce Android). Por eso, si NO es ya un JPEG, la transcodificamos
+        // a JPEG con la API NATIVA de Apple (UIImage/AsJPEG, motor Core Graphics) -- confiable,
+        // a diferencia de Microsoft.Maui.Graphics que corrompia la imagen. Decidimos por el
+        // formato real esperado, NO por la extension del nombre (iOS suele reportar .png aunque
+        // el origen sea HEIC), que era la causa de que se subiera PNG y el backend lo rechazara.
+        if (yaEsJpeg)
+        {
+            finalBytes = originalBytes;
+            finalExtension = extension;
+            finalContentType = "image/jpeg";
+        }
+        else
         {
             using var uiImage = UIKit.UIImage.LoadFromData(Foundation.NSData.FromArray(originalBytes));
             using var jpegData = uiImage?.AsJPEG(0.85f);
@@ -94,19 +102,11 @@ public sealed class EvidencePhotoService
             }
             else
             {
-                // Si por algo la conversion no produce datos, caemos al original sin romper.
-                finalBytes = originalBytes;
-                finalExtension = string.IsNullOrWhiteSpace(extension) ? ".jpg" : extension;
-                finalContentType = ResolveContentType(finalExtension);
+                // Si la transcodificacion no produjo datos, avisamos claro en vez de subir algo
+                // que el backend va a rechazar.
+                throw new InvalidOperationException(
+                    "No se pudo procesar la foto en formato compatible. Intenta con otra imagen.");
             }
-        }
-        else
-        {
-            finalBytes = originalBytes;
-            finalExtension = string.IsNullOrWhiteSpace(extension) ? ".jpg" : extension;
-            finalContentType = string.IsNullOrWhiteSpace(result.ContentType)
-                ? ResolveContentType(finalExtension)
-                : result.ContentType;
         }
 #else
         // Android/otros: la camara ya entrega JPEG. Se copia tal cual, sin re-codificar.
