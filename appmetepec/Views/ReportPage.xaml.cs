@@ -29,6 +29,11 @@ public partial class ReportPage : ContentPage
     // Al cerrar el modal del mapa se vuelve a disparar OnAppearing; sin esto se reiniciaria el
     // formulario (nombre/telefono/correo editados por el ciudadano, requerimientos, etc.).
     private bool _volviendoDelMapa;
+    // En iOS, al volver del picker de camara/galeria tambien se dispara OnAppearing; sin esta
+    // proteccion se reiniciaba el formulario y, sobre todo, se reseteaba _coberturaGeografica y
+    // se relanzaba CargarRequerimientosAsync de forma asincrona, dejando el estado inconsistente
+    // (p.ej. un reporte con geocerca cuya ubicacion ya capturada terminaba fuera de zona al enviar).
+    private bool _volviendoDeFoto;
 
     public ReportPage(PreferencesService preferences, MetepecApiService api, NavigationState navigationState, PendingTicketsService pendingTickets, GeocodingService geocoding, EvidencePhotoService evidencePhotos)
     {
@@ -47,6 +52,14 @@ public partial class ReportPage : ContentPage
         if (_volviendoDelMapa)
         {
             _volviendoDelMapa = false;
+            return;
+        }
+
+        // Volviendo del picker de foto (iOS re-dispara OnAppearing): no reinicializar el
+        // formulario ni recargar requerimientos, para conservar ubicacion, banderas y campos.
+        if (_volviendoDeFoto)
+        {
+            _volviendoDeFoto = false;
             return;
         }
 
@@ -263,6 +276,16 @@ public partial class ReportPage : ContentPage
                 : new[] { "Elegir de la galeria" };
 
             var choice = await DisplayActionSheet("Agrega una evidencia", "Cancelar", null, options);
+
+            if (choice is not ("Tomar foto" or "Elegir de la galeria"))
+            {
+                return;
+            }
+
+            // El picker de camara/galeria aparece como vista modal; en iOS eso re-dispara
+            // OnAppearing al volver. Marcamos la bandera para que OnAppearing no reinicialice
+            // el formulario (ver OnAppearing) y no se pierda la ubicacion ya capturada.
+            _volviendoDeFoto = true;
 
             var photo = choice switch
             {

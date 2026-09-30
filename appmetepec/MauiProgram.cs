@@ -33,8 +33,10 @@ namespace appmetepec
                     // HomePage.RegistrarPushSiAplicaAsync). Verificar este namespace/metodo
                     // contra la version de Plugin.Firebase que quede instalada al restaurar --
                     // cambio de forma entre versiones mayores del paquete.
+                    // Plugin.Firebase 4.x cambio la firma: Initialize ahora exige un
+                    // "activityLocator" (Func<Activity>) ademas de la Activity inicial.
                     events.AddAndroid(android => android.OnCreate((activity, _) =>
-                        CrossFirebase.Initialize(activity)));
+                        CrossFirebase.Initialize(activity, () => Platform.CurrentActivity)));
 #elif IOS
                     // En iOS ademas hay que inicializar CloudMessaging para que registre los
                     // delegados de APNs antes de que termine el arranque.
