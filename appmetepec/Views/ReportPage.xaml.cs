@@ -10,7 +10,10 @@ public partial class ReportPage : ContentPage
     private readonly NavigationState _navigationState;
     private readonly PendingTicketsService _pendingTickets;
     private ScreenReport? _report;
-    private FileResult? _attachment;
+    // Foto de evidencia ya materializada en disco (no el FileResult crudo del picker):
+    // garantiza que preview, subida y guardado offline usen un archivo integro, evitando
+    // el bug de iOS donde la foto de camara llegaba vacia. Ver EvidencePhotoService.
+    private EvidencePhoto? _attachment;
     private string _coordinates = "";
     private List<BackendArticuloConocimientoDto> _articulos = [];
     // Servicio.Requierefoto == Id del TipoObligatoriedadEvidencia de clave "OBLIGATORIA": si no
@@ -22,11 +25,12 @@ public partial class ReportPage : ContentPage
     // AppConstants.ClaveModoCoberturaGeocerca).
     private bool _coberturaGeografica;
     private readonly GeocodingService _geocoding;
+    private readonly EvidencePhotoService _evidencePhotos;
     // Al cerrar el modal del mapa se vuelve a disparar OnAppearing; sin esto se reiniciaria el
     // formulario (nombre/telefono/correo editados por el ciudadano, requerimientos, etc.).
     private bool _volviendoDelMapa;
 
-    public ReportPage(PreferencesService preferences, MetepecApiService api, NavigationState navigationState, PendingTicketsService pendingTickets, GeocodingService geocoding)
+    public ReportPage(PreferencesService preferences, MetepecApiService api, NavigationState navigationState, PendingTicketsService pendingTickets, GeocodingService geocoding, EvidencePhotoService evidencePhotos)
     {
         InitializeComponent();
         _preferences = preferences;
@@ -34,6 +38,7 @@ public partial class ReportPage : ContentPage
         _navigationState = navigationState;
         _pendingTickets = pendingTickets;
         _geocoding = geocoding;
+        _evidencePhotos = evidencePhotos;
     }
 
     protected override void OnAppearing()
@@ -253,27 +258,32 @@ public partial class ReportPage : ContentPage
     {
         try
         {
-            var options = MediaPicker.Default.IsCaptureSupported
+            var options = _evidencePhotos.IsCaptureSupported
                 ? new[] { "Tomar foto", "Elegir de la galeria" }
                 : new[] { "Elegir de la galeria" };
 
             var choice = await DisplayActionSheet("Agrega una evidencia", "Cancelar", null, options);
 
-            FileResult? result = choice switch
+            var photo = choice switch
             {
-                "Tomar foto" => await MediaPicker.Default.CapturePhotoAsync(),
-                "Elegir de la galeria" => await MediaPicker.Default.PickPhotoAsync(),
+                "Tomar foto" => await _evidencePhotos.CapturePhotoAsync(),
+                "Elegir de la galeria" => await _evidencePhotos.PickPhotoAsync(),
                 _ => null
             };
 
-            if (result is null)
+            if (photo is null)
             {
                 return;
             }
 
-            _attachment = result;
+            // Si ya habia una foto seleccionada, liberamos su archivo temporal.
+            _evidencePhotos.Delete(_attachment?.LocalPath);
+
+            _attachment = photo;
             AttachmentLabel.Text = _attachment.FileName;
-            PreviewImage.Source = ImageSource.FromFile(_attachment.FullPath);
+            // Preview desde el archivo local ya materializado: en iOS esto es lo que
+            // evita la imagen en blanco de las fotos recien tomadas con la camara.
+            PreviewImage.Source = ImageSource.FromFile(_attachment.LocalPath);
         }
         catch (Exception ex)
         {

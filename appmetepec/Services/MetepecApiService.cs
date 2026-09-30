@@ -223,6 +223,15 @@ public sealed class MetepecApiService
         return await UploadEvidenceAsync(stream, attachment.FileName, attachment.ContentType, cancellationToken);
     }
 
+    // Sube una evidencia ya materializada en disco (ver EvidencePhotoService). Se lee
+    // del archivo local garantizado en vez del FileResult del picker, que en iOS puede
+    // entregar un stream vacio para fotos recien tomadas con la camara.
+    public async Task<BackendUploadResult?> UploadEvidenceAsync(EvidencePhoto photo, CancellationToken cancellationToken = default)
+    {
+        await using var stream = File.OpenRead(photo.LocalPath);
+        return await UploadEvidenceAsync(stream, photo.FileName, photo.ContentType, cancellationToken);
+    }
+
     public async Task<BackendUploadResult?> UploadEvidenceAsync(Stream fileStream, string fileName, string? contentType, CancellationToken cancellationToken = default)
     {
         using var content = new MultipartFormDataContent();

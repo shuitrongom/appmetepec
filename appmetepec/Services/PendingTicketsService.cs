@@ -45,6 +45,25 @@ public sealed class PendingTicketsService
         }
     }
 
+    // Persiste una foto ya materializada (ver EvidencePhotoService) en el
+    // almacenamiento de reportes pendientes, copiandola desde su archivo local.
+    public async Task<string?> SavePhotoAsync(EvidencePhoto photo)
+    {
+        try
+        {
+            Directory.CreateDirectory(_photosDirectory);
+            var destination = Path.Combine(_photosDirectory, $"{Guid.NewGuid():N}{Path.GetExtension(photo.FileName)}");
+            await using var source = File.OpenRead(photo.LocalPath);
+            await using var target = File.Create(destination);
+            await source.CopyToAsync(target);
+            return destination;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     public async Task SaveAsync(PendingTicketSubmission submission)
     {
         var items = await GetAllAsync();
