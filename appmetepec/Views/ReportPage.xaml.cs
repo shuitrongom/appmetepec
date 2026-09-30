@@ -203,7 +203,12 @@ public partial class ReportPage : ContentPage
                 return;
             }
 
-            _coordinates = $"{location.Latitude},{location.Longitude}";
+            // InvariantCulture (punto decimal) OBLIGATORIO: ParseCoordinates hace Split(',')
+            // y parsea con InvariantCulture. En un dispositivo con locale es-MX la interpolacion
+            // normal usaria coma decimal ("19,26,-99,57"), rompiendo el Split y dejando las
+            // coordenadas invalidas -> el backend rechaza los servicios con geocerca (p.ej.
+            // bacheo) con "fuera de zona de cobertura". El map-picker ya usa InvariantCulture.
+            _coordinates = string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{location.Latitude},{location.Longitude}");
             CoordinatesLabel.Text = _coordinates;
             _ = VerificarVialidadEstatalAsync();
         }

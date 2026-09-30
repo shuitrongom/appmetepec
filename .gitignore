@@ -464,3 +464,6 @@ Migrations/
 publicaciones/
 
 *.md
+
+# Carpeta temporal de pruebas locales (no forma parte de la app)
+_coordtest/
