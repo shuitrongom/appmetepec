@@ -210,6 +210,23 @@ public partial class ReportPage : ContentPage
             // bacheo) con "fuera de zona de cobertura". El map-picker ya usa InvariantCulture.
             _coordinates = string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{location.Latitude},{location.Longitude}");
             CoordinatesLabel.Text = _coordinates;
+
+            // Rellenar la direccion a partir de las coordenadas (igual que el map-picker), para
+            // que el ciudadano no tenga que escribirla. Best-effort: si el geocoding no responde
+            // o no encuentra direccion, se deja lo que ya hubiera en el campo (no se borra).
+            try
+            {
+                var direccion = await _geocoding.ReverseGeocodeAsync(location.Latitude, location.Longitude);
+                if (!string.IsNullOrWhiteSpace(direccion))
+                {
+                    AddressEditor.Text = direccion;
+                }
+            }
+            catch
+            {
+                // Sin bloquear la captura de ubicacion si el geocoding externo falla.
+            }
+
             _ = VerificarVialidadEstatalAsync();
         }
         catch (Exception ex)

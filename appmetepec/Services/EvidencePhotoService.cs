@@ -54,41 +54,81 @@ public sealed class EvidencePhotoService
 
         Directory.CreateDirectory(_workingDirectory);
 
-        // Conservamos la extension original (jpg/heic/png). NO se re-codifica el contenido.
-        var extension = Path.GetExtension(result.FileName);
-        if (string.IsNullOrWhiteSpace(extension))
-        {
-            extension = ".jpg";
-        }
-
-        var localPath = Path.Combine(_workingDirectory, $"{Guid.NewGuid():N}{extension}");
-
-        // Copia byte a byte del stream del picker a nuestro archivo. Esta operacion es la
-        // que "fuerza" a que el contenido exista realmente en disco (resuelve el archivo
-        // incompleto de la camara en iOS) sin alterar los bytes originales de la imagen.
+        // Leemos los bytes originales del archivo del picker una sola vez.
+        byte[] originalBytes;
         await using (var source = await result.OpenReadAsync().ConfigureAwait(false))
-        await using (var target = File.Create(localPath))
+        await using (var buffer = new MemoryStream())
         {
-            await source.CopyToAsync(target, cancellationToken).ConfigureAwait(false);
+            await source.CopyToAsync(buffer, cancellationToken).ConfigureAwait(false);
+            originalBytes = buffer.ToArray();
         }
+
+        if (originalBytes.Length == 0)
+        {
+            throw new InvalidOperationException(
+                "La foto no se pudo leer del dispositivo. Intenta tomarla de nuevo o elígela desde la galería.");
+        }
+
+        var extension = Path.GetExtension(result.FileName);
+        var esHeic = extension.Equals(".heic", StringComparison.OrdinalIgnoreCase)
+                     || extension.Equals(".heif", StringComparison.OrdinalIgnoreCase);
+
+        byte[] finalBytes;
+        string finalExtension;
+        string finalContentType;
+
+#if IOS
+        // La camara de iOS entrega HEIC (formato de Apple que el backend no procesa). Lo
+        // convertimos a JPEG con la API NATIVA de iOS (UIImage/AsJPEG, motor Core Graphics de
+        // Apple) -- confiable, a diferencia de Microsoft.Maui.Graphics que corrompia la imagen.
+        // Asi iOS termina subiendo JPEG igual que Android. Galeria (que ya da JPEG) NO entra aqui.
+        if (esHeic)
+        {
+            using var uiImage = UIKit.UIImage.LoadFromData(Foundation.NSData.FromArray(originalBytes));
+            using var jpegData = uiImage?.AsJPEG(0.85f);
+            if (jpegData is not null && jpegData.Length > 0)
+            {
+                finalBytes = jpegData.ToArray();
+                finalExtension = ".jpg";
+                finalContentType = "image/jpeg";
+            }
+            else
+            {
+                // Si por algo la conversion no produce datos, caemos al original sin romper.
+                finalBytes = originalBytes;
+                finalExtension = string.IsNullOrWhiteSpace(extension) ? ".jpg" : extension;
+                finalContentType = ResolveContentType(finalExtension);
+            }
+        }
+        else
+        {
+            finalBytes = originalBytes;
+            finalExtension = string.IsNullOrWhiteSpace(extension) ? ".jpg" : extension;
+            finalContentType = string.IsNullOrWhiteSpace(result.ContentType)
+                ? ResolveContentType(finalExtension)
+                : result.ContentType;
+        }
+#else
+        // Android/otros: la camara ya entrega JPEG. Se copia tal cual, sin re-codificar.
+        finalBytes = originalBytes;
+        finalExtension = string.IsNullOrWhiteSpace(extension) ? ".jpg" : extension;
+        finalContentType = string.IsNullOrWhiteSpace(result.ContentType)
+            ? ResolveContentType(finalExtension)
+            : result.ContentType;
+#endif
+
+        var localPath = Path.Combine(_workingDirectory, $"{Guid.NewGuid():N}{finalExtension}");
+        await File.WriteAllBytesAsync(localPath, finalBytes, cancellationToken).ConfigureAwait(false);
 
         var info = new FileInfo(localPath);
         if (info.Length == 0)
         {
-            // Si aun asi quedo vacio, lo limpiamos y avisamos con un mensaje claro en vez
-            // de subir 0 bytes al backend.
             TryDelete(localPath);
             throw new InvalidOperationException(
                 "La foto no se pudo leer del dispositivo. Intenta tomarla de nuevo o elígela desde la galería.");
         }
 
-        // Content-type real segun la extension del archivo original (el backend recibe el
-        // mismo tipo que antes: image/jpeg para fotos, etc.).
-        var contentType = string.IsNullOrWhiteSpace(result.ContentType)
-            ? ResolveContentType(extension)
-            : result.ContentType;
-
-        return new EvidencePhoto(localPath, Path.GetFileName(localPath), contentType, info.Length);
+        return new EvidencePhoto(localPath, Path.GetFileName(localPath), finalContentType, info.Length);
     }
 
     /// <summary>Borra un archivo de evidencia temporal (best-effort).</summary>
