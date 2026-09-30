@@ -1,5 +1,3 @@
-using Microsoft.Maui.Graphics;
-using Microsoft.Maui.Graphics.Platform;
 using Microsoft.Maui.Media;
 using Microsoft.Maui.Storage;
 
@@ -8,9 +6,9 @@ namespace appmetepec.Services;
 /// <summary>
 /// Foto de evidencia ya materializada en un archivo local propio de la app.
 /// A diferencia del <see cref="FileResult"/> que devuelve el <see cref="MediaPicker"/>
-/// (cuyo FullPath en iOS puede apuntar a un temporal aun no escrito en disco, lo que
-/// produce preview en blanco y subida de 0 bytes), esta ruta esta garantizada: el
-/// contenido ya fue copiado byte a byte a un archivo estable en el cache de la app.
+/// (cuyo FullPath en iOS puede apuntar a un temporal que aun no esta escrito en disco
+/// cuando la app lo lee, produciendo preview en blanco y subida de 0 bytes), esta ruta
+/// esta garantizada: el contenido ya fue copiado byte a byte a un archivo estable.
 /// </summary>
 public sealed record EvidencePhoto(string LocalPath, string FileName, string ContentType, long SizeBytes);
 
@@ -18,13 +16,13 @@ public sealed record EvidencePhoto(string LocalPath, string FileName, string Con
 /// Captura o selecciona una foto de evidencia y la materializa en un archivo local
 /// confiable, valido tanto en iOS como en Android.
 ///
-/// Motivacion (bug definitivo, no parche): en iOS, <see cref="MediaPicker.CapturePhotoAsync"/>
-/// entrega un FileResult cuyo archivo puede no estar completamente escrito en el
-/// momento en que la app lo lee. Usar directamente su FullPath para el preview o para
-/// abrir el stream de subida provoca imagen en blanco y un cuerpo vacio que el backend
-/// rechaza (se manifiesta como "error de conexion"). La solucion robusta es leer el
-/// stream una sola vez y copiarlo a un archivo propio; a partir de ahi todo el flujo
-/// (preview, subida, guardado offline) opera sobre un archivo que sabemos integro.
+/// IMPORTANTE (no re-codificar): la foto se copia TAL CUAL, byte a byte, sin pasar por
+/// ningun decodificador/codificador de imagen. Un intento previo de convertir a JPEG con
+/// Microsoft.Maui.Graphics (PlatformImage) rompio la subida en iOS (generaba archivos
+/// corruptos/vacios tanto para camara como para galeria). El unico objetivo de este
+/// servicio es MATERIALIZAR el archivo del picker en una ruta estable, que es lo que
+/// arregla el caso de la camara en iOS (donde el FileResult llega antes de que el archivo
+/// este completo). Galeria y Android ya funcionaban con este mismo enfoque de copia.
 /// </summary>
 public sealed class EvidencePhotoService
 {
@@ -56,34 +54,41 @@ public sealed class EvidencePhotoService
 
         Directory.CreateDirectory(_workingDirectory);
 
-        // SIEMPRE se re-codifica a JPEG. La camara de iOS entrega HEIC (formato de
-        // Apple); ese HEIC es el que rompia la subida (el backend no lo procesa y la
-        // peticion terminaba como "error de conexion"), mientras que galeria (JPEG) y
-        // Android (JPEG) funcionaban. Normalizar a JPEG aqui elimina el problema de
-        // raiz para todas las plataformas y ademas reduce el peso del archivo.
-        var localPath = Path.Combine(_workingDirectory, $"{Guid.NewGuid():N}.jpg");
-
-        await using (var source = await result.OpenReadAsync().ConfigureAwait(false))
+        // Conservamos la extension original (jpg/heic/png). NO se re-codifica el contenido.
+        var extension = Path.GetExtension(result.FileName);
+        if (string.IsNullOrWhiteSpace(extension))
         {
-            // Decodifica cualquier formato de entrada (HEIC/PNG/JPEG) y lo vuelve a
-            // exportar como JPEG (calidad 0.85) usando el motor grafico nativo de la
-            // plataforma. SaveAsync es la API documentada de IImage para persistir.
-            using var image = PlatformImage.FromStream(source);
-            await using var target = File.Create(localPath);
-            await image.SaveAsync(target, ImageFormat.Jpeg, 0.85f).ConfigureAwait(false);
+            extension = ".jpg";
+        }
+
+        var localPath = Path.Combine(_workingDirectory, $"{Guid.NewGuid():N}{extension}");
+
+        // Copia byte a byte del stream del picker a nuestro archivo. Esta operacion es la
+        // que "fuerza" a que el contenido exista realmente en disco (resuelve el archivo
+        // incompleto de la camara en iOS) sin alterar los bytes originales de la imagen.
+        await using (var source = await result.OpenReadAsync().ConfigureAwait(false))
+        await using (var target = File.Create(localPath))
+        {
+            await source.CopyToAsync(target, cancellationToken).ConfigureAwait(false);
         }
 
         var info = new FileInfo(localPath);
         if (info.Length == 0)
         {
-            // Defensa extra: si aun asi el archivo quedo vacio, lo limpiamos y
-            // avisamos con una excepcion clara en vez de subir 0 bytes al backend.
+            // Si aun asi quedo vacio, lo limpiamos y avisamos con un mensaje claro en vez
+            // de subir 0 bytes al backend.
             TryDelete(localPath);
             throw new InvalidOperationException(
                 "La foto no se pudo leer del dispositivo. Intenta tomarla de nuevo o elígela desde la galería.");
         }
 
-        return new EvidencePhoto(localPath, Path.GetFileName(localPath), "image/jpeg", info.Length);
+        // Content-type real segun la extension del archivo original (el backend recibe el
+        // mismo tipo que antes: image/jpeg para fotos, etc.).
+        var contentType = string.IsNullOrWhiteSpace(result.ContentType)
+            ? ResolveContentType(extension)
+            : result.ContentType;
+
+        return new EvidencePhoto(localPath, Path.GetFileName(localPath), contentType, info.Length);
     }
 
     /// <summary>Borra un archivo de evidencia temporal (best-effort).</summary>
@@ -109,4 +114,13 @@ public sealed class EvidencePhotoService
             // Es cache; si no se puede borrar ahora, el SO lo recupera despues.
         }
     }
+
+    private static string ResolveContentType(string extension) => extension.ToLowerInvariant() switch
+    {
+        ".jpg" or ".jpeg" => "image/jpeg",
+        ".png" => "image/png",
+        ".heic" or ".heif" => "image/heic",
+        ".webp" => "image/webp",
+        _ => "application/octet-stream"
+    };
 }
