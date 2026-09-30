@@ -63,7 +63,7 @@
                     <Border.StrokeShape>
                         <RoundRectangle CornerRadius="8" />
                     </Border.StrokeShape>
-                    <Label Text="Esta ubicación está sobre una vialidad estatal. Su atención corresponde al Gobierno del Estado de México; la Gerencia de la Ciudad podrá canalizar tu reporte a la autoridad responsable." TextColor="{AppThemeBinding Light=#8A4B00, Dark=#FFD08A}" FontSize="12" />
+                    <Label Text="La ubicación seleccionada corresponde a gestión estatal, por lo que no se garantiza su atención por parte de la gerencia de Metepec." TextColor="{AppThemeBinding Light=#8A4B00, Dark=#FFD08A}" FontSize="12" />
                 </Border>
                 <Label x:Name="UbicacionRequeridaLabel" Text="Este reporte solo se puede levantar dentro de una zona de cobertura especifica: captura tu ubicacion antes de enviarlo." TextColor="#C0392B" FontSize="11" IsVisible="False" />
 
