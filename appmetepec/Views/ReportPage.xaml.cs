@@ -399,6 +399,28 @@ public partial class ReportPage : ContentPage
                 // Sin bloquear el envio del reporte si el catalogo de canal de ingreso no responde.
             }
 
+            // Mismo "cuerpo correo" que la web precarga en ticket-create.ts/onServicioSelected al
+            // seleccionar el servicio: si el servicio tiene una macro activa configurada, el
+            // mensaje inicial del hilo (visible al ciudadano, dispara el correo de "Respuesta
+            // publica" en TicketService.NotificarRespuestaPublicaSiAplicaAsync) usa su Cuerpo en
+            // vez de solo el titulo del reporte.
+            var mensajeInicial = _report.Title;
+            try
+            {
+                var macros = await _api.GetMacroServiciosAsync();
+                var macro = macros.FirstOrDefault(m => m.Idservicio == _report.IdServicio && m.Activo);
+                if (macro is not null && !string.IsNullOrWhiteSpace(macro.Cuerpo))
+                {
+                    var saludo = string.IsNullOrWhiteSpace(name) ? "¡Hola!" : $"¡Hola, {name}!";
+                    mensajeInicial = $"{saludo}<br/><br/>{macro.Cuerpo}";
+                }
+            }
+            catch
+            {
+                // Sin bloquear el envio del reporte si el catalogo de macros no responde; se usa
+                // el titulo del reporte como mensaje inicial (comportamiento previo).
+            }
+
             var (latitud, longitud) = ParseCoordinates(_coordinates);
             var request = new BackendCreateTicketRequest
             {
@@ -426,9 +448,10 @@ public partial class ReportPage : ContentPage
                 Observacion = new BackendTicketObservacionRequest
                 {
                     IdTipoMensaje = 1,
-                    // El mensaje inicial del hilo muestra el nombre del servicio/reporte (igual
-                    // que Zendesk); el texto libre del ciudadano va aparte, en Descripcion.
-                    Observaciones = _report.Title,
+                    // El mensaje inicial del hilo muestra el cuerpo de la macro del servicio si hay
+                    // una activa (ver arriba), o el nombre del servicio/reporte si no (igual que
+                    // Zendesk); el texto libre del ciudadano va aparte, en Descripcion.
+                    Observaciones = mensajeInicial,
                     VisibleCiudadano = true
                 }
             };
