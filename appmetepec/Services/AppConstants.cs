@@ -36,6 +36,12 @@ public static class AppConstants
     public const int MinimumSplashDurationMs = 1800;
 
     // Modulo Eventos: en true sirve datos de ejemplo (Quimera) para probar la UI sin backend.
-    // Poner en false cuando el API /eventos este disponible en produccion.
-    public static readonly bool EventosUsarDatosDeEjemplo = true;
+    // En PRODUCCION va en false: el modulo queda invisible (no aparece Quimera de prueba)
+    // hasta que exista el API real. Poner en true solo para probar la UI en TestFlight.
+    public static readonly bool EventosUsarDatosDeEjemplo = false;
+
+    // El API real /eventos todavia no existe. Mientras esto sea false, la app NO llama al
+    // backend de eventos (evita peticiones fallidas en cada arranque) y el modulo queda
+    // oculto. Poner en true cuando el backend publique el endpoint /eventos.
+    public static readonly bool EventosBackendDisponible = false;
 }

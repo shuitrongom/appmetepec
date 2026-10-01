@@ -26,6 +26,10 @@ public sealed class EventosService
     // este disponible. Es una propiedad (no const) para no generar codigo inaccesible.
     private static bool UsarDatosDeEjemplo => AppConstants.EventosUsarDatosDeEjemplo;
 
+    // Si no usamos datos de ejemplo y el backend real tampoco esta disponible, el modulo
+    // queda inactivo: no se hace ninguna llamada de red y no se muestra nada en la app.
+    private static bool BackendDisponible => AppConstants.EventosBackendDisponible;
+
     public EventosService(HttpClient httpClient, PreferencesService preferences)
     {
         _httpClient = httpClient;
@@ -38,6 +42,12 @@ public sealed class EventosService
         if (UsarDatosDeEjemplo)
         {
             return EventosEjemplo.Listado();
+        }
+
+        // Sin datos de ejemplo y sin backend real: modulo inactivo, no se llama a la red.
+        if (!BackendDisponible)
+        {
+            return [];
         }
 
         using var message = new HttpRequestMessage(HttpMethod.Get, AppConstants.MetepecBackendUrl + "/eventos");
@@ -55,6 +65,11 @@ public sealed class EventosService
         if (UsarDatosDeEjemplo)
         {
             return EventosEjemplo.Detalle(idEvento);
+        }
+
+        if (!BackendDisponible)
+        {
+            return null;
         }
 
         using var message = new HttpRequestMessage(HttpMethod.Get, AppConstants.MetepecBackendUrl + $"/eventos/{idEvento}");
