@@ -34,4 +34,8 @@ public static class AppConstants
 
     // Corre en paralelo con la inicializacion (no sumado, a diferencia del delay de 4s secuencial de Android)
     public const int MinimumSplashDurationMs = 1800;
+
+    // Modulo Eventos: en true sirve datos de ejemplo (Quimera) para probar la UI sin backend.
+    // Poner en false cuando el API /eventos este disponible en produccion.
+    public static readonly bool EventosUsarDatosDeEjemplo = true;
 }

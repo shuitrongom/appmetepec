@@ -8,42 +8,61 @@
     <Grid RowDefinitions="Auto,*">
 
         <!-- Encabezado -->
-        <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Padding="12,10" BackgroundColor="White">
-            <Image Grid.Column="0" Source="btn_regresar.png" HeightRequest="26" WidthRequest="26"
-                   VerticalOptions="Center">
-                <Image.GestureRecognizers>
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Padding="12,10" BackgroundColor="White">
+            <Label Grid.Column="0" Text="&#8592;" FontSize="26" TextColor="#5B2A86"
+                   VerticalOptions="Center" WidthRequest="34">
+                <Label.GestureRecognizers>
                     <TapGestureRecognizer Tapped="OnBackTapped" />
-                </Image.GestureRecognizers>
-            </Image>
+                </Label.GestureRecognizers>
+            </Label>
             <Label Grid.Column="1" x:Name="TitleLabel" Text="Eventos" FontSize="18" FontAttributes="Bold"
-                   VerticalOptions="Center" HorizontalOptions="Center" TextColor="#5B2A86" />
+                   VerticalOptions="Center" HorizontalOptions="Center" TextColor="#5B2A86"
+                   LineBreakMode="TailTruncation" />
+            <!-- Boton para restablecer el zoom/encaje -->
+            <Label Grid.Column="2" Text="&#8982;" FontSize="22" TextColor="#5B2A86"
+                   VerticalOptions="Center" WidthRequest="34" HorizontalTextAlignment="Center">
+                <Label.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnResetZoomTapped" />
+                </Label.GestureRecognizers>
+            </Label>
         </Grid>
 
-        <!-- Mapa interactivo con zoom/pan. El contenido se escala con pinch y se mueve con pan. -->
-        <ScrollView Grid.Row="1" x:Name="MapScroll" Orientation="Both"
-                    HorizontalScrollBarVisibility="Never" VerticalScrollBarVisibility="Never">
-            <!-- AbsoluteLayout: la imagen ocupa todo y los numeros se posicionan por proporcion. -->
-            <AbsoluteLayout x:Name="MapaLayout">
+        <!-- Area del mapa: un contenedor fijo (clip) donde se mueve/escala el contenido. -->
+        <Grid Grid.Row="1" x:Name="Viewport" IsClippedToBounds="True" BackgroundColor="#F4F1FA">
+
+            <!-- Contenido que se escala y traslada (imagen + pines). -->
+            <AbsoluteLayout x:Name="MapaLayout" HorizontalOptions="Center" VerticalOptions="Center">
                 <Image x:Name="MapaImagen"
                        AbsoluteLayout.LayoutBounds="0,0,1,1"
                        AbsoluteLayout.LayoutFlags="All"
                        Aspect="AspectFit" />
-                <!-- Los numeros (hotspots) se agregan por codigo en OnAppearing, posicionados por %. -->
-
-                <AbsoluteLayout.GestureRecognizers>
-                    <PinchGestureRecognizer PinchUpdated="OnPinchUpdated" />
-                    <PanGestureRecognizer PanUpdated="OnPanUpdated" />
-                </AbsoluteLayout.GestureRecognizers>
+                <!-- Los pines (hotspots) se agregan por codigo, posicionados por %. -->
             </AbsoluteLayout>
-        </ScrollView>
 
-        <!-- Indicador de carga -->
-        <ActivityIndicator Grid.Row="1" x:Name="BusyIndicator" IsVisible="False" IsRunning="False"
-                           HorizontalOptions="Center" VerticalOptions="Center" Color="#5B2A86" />
+            <!-- Gestos sobre el area completa (no compiten con un ScrollView). -->
+            <Grid.GestureRecognizers>
+                <PinchGestureRecognizer PinchUpdated="OnPinchUpdated" />
+                <PanGestureRecognizer PanUpdated="OnPanUpdated" />
+            </Grid.GestureRecognizers>
 
-        <!-- Pista para el usuario -->
-        <Label Grid.Row="1" Text="Toca un número para ver su programación"
-               VerticalOptions="End" HorizontalOptions="Center" Margin="0,0,0,16"
-               FontSize="13" TextColor="#5B2A86" BackgroundColor="#F2E9FA" Padding="12,6" />
+            <!-- Carga -->
+            <ActivityIndicator x:Name="BusyIndicator" IsVisible="False" IsRunning="False"
+                               HorizontalOptions="Center" VerticalOptions="Center" Color="#5B2A86" />
+
+            <!-- Error de imagen con reintento -->
+            <VerticalStackLayout x:Name="ErrorPanel" IsVisible="False" Spacing="10"
+                                 HorizontalOptions="Center" VerticalOptions="Center" Padding="24">
+                <Label Text="No se pudo cargar el mapa del evento."
+                       HorizontalTextAlignment="Center" TextColor="#555" FontSize="15" />
+                <Button Text="Reintentar" Clicked="OnReintentarClicked"
+                        BackgroundColor="#5B2A86" TextColor="White" CornerRadius="18" Padding="22,6" />
+            </VerticalStackLayout>
+        </Grid>
+
+        <!-- Pista -->
+        <Label Grid.Row="1" Text="Toca un número para ver su programación · pellizca para acercar"
+               VerticalOptions="End" HorizontalOptions="Center" Margin="16,0,16,16"
+               FontSize="12" TextColor="#5B2A86" BackgroundColor="#F2E9FA" Padding="12,6"
+               HorizontalTextAlignment="Center" />
     </Grid>
 </ContentPage>

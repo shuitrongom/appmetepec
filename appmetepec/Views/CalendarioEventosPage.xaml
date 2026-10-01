@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="appmetepec.Views.CalendarioEventosPage"
+             Shell.NavBarIsVisible="False"
+             BackgroundColor="#80000000">
+
+    <!-- Modal centrado: tarjeta con el calendario del mes -->
+    <Grid Padding="22" VerticalOptions="Center">
+        <Border BackgroundColor="White" StrokeThickness="0" Padding="18"
+                StrokeShape="RoundRectangle 20">
+            <VerticalStackLayout Spacing="14">
+
+                <!-- Encabezado: mes + navegacion -->
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                    <Label Grid.Column="0" Text="&#8249;" FontSize="30" TextColor="#5B2A86"
+                           WidthRequest="40" HorizontalTextAlignment="Center" VerticalOptions="Center">
+                        <Label.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnMesAnteriorTapped" />
+                        </Label.GestureRecognizers>
+                    </Label>
+                    <Label Grid.Column="1" x:Name="MesLabel" Text="" FontSize="18" FontAttributes="Bold"
+                           TextColor="#5B2A86" HorizontalTextAlignment="Center" VerticalOptions="Center" />
+                    <Label Grid.Column="2" Text="&#8250;" FontSize="30" TextColor="#5B2A86"
+                           WidthRequest="40" HorizontalTextAlignment="Center" VerticalOptions="Center">
+                        <Label.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnMesSiguienteTapped" />
+                        </Label.GestureRecognizers>
+                    </Label>
+                </Grid>
+
+                <!-- Cabecera de dias de la semana -->
+                <Grid x:Name="DiasSemanaGrid" ColumnDefinitions="*,*,*,*,*,*,*">
+                    <Label Grid.Column="0" Text="D" HorizontalTextAlignment="Center" FontSize="12" TextColor="#999" />
+                    <Label Grid.Column="1" Text="L" HorizontalTextAlignment="Center" FontSize="12" TextColor="#999" />
+                    <Label Grid.Column="2" Text="M" HorizontalTextAlignment="Center" FontSize="12" TextColor="#999" />
+                    <Label Grid.Column="3" Text="M" HorizontalTextAlignment="Center" FontSize="12" TextColor="#999" />
+                    <Label Grid.Column="4" Text="J" HorizontalTextAlignment="Center" FontSize="12" TextColor="#999" />
+                    <Label Grid.Column="5" Text="V" HorizontalTextAlignment="Center" FontSize="12" TextColor="#999" />
+                    <Label Grid.Column="6" Text="S" HorizontalTextAlignment="Center" FontSize="12" TextColor="#999" />
+                </Grid>
+
+                <!-- Cuadricula de dias (se llena por codigo) -->
+                <Grid x:Name="DiasGrid"
+                      ColumnDefinitions="*,*,*,*,*,*,*"
+                      RowDefinitions="40,40,40,40,40,40"
+                      ColumnSpacing="2" RowSpacing="2" />
+
+                <!-- Leyenda -->
+                <HorizontalStackLayout Spacing="8" HorizontalOptions="Center">
+                    <Border WidthRequest="12" HeightRequest="12" BackgroundColor="#5B2A86"
+                            StrokeThickness="0" StrokeShape="RoundRectangle 6" VerticalOptions="Center" />
+                    <Label Text="Días con eventos" FontSize="12" TextColor="#666" VerticalOptions="Center" />
+                </HorizontalStackLayout>
+
+                <Button Text="Cerrar" Clicked="OnCerrarClicked"
+                        BackgroundColor="Transparent" TextColor="#5B2A86" FontAttributes="Bold" />
+            </VerticalStackLayout>
+        </Border>
+    </Grid>
+</ContentPage>

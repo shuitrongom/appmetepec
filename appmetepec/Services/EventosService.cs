@@ -22,8 +22,9 @@ public sealed class EventosService
     };
 
     // Mientras el backend no tenga el modulo, servimos datos de ejemplo para poder
-    // desarrollar/probar la pantalla. Cambiar a false cuando /eventos este disponible.
-    private const bool UsarDatosDeEjemplo = true;
+    // desarrollar/probar la pantalla. Cambiar a false (en AppConstants) cuando /eventos
+    // este disponible. Es una propiedad (no const) para no generar codigo inaccesible.
+    private static bool UsarDatosDeEjemplo => AppConstants.EventosUsarDatosDeEjemplo;
 
     public EventosService(HttpClient httpClient, PreferencesService preferences)
     {

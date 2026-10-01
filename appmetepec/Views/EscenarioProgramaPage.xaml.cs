@@ -74,12 +74,10 @@ public partial class EscenarioProgramaPage : ContentPage
     {
         if (_escenario is null) return;
 
-        // Dias que SI tienen eventos en este escenario, ordenados. Se le muestran al usuario
-        // como opciones (asi no "pierde" tiempo en dias vacios). Simple y nativo iOS/Android.
+        // Dias que SI tienen eventos en este escenario.
         var dias = _escenario.Actividades
             .Select(a => a.Fecha.Date)
             .Distinct()
-            .OrderBy(d => d)
             .ToList();
 
         if (dias.Count == 0)
@@ -88,24 +86,16 @@ public partial class EscenarioProgramaPage : ContentPage
             return;
         }
 
-        var opciones = dias.Select(d =>
-        {
-            var etiqueta = CapitalizarFecha(d);
-            if (d == DateTime.Today) etiqueta = "Hoy · " + etiqueta;
-            if (d == _diaSeleccionado) etiqueta = "✓ " + etiqueta;
-            return etiqueta;
-        }).ToArray();
+        // Rango de meses navegables: del evento (si lo tenemos) o, en su defecto, el minimo
+        // y maximo de los dias con eventos.
+        var inicio = _navigationState.SelectedEvento?.FechaInicio ?? dias.Min();
+        var fin = _navigationState.SelectedEvento?.FechaFin ?? dias.Max();
 
-        var elegido = await DisplayActionSheet("Elige un día", "Cancelar", null, opciones);
-        if (string.IsNullOrWhiteSpace(elegido) || elegido == "Cancelar")
+        // Calendario visual del mes: marca los dias con eventos y resalta el actual.
+        var elegido = await CalendarioEventosPage.PickAsync(Navigation, dias, _diaSeleccionado, inicio, fin);
+        if (elegido is { } dia)
         {
-            return;
-        }
-
-        var indice = Array.IndexOf(opciones, elegido);
-        if (indice >= 0 && indice < dias.Count)
-        {
-            MostrarDia(dias[indice]);
+            MostrarDia(dia);
         }
     }
 
@@ -142,6 +132,14 @@ public partial class EscenarioProgramaPage : ContentPage
         public string Descripcion { get; }
         public bool TieneDescripcion { get; }
 
-        private static string Formato(TimeSpan t) => new DateTime(t.Ticks).ToString("HH:mm") + " h";
+        // Formateo nativo del TimeSpan: no construye un DateTime (que lanzaria excepcion si
+        // el backend manda una hora fuera de 0-24h). Normaliza al rango de un dia por seguridad.
+        private static string Formato(TimeSpan t)
+        {
+            var normal = t;
+            if (normal < TimeSpan.Zero) normal = TimeSpan.Zero;
+            if (normal >= TimeSpan.FromDays(1)) normal = new TimeSpan(normal.Hours % 24, normal.Minutes, 0);
+            return normal.ToString(@"hh\:mm") + " h";
+        }
     }
 }
