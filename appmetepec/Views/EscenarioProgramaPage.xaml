@@ -7,22 +7,34 @@
 
     <Grid RowDefinitions="Auto,Auto,*">
 
-        <!-- Encabezado: volver + nombre del escenario + icono calendario -->
-        <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Padding="12,10" BackgroundColor="#5B2A86">
-            <Image Grid.Column="0" Source="btn_regresar.png" HeightRequest="24" WidthRequest="24"
-                   VerticalOptions="Center">
-                <Image.GestureRecognizers>
-                    <TapGestureRecognizer Tapped="OnBackTapped" />
-                </Image.GestureRecognizers>
-            </Image>
+        <!-- Encabezado: volver al mapa + nombre del escenario + icono calendario.
+             El color de fondo lo define cada escenario (lo asigna el code-behind). -->
+        <Grid Grid.Row="0" x:Name="HeaderGrid" ColumnDefinitions="Auto,*,Auto" Padding="12,10" BackgroundColor="#5B2A86">
 
-            <VerticalStackLayout Grid.Column="1" Spacing="0" VerticalOptions="Center" Margin="8,0">
-                <Label x:Name="EscenarioNombre" Text="" FontSize="17" FontAttributes="Bold" TextColor="White" />
-                <Label x:Name="EscenarioDireccion" Text="" FontSize="12" TextColor="#E5D5F5" />
+            <!-- Boton claro "volver al mapa": pastilla con flecha + texto -->
+            <Border Grid.Column="0" x:Name="VolverMapaBtn" VerticalOptions="Center"
+                    BackgroundColor="#33FFFFFF" StrokeThickness="0" Padding="10,6"
+                    StrokeShape="RoundRectangle 18">
+                <HorizontalStackLayout Spacing="6">
+                    <Label Text="‹" FontSize="20" FontAttributes="Bold" TextColor="White"
+                           VerticalTextAlignment="Center" />
+                    <Label Text="Mapa" FontSize="13" FontAttributes="Bold" TextColor="White"
+                           VerticalTextAlignment="Center" />
+                </HorizontalStackLayout>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnBackTapped" />
+                </Border.GestureRecognizers>
+            </Border>
+
+            <VerticalStackLayout Grid.Column="1" Spacing="0" VerticalOptions="Center" Margin="10,0">
+                <Label x:Name="EscenarioNombre" Text="" FontSize="17" FontAttributes="Bold" TextColor="White"
+                       LineBreakMode="TailTruncation" />
+                <Label x:Name="EscenarioDireccion" Text="" FontSize="12" TextColor="#F0E8FA"
+                       LineBreakMode="TailTruncation" />
             </VerticalStackLayout>
 
             <!-- Icono de calendario: abre el calendario del mes para elegir otro dia -->
-            <Border Grid.Column="2" WidthRequest="40" HeightRequest="40" BackgroundColor="#7A42B0"
+            <Border Grid.Column="2" WidthRequest="40" HeightRequest="40" BackgroundColor="#33FFFFFF"
                     StrokeThickness="0" VerticalOptions="Center"
                     StrokeShape="RoundRectangle 20">
                 <Label Text="📅" FontSize="20" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
@@ -33,7 +45,7 @@
         </Grid>
 
         <!-- Barra del dia seleccionado + boton "hoy" cuando se ve otro dia -->
-        <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Padding="16,12,16,8" BackgroundColor="#F2E9FA">
+        <Grid Grid.Row="1" x:Name="DiaBar" ColumnDefinitions="*,Auto" Padding="16,12,16,8" BackgroundColor="#F2E9FA">
             <Label Grid.Column="0" x:Name="DiaLabel" Text="" FontSize="16" FontAttributes="Bold"
                    TextColor="#5B2A86" VerticalOptions="Center" />
             <Button Grid.Column="1" x:Name="HoyButton" Text="Hoy" IsVisible="False"
@@ -47,13 +59,16 @@
                 <CollectionView x:Name="ActividadesView" SelectionMode="None">
                     <CollectionView.ItemTemplate>
                         <DataTemplate>
-                            <Grid ColumnDefinitions="Auto,*" Padding="0,8" ColumnSpacing="14">
+                            <Grid ColumnDefinitions="Auto,Auto,*" Padding="0,8" ColumnSpacing="12">
                                 <!-- Hora -->
                                 <Label Grid.Column="0" Text="{Binding HoraTexto}" FontSize="15"
-                                       FontAttributes="Bold" TextColor="#5B2A86" WidthRequest="64"
+                                       FontAttributes="Bold" TextColor="{Binding Color}" WidthRequest="60"
                                        VerticalOptions="Start" />
+                                <!-- Acento vertical con el color del escenario -->
+                                <BoxView Grid.Column="1" WidthRequest="3" Color="{Binding Color}"
+                                         VerticalOptions="Fill" HorizontalOptions="Center" />
                                 <!-- Detalle -->
-                                <VerticalStackLayout Grid.Column="1" Spacing="2">
+                                <VerticalStackLayout Grid.Column="2" Spacing="2">
                                     <Label Text="{Binding Titulo}" FontSize="15" FontAttributes="Bold"
                                            TextColor="#222" />
                                     <Label Text="{Binding Descripcion}" FontSize="13" TextColor="#666"

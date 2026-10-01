@@ -155,7 +155,9 @@
             <Border.Shadow>
                 <Shadow Brush="Black" Opacity="0.10" Radius="8" Offset="0,-2" />
             </Border.Shadow>
-            <Grid ColumnDefinitions="*,*" Padding="14,10" ColumnSpacing="10">
+            <!-- Barra inferior. La 3a columna (Eventos) solo aparece cuando hay un evento
+                 activo; el code-behind ajusta las columnas para que no quede hueco. -->
+            <Grid x:Name="BottomTabsGrid" ColumnDefinitions="*,*" Padding="14,10" ColumnSpacing="10">
                 <Border x:Name="ReportsTab" BackgroundColor="#F1EEFB" StrokeThickness="0" Padding="6" HorizontalOptions="Fill" VerticalOptions="Center">
                     <Border.StrokeShape>
                         <RoundRectangle CornerRadius="14" />
@@ -178,6 +180,20 @@
                     </VerticalStackLayout>
                     <Border.GestureRecognizers>
                         <TapGestureRecognizer Tapped="OnNewsTabTapped" />
+                    </Border.GestureRecognizers>
+                </Border>
+
+                <!-- Tab Eventos: oculto por defecto; se muestra cuando hay evento activo. -->
+                <Border x:Name="EventosTab" Grid.Column="2" BackgroundColor="Transparent" StrokeThickness="0" Padding="6" HorizontalOptions="Fill" VerticalOptions="Center" IsVisible="False">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="14" />
+                    </Border.StrokeShape>
+                    <VerticalStackLayout Spacing="4">
+                        <Label Text="&#127914;" FontSize="22" HorizontalOptions="Center" HorizontalTextAlignment="Center" />
+                        <Label x:Name="EventosTabLabel" Text="EVENTOS" FontSize="10" FontAttributes="Bold" TextColor="#9AA5B1" HorizontalTextAlignment="Center" LineBreakMode="TailTruncation" MaxLines="1" />
+                    </VerticalStackLayout>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnEventosTabTapped" />
                     </Border.GestureRecognizers>
                 </Border>
             </Grid>

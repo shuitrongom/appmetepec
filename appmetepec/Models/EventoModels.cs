@@ -63,6 +63,12 @@ public sealed class BackendEscenarioDto
     [JsonPropertyName("direccion")]
     public string? Direccion { get; set; }
 
+    // Color del escenario (lo define el admin en el front), en formato hex "#RRGGBB".
+    // Permite identificar cada sede con su color propio (como el programa impreso). Si el
+    // backend no lo manda, la app usa un color por defecto.
+    [JsonPropertyName("color")]
+    public string? Color { get; set; }
+
     // Posicion del hotspot en PORCENTAJE sobre la imagen (0-100). Clave del diseno:
     // la app los dibuja relativos, asi funcionan en cualquier tamano y con zoom.
     [JsonPropertyName("posX")]

@@ -15,6 +15,9 @@ public partial class EventoMapaPage : ContentPage
     private const double EscalaMin = 1;
     private const double EscalaMax = 5;
 
+    // Color por defecto del pin cuando el backend no define uno por escenario.
+    private static readonly Color PinColorPorDefecto = Color.FromArgb("#5B2A86");
+
     private readonly EventosService _eventos;
     private readonly NavigationState _navigationState;
 
@@ -170,7 +173,7 @@ public partial class EventoMapaPage : ContentPage
         {
             WidthRequest = PinDiametro,
             HeightRequest = PinDiametro,
-            BackgroundColor = Color.FromArgb("#5B2A86"),
+            BackgroundColor = ResolverColor(escenario.Color),
             StrokeThickness = 2,
             Stroke = Colors.White,
             StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = (float)(PinDiametro / 2) },
@@ -278,5 +281,24 @@ public partial class EventoMapaPage : ContentPage
     private async void OnBackTapped(object sender, TappedEventArgs e)
     {
         await Shell.Current.GoToAsync("..");
+    }
+
+    // Convierte el hex del backend ("#RRGGBB") en Color. Si viene vacio o invalido,
+    // usa el color por defecto para no dejar pines sin pintar.
+    private static Color ResolverColor(string? hex)
+    {
+        if (string.IsNullOrWhiteSpace(hex))
+        {
+            return PinColorPorDefecto;
+        }
+
+        try
+        {
+            return Color.FromArgb(hex);
+        }
+        catch
+        {
+            return PinColorPorDefecto;
+        }
     }
 }

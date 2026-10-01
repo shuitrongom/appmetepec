@@ -16,6 +16,10 @@ public partial class EscenarioProgramaPage : ContentPage
 
     private static readonly CultureInfo Es = new("es-MX");
 
+    // Color base del escenario (del backend); por defecto el morado institucional.
+    private static readonly Color ColorPorDefecto = Color.FromArgb("#5B2A86");
+    private Color _colorEscenario = ColorPorDefecto;
+
     public EscenarioProgramaPage(NavigationState navigationState)
     {
         InitializeComponent();
@@ -42,6 +46,11 @@ public partial class EscenarioProgramaPage : ContentPage
         EscenarioDireccion.Text = _escenario.Direccion ?? "";
         EscenarioDireccion.IsVisible = !string.IsNullOrWhiteSpace(_escenario.Direccion);
 
+        // El escenario trae su propio color (lo define el admin en el front): tenimos
+        // el encabezado y los acentos con ese color para que cada sede sea identificable.
+        _colorEscenario = ResolverColor(_escenario.Color);
+        AplicarColorEscenario();
+
         // Arranca en el dia de hoy.
         MostrarDia(DateTime.Today);
     }
@@ -61,7 +70,7 @@ public partial class EscenarioProgramaPage : ContentPage
         var items = _escenario.Actividades
             .Where(a => a.Fecha.Date == _diaSeleccionado)
             .OrderBy(a => a.HoraInicio ?? TimeSpan.Zero)
-            .Select(a => new ActividadItem(a))
+            .Select(a => new ActividadItem(a, _colorEscenario))
             .ToList();
 
         ActividadesView.ItemsSource = items;
@@ -101,6 +110,34 @@ public partial class EscenarioProgramaPage : ContentPage
 
     private void OnHoyClicked(object sender, EventArgs e) => MostrarDia(DateTime.Today);
 
+    // Tine el encabezado y los acentos con el color del escenario. Una barra del dia con
+    // una version muy clara del mismo color da un acabado premium y coherente.
+    private void AplicarColorEscenario()
+    {
+        HeaderGrid.BackgroundColor = _colorEscenario;
+        DiaLabel.TextColor = _colorEscenario;
+        HoyButton.BackgroundColor = _colorEscenario;
+        DiaBar.BackgroundColor = _colorEscenario.WithAlpha(0.12f);
+    }
+
+    // Convierte el hex del backend ("#RRGGBB") en Color, con fallback al color institucional.
+    private static Color ResolverColor(string? hex)
+    {
+        if (string.IsNullOrWhiteSpace(hex))
+        {
+            return ColorPorDefecto;
+        }
+
+        try
+        {
+            return Color.FromArgb(hex);
+        }
+        catch
+        {
+            return ColorPorDefecto;
+        }
+    }
+
     private async void OnBackTapped(object sender, TappedEventArgs e)
     {
         await Shell.Current.GoToAsync("..");
@@ -116,7 +153,7 @@ public partial class EscenarioProgramaPage : ContentPage
     // Item de presentacion para el CollectionView.
     private sealed class ActividadItem
     {
-        public ActividadItem(BackendActividadDto a)
+        public ActividadItem(BackendActividadDto a, Color color)
         {
             HoraTexto = a.HoraInicio is { } h
                 ? (a.HoraFin is { } f ? $"{Formato(h)}\n{Formato(f)}" : Formato(h))
@@ -125,12 +162,14 @@ public partial class EscenarioProgramaPage : ContentPage
             Titulo = string.IsNullOrWhiteSpace(a.Pais) ? a.Titulo : $"{a.Titulo}  ·  {a.Pais}";
             Descripcion = a.Descripcion ?? "";
             TieneDescripcion = !string.IsNullOrWhiteSpace(a.Descripcion);
+            Color = color;
         }
 
         public string HoraTexto { get; }
         public string Titulo { get; }
         public string Descripcion { get; }
         public bool TieneDescripcion { get; }
+        public Color Color { get; }
 
         // Formateo nativo del TimeSpan: no construye un DateTime (que lanzaria excepcion si
         // el backend manda una hora fuera de 0-24h). Normaliza al rango de un dia por seguridad.
