@@ -467,3 +467,8 @@ publicaciones/
 
 # Carpeta temporal de pruebas locales (no forma parte de la app)
 _coordtest/
+
+# PDFs de referencia de eventos (material de trabajo, no parte de la app)
+*.pdf
+
+/net-commander

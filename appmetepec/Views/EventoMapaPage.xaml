@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="appmetepec.Views.EventoMapaPage"
+             Shell.NavBarIsVisible="False"
+             BackgroundColor="White">
+
+    <Grid RowDefinitions="Auto,*">
+
+        <!-- Encabezado -->
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Padding="12,10" BackgroundColor="White">
+            <Image Grid.Column="0" Source="btn_regresar.png" HeightRequest="26" WidthRequest="26"
+                   VerticalOptions="Center">
+                <Image.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnBackTapped" />
+                </Image.GestureRecognizers>
+            </Image>
+            <Label Grid.Column="1" x:Name="TitleLabel" Text="Eventos" FontSize="18" FontAttributes="Bold"
+                   VerticalOptions="Center" HorizontalOptions="Center" TextColor="#5B2A86" />
+        </Grid>
+
+        <!-- Mapa interactivo con zoom/pan. El contenido se escala con pinch y se mueve con pan. -->
+        <ScrollView Grid.Row="1" x:Name="MapScroll" Orientation="Both"
+                    HorizontalScrollBarVisibility="Never" VerticalScrollBarVisibility="Never">
+            <!-- AbsoluteLayout: la imagen ocupa todo y los numeros se posicionan por proporcion. -->
+            <AbsoluteLayout x:Name="MapaLayout">
+                <Image x:Name="MapaImagen"
+                       AbsoluteLayout.LayoutBounds="0,0,1,1"
+                       AbsoluteLayout.LayoutFlags="All"
+                       Aspect="AspectFit" />
+                <!-- Los numeros (hotspots) se agregan por codigo en OnAppearing, posicionados por %. -->
+
+                <AbsoluteLayout.GestureRecognizers>
+                    <PinchGestureRecognizer PinchUpdated="OnPinchUpdated" />
+                    <PanGestureRecognizer PanUpdated="OnPanUpdated" />
+                </AbsoluteLayout.GestureRecognizers>
+            </AbsoluteLayout>
+        </ScrollView>
+
+        <!-- Indicador de carga -->
+        <ActivityIndicator Grid.Row="1" x:Name="BusyIndicator" IsVisible="False" IsRunning="False"
+                           HorizontalOptions="Center" VerticalOptions="Center" Color="#5B2A86" />
+
+        <!-- Pista para el usuario -->
+        <Label Grid.Row="1" Text="Toca un número para ver su programación"
+               VerticalOptions="End" HorizontalOptions="Center" Margin="0,0,0,16"
+               FontSize="13" TextColor="#5B2A86" BackgroundColor="#F2E9FA" Padding="12,6" />
+    </Grid>
+</ContentPage>

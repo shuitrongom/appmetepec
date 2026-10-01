@@ -250,6 +250,16 @@
                             </Grid.GestureRecognizers>
                         </Grid>
 
+                        <!-- Eventos: a un lado de Noticias. Solo visible si hay un evento activo
+                             (se controla desde el admin del backend: desactivar = desaparece). -->
+                        <Grid x:Name="DrawerEventosItem" ColumnDefinitions="46,*" Padding="20,14" ColumnSpacing="14" IsVisible="False">
+                            <Label Text="&#127914;" FontSize="20" HorizontalOptions="Center" VerticalOptions="Center" />
+                            <Label Grid.Column="1" x:Name="DrawerEventosLabel" Text="Eventos" FontSize="15" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" VerticalOptions="Center" />
+                            <Grid.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="OnDrawerEventosTapped" />
+                            </Grid.GestureRecognizers>
+                        </Grid>
+
                         <BoxView HeightRequest="1" BackgroundColor="{AppThemeBinding Light=#E5E5E5, Dark=#33383D}" Margin="20,10" />
 
                         <Grid ColumnDefinitions="46,*,Auto" Padding="20,14" ColumnSpacing="14">

@@ -19,6 +19,8 @@ namespace appmetepec
             Routing.RegisterRoute(nameof(MyTicketsPage), typeof(MyTicketsPage));
             Routing.RegisterRoute(nameof(TicketDetailPage), typeof(TicketDetailPage));
             Routing.RegisterRoute(nameof(EncuestaPage), typeof(EncuestaPage));
+            Routing.RegisterRoute(nameof(EventoMapaPage), typeof(EventoMapaPage));
+            Routing.RegisterRoute(nameof(EscenarioProgramaPage), typeof(EscenarioProgramaPage));
         }
     }
 }

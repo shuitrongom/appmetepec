@@ -16,13 +16,16 @@ public partial class HomePage : ContentPage
     private readonly NavigationState _navigationState;
     private readonly PreferencesService _preferences;
     private readonly PushRegistrationService _pushRegistration;
+    private readonly EventosService _eventos;
     private bool _bannerTimerStarted;
     private bool _isDrawerOpen;
     private bool _newsLoaded;
     private bool _categoriesLoaded;
     private bool _loadingCategories;
+    private bool _eventosLoaded;
+    private BackendEventoDto? _eventoActivo;
 
-    public HomePage(ReportCatalogService catalog, MetepecApiService api, NavigationState navigationState, PreferencesService preferences, PushRegistrationService pushRegistration)
+    public HomePage(ReportCatalogService catalog, MetepecApiService api, NavigationState navigationState, PreferencesService preferences, PushRegistrationService pushRegistration, EventosService eventos)
     {
         InitializeComponent();
         _catalog = catalog;
@@ -30,6 +33,7 @@ public partial class HomePage : ContentPage
         _navigationState = navigationState;
         _preferences = preferences;
         _pushRegistration = pushRegistration;
+        _eventos = eventos;
         DrawerVersionLabel.Text = $"Versión {AppInfo.Current.VersionString}";
         DarkThemeSwitch.IsToggled = _preferences.DarkThemeEnabled;
         SetActiveTab(reportsActive: true);
@@ -60,6 +64,11 @@ public partial class HomePage : ContentPage
         if (!_newsLoaded)
         {
             await LoadNewsAsync();
+        }
+
+        if (!_eventosLoaded)
+        {
+            await LoadEventosAsync();
         }
 
         StartBannerTimer();
@@ -602,6 +611,50 @@ public partial class HomePage : ContentPage
     {
         await CloseDrawerAsync();
         OnNewsTabTapped(sender, e);
+    }
+
+    // Carga el evento activo (si lo hay) para mostrar la opcion "Eventos" en el menu. Si el
+    // admin desactiva todos los eventos, el backend devuelve lista vacia y la opcion no se
+    // muestra -- control total desde el panel sin recompilar. Best-effort: si falla la red,
+    // simplemente no aparece Eventos (no bloquea el resto del home).
+    private async Task LoadEventosAsync()
+    {
+        try
+        {
+            var activos = await _eventos.GetEventosActivosAsync();
+            _eventoActivo = activos.FirstOrDefault();
+
+            if (_eventoActivo is not null)
+            {
+                // Si el evento tiene nombre propio, se usa como etiqueta ("Quimera 2026");
+                // si no, queda el generico "Eventos".
+                DrawerEventosLabel.Text = string.IsNullOrWhiteSpace(_eventoActivo.Nombre) ? "Eventos" : _eventoActivo.Nombre;
+                DrawerEventosItem.IsVisible = true;
+            }
+            else
+            {
+                DrawerEventosItem.IsVisible = false;
+            }
+
+            _eventosLoaded = true;
+        }
+        catch
+        {
+            DrawerEventosItem.IsVisible = false;
+            // _eventosLoaded se queda en false: se reintenta en el proximo OnAppearing.
+        }
+    }
+
+    private async void OnDrawerEventosTapped(object sender, TappedEventArgs e)
+    {
+        await CloseDrawerAsync();
+        if (_eventoActivo is null)
+        {
+            return;
+        }
+
+        _navigationState.SelectedEvento = _eventoActivo;
+        await Shell.Current.GoToAsync(nameof(EventoMapaPage));
     }
 
     private void OnDarkThemeToggled(object sender, ToggledEventArgs e)

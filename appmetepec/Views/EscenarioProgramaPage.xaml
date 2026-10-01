@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="appmetepec.Views.EscenarioProgramaPage"
+             Shell.NavBarIsVisible="False"
+             BackgroundColor="White">
+
+    <Grid RowDefinitions="Auto,Auto,*">
+
+        <!-- Encabezado: volver + nombre del escenario + icono calendario -->
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Padding="12,10" BackgroundColor="#5B2A86">
+            <Image Grid.Column="0" Source="btn_regresar.png" HeightRequest="24" WidthRequest="24"
+                   VerticalOptions="Center">
+                <Image.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnBackTapped" />
+                </Image.GestureRecognizers>
+            </Image>
+
+            <VerticalStackLayout Grid.Column="1" Spacing="0" VerticalOptions="Center" Margin="8,0">
+                <Label x:Name="EscenarioNombre" Text="" FontSize="17" FontAttributes="Bold" TextColor="White" />
+                <Label x:Name="EscenarioDireccion" Text="" FontSize="12" TextColor="#E5D5F5" />
+            </VerticalStackLayout>
+
+            <!-- Icono de calendario: abre el calendario del mes para elegir otro dia -->
+            <Border Grid.Column="2" WidthRequest="40" HeightRequest="40" BackgroundColor="#7A42B0"
+                    StrokeThickness="0" VerticalOptions="Center"
+                    StrokeShape="RoundRectangle 20">
+                <Label Text="📅" FontSize="20" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnCalendarioTapped" />
+                </Border.GestureRecognizers>
+            </Border>
+        </Grid>
+
+        <!-- Barra del dia seleccionado + boton "hoy" cuando se ve otro dia -->
+        <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Padding="16,12,16,8" BackgroundColor="#F2E9FA">
+            <Label Grid.Column="0" x:Name="DiaLabel" Text="" FontSize="16" FontAttributes="Bold"
+                   TextColor="#5B2A86" VerticalOptions="Center" />
+            <Button Grid.Column="1" x:Name="HoyButton" Text="Hoy" IsVisible="False"
+                    FontSize="13" Padding="14,4" CornerRadius="16"
+                    BackgroundColor="#5B2A86" TextColor="White" Clicked="OnHoyClicked" />
+        </Grid>
+
+        <!-- Programacion del dia -->
+        <ScrollView Grid.Row="2">
+            <VerticalStackLayout Padding="16" Spacing="12">
+                <CollectionView x:Name="ActividadesView" SelectionMode="None">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <Grid ColumnDefinitions="Auto,*" Padding="0,8" ColumnSpacing="14">
+                                <!-- Hora -->
+                                <Label Grid.Column="0" Text="{Binding HoraTexto}" FontSize="15"
+                                       FontAttributes="Bold" TextColor="#5B2A86" WidthRequest="64"
+                                       VerticalOptions="Start" />
+                                <!-- Detalle -->
+                                <VerticalStackLayout Grid.Column="1" Spacing="2">
+                                    <Label Text="{Binding Titulo}" FontSize="15" FontAttributes="Bold"
+                                           TextColor="#222" />
+                                    <Label Text="{Binding Descripcion}" FontSize="13" TextColor="#666"
+                                           IsVisible="{Binding TieneDescripcion}" />
+                                </VerticalStackLayout>
+                            </Grid>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+
+                <!-- Estado vacio -->
+                <Label x:Name="VacioLabel"
+                       Text="No hay eventos este día en esta sede. Toca el calendario 📅 para ver otros días."
+                       FontSize="14" TextColor="#888" HorizontalTextAlignment="Center"
+                       Margin="0,30" IsVisible="False" />
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+</ContentPage>

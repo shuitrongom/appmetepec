@@ -77,6 +77,7 @@ namespace appmetepec
             builder.Services.AddSingleton<PendingTicketsService>();
             builder.Services.AddSingleton<GeocodingService>();
             builder.Services.AddSingleton<EvidencePhotoService>();
+            builder.Services.AddSingleton<EventosService>();
 
             builder.Services.AddTransient<SplashViewModel>();
             builder.Services.AddTransient<SplashPage>();
@@ -93,6 +94,8 @@ namespace appmetepec
             builder.Services.AddTransient<MyTicketsPage>();
             builder.Services.AddTransient<TicketDetailPage>();
             builder.Services.AddTransient<EncuestaPage>();
+            builder.Services.AddTransient<EventoMapaPage>();
+            builder.Services.AddTransient<EscenarioProgramaPage>();
 
             return builder.Build();
         }
