@@ -145,6 +145,9 @@ public sealed class PendingTicketSubmission
     public string Comments { get; set; } = "";
     public string? LocalPhotoPath { get; set; }
     public string? PhotoDescription { get; set; }
+    // Null en registros guardados antes de este campo (retrocompatibilidad): MyTicketsPage cae a
+    // "image/jpeg" en ese caso, igual que el comportamiento previo a soportar video.
+    public string? PhotoMimeType { get; set; }
     public bool IsBache { get; set; }
     public string? LastError { get; set; }
 }
