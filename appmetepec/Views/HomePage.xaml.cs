@@ -477,7 +477,9 @@ public partial class HomePage : ContentPage
     {
         if (report.Title == "Llamada")
         {
-            await Launcher.Default.OpenAsync("tel:*7311");
+            // telprompt: fuerza el dialogo nativo de iOS antes de marcar, evitando que
+            // WhatsApp intercepte el numero especial *7311 en iPhones con esa app instalada.
+            await Launcher.Default.OpenAsync("telprompt:*7311");
             return;
         }
 
@@ -529,7 +531,7 @@ public partial class HomePage : ContentPage
     {
         try
         {
-            await Launcher.Default.OpenAsync("tel:*7311");
+            await Launcher.Default.OpenAsync("telprompt:*7311");
         }
         catch (Exception ex)
         {
