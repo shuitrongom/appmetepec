@@ -71,9 +71,13 @@ public partial class EventoMapaPage : ContentPage
 
             DimensionarLienzo();
 
-            // Enlazar exito/fallo de la descarga de la imagen (lo que de verdad tarda).
-            MapaImagen.Loaded += (_, _) => { };
-            MapaImagen.Source = _evento.ImagenUrl;
+            // La imagen puede venir como URL del backend (http...) o como nombre de recurso
+            // local de la app (datos de ejemplo). MAUI resuelve ambos: una URI absoluta se baja
+            // de la red; cualquier otro valor se trata como recurso empaquetado (FromFile).
+            MapaImagen.Source = Uri.TryCreate(_evento.ImagenUrl, UriKind.Absolute, out var uri)
+                                && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
+                ? ImageSource.FromUri(uri)
+                : ImageSource.FromFile(_evento.ImagenUrl);
 
             DibujarHotspots();
         }
