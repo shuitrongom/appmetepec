@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- El backend ahora corre con HTTPS (ver AppConstants.MetepecBackendUrl), asi que ya no se
+     necesita la excepcion de cleartext para dess-ti.ddns.net. Se deja el archivo (referenciado
+     desde AndroidManifest.xml) sin dominios con cleartextTrafficPermitted, que es el default
+     seguro de Android. -->
 <network-security-config>
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="false">dess-ti.ddns.net</domain>
-    </domain-config>
 </network-security-config>

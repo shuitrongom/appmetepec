@@ -6,7 +6,7 @@
     <ScrollView>
         <VerticalStackLayout Spacing="0">
             <Image Source="placeholder.png" HeightRequest="50" WidthRequest="100" Aspect="AspectFit" Margin="25,12,25,0" />
-            <Image Source="ic_alerta_on.png" HeightRequest="110" WidthRequest="110" HorizontalOptions="Center" Margin="0,16,0,0" />
+            <Image Source="alerta_naranja.png" HeightRequest="110" WidthRequest="110" HorizontalOptions="Center" Margin="0,16,0,0" />
             <Label Text="ALERTA DE GENERO" FontSize="20" FontAttributes="Bold" TextColor="#F48021" BackgroundColor="White" Padding="15" HorizontalTextAlignment="Center" Margin="0,16,0,16" />
 
             <VerticalStackLayout Padding="20,0,20,26" Spacing="10">

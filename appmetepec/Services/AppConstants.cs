@@ -14,7 +14,7 @@ public static class AppConstants
     // TODO: configurar antes de produccion (Account SID / Auth Token de Twilio); sin esto, el envio real de SMS devuelve 401.
     public const string TwilioAccountSid = "";
     public const string TwilioAuthToken = "";
-    public const string MetepecBackendUrl = "http://dess-ti.ddns.net:8069/api";
+    public const string MetepecBackendUrl = "https://dess-ti.ddns.net:8069/api";
 
     public const string ClaveEstatusResuelto = "RESUELTO";
     public const string ClaveRespuestaPublica = "RPUBLICA";
