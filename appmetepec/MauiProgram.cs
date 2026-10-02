@@ -98,6 +98,7 @@ namespace appmetepec
             builder.Services.AddTransient<MyTicketsPage>();
             builder.Services.AddTransient<TicketDetailPage>();
             builder.Services.AddTransient<EncuestaPage>();
+            builder.Services.AddTransient<PerfilPage>();
 
             return builder.Build();
         }

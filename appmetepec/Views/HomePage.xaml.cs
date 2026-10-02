@@ -593,6 +593,12 @@ public partial class HomePage : ContentPage
         await Shell.Current.GoToAsync(nameof(MyTicketsPage));
     }
 
+    private async void OnDrawerPerfilTapped(object sender, TappedEventArgs e)
+    {
+        await CloseDrawerAsync();
+        await Shell.Current.GoToAsync(nameof(PerfilPage));
+    }
+
     private async void OnDrawerRecoleccionTapped(object sender, TappedEventArgs e)
     {
         await CloseDrawerAsync();

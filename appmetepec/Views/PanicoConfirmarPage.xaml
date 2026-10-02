@@ -5,7 +5,7 @@
              Title="Confirmar emergencia">
     <ScrollView>
         <VerticalStackLayout Spacing="0">
-            <Image Source="ic_alerta_on.png" HeightRequest="110" WidthRequest="110" HorizontalOptions="Center" Margin="0,24,0,0" />
+            <Image Source="alerta_naranja.png" HeightRequest="110" WidthRequest="110" HorizontalOptions="Center" Margin="0,24,0,0" />
             <Label Text="¿CONFIRMAS LA EMERGENCIA?" FontSize="20" FontAttributes="Bold" TextColor="#C0392B" HorizontalTextAlignment="Center" Margin="20,16,20,8" />
             <Label Text="Se notificará de inmediato a C2 con tu ubicación y datos de contacto, se generará un ticket y se iniciará una llamada. Confirma solo si se trata de una emergencia real."
                    FontSize="14" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" HorizontalTextAlignment="Center" Margin="24,0,24,20" />

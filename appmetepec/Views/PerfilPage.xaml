@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="appmetepec.Views.PerfilPage"
+             Title="Mi perfil">
+    <Grid>
+        <ScrollView>
+            <VerticalStackLayout Spacing="0">
+                <Image Source="placeholder.png" HeightRequest="50" WidthRequest="100" Aspect="AspectFit" Margin="25,12,25,0" />
+                <!-- <Image Source="ic_people.png" HeightRequest="90" WidthRequest="90" HorizontalOptions="Center" Margin="0,16,0,0" /> -->
+                <Label Text="MI PERFIL" FontSize="20" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" HorizontalTextAlignment="Center" Margin="0,16,0,16" />
+
+                <VerticalStackLayout Padding="20,0,20,26" Spacing="10">
+                    <Label Text="Nombre(s)" FontSize="13" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" />
+                    <Border Stroke="{AppThemeBinding Light=#DDD, Dark=#3A3A3A}" StrokeThickness="1" BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" Padding="0">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="8" />
+                        </Border.StrokeShape>
+                        <Entry x:Name="NombreEntry" Placeholder="Nombre(s)" FontSize="15" BackgroundColor="Transparent" TextColor="{AppThemeBinding Light=#333, Dark=White}" HeightRequest="46" />
+                    </Border>
+
+                    <Label Text="Apellido paterno" FontSize="13" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" />
+                    <Border Stroke="{AppThemeBinding Light=#DDD, Dark=#3A3A3A}" StrokeThickness="1" BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" Padding="0">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="8" />
+                        </Border.StrokeShape>
+                        <Entry x:Name="ApaternoEntry" Placeholder="Apellido paterno" FontSize="15" BackgroundColor="Transparent" TextColor="{AppThemeBinding Light=#333, Dark=White}" HeightRequest="46" />
+                    </Border>
+
+                    <Label Text="Apellido materno" FontSize="13" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" />
+                    <Border Stroke="{AppThemeBinding Light=#DDD, Dark=#3A3A3A}" StrokeThickness="1" BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" Padding="0">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="8" />
+                        </Border.StrokeShape>
+                        <Entry x:Name="AmaternoEntry" Placeholder="Apellido materno (opcional)" FontSize="15" BackgroundColor="Transparent" TextColor="{AppThemeBinding Light=#333, Dark=White}" HeightRequest="46" />
+                    </Border>
+
+                    <Label Text="Teléfono móvil" FontSize="13" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" />
+                    <Border Stroke="{AppThemeBinding Light=#DDD, Dark=#3A3A3A}" StrokeThickness="1" BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" Padding="0">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="8" />
+                        </Border.StrokeShape>
+                        <Entry x:Name="TelefonoMovilEntry" Placeholder="Teléfono móvil" Keyboard="Telephone" FontSize="15" BackgroundColor="Transparent" TextColor="{AppThemeBinding Light=#333, Dark=White}" HeightRequest="46" />
+                    </Border>
+
+                    <Label Text="WhatsApp" FontSize="13" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" />
+                    <Border Stroke="{AppThemeBinding Light=#DDD, Dark=#3A3A3A}" StrokeThickness="1" BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" Padding="0">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="8" />
+                        </Border.StrokeShape>
+                        <Entry x:Name="WhatsappEntry" Placeholder="WhatsApp (opcional)" Keyboard="Telephone" FontSize="15" BackgroundColor="Transparent" TextColor="{AppThemeBinding Light=#333, Dark=White}" HeightRequest="46" />
+                    </Border>
+
+                    <Label Text="Correo electrónico (tu usuario de ingreso, no se puede modificar)" FontSize="13" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" />
+                    <Border Stroke="{AppThemeBinding Light=#DDD, Dark=#3A3A3A}" StrokeThickness="1" BackgroundColor="{AppThemeBinding Light=#EEEEEE, Dark=#222222}" Padding="0">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="8" />
+                        </Border.StrokeShape>
+                        <Entry x:Name="CorreoEntry" IsEnabled="False" FontSize="15" BackgroundColor="Transparent" TextColor="{AppThemeBinding Light=#777, Dark=#AAAAAA}" HeightRequest="46" />
+                    </Border>
+
+                    <Label Text="CURP" FontSize="13" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" />
+                    <Border Stroke="{AppThemeBinding Light=#DDD, Dark=#3A3A3A}" StrokeThickness="1" BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" Padding="0">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="8" />
+                        </Border.StrokeShape>
+                        <Entry x:Name="CurpEntry" Placeholder="CURP (opcional)" MaxLength="18" FontSize="15" BackgroundColor="Transparent" TextColor="{AppThemeBinding Light=#333, Dark=White}" HeightRequest="46" />
+                    </Border>
+
+                    <Label Text="Código postal" FontSize="13" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" />
+                    <Border Stroke="{AppThemeBinding Light=#DDD, Dark=#3A3A3A}" StrokeThickness="1" BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" Padding="0">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="8" />
+                        </Border.StrokeShape>
+                        <Entry x:Name="CodigoPostalEntry" Placeholder="Código postal (opcional)" Keyboard="Numeric" FontSize="15" BackgroundColor="Transparent" TextColor="{AppThemeBinding Light=#333, Dark=White}" HeightRequest="46" />
+                    </Border>
+
+                    <Label Text="Fecha de nacimiento" FontSize="13" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" />
+                    <Border Stroke="{AppThemeBinding Light=#DDD, Dark=#3A3A3A}" StrokeThickness="1" BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" Padding="0">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="8" />
+                        </Border.StrokeShape>
+                        <DatePicker x:Name="FechaNacimientoPicker" FontSize="15" BackgroundColor="Transparent" TextColor="{AppThemeBinding Light=#333, Dark=White}" HeightRequest="46" />
+                    </Border>
+
+                    <Button Text="GUARDAR" Clicked="OnGuardarClicked" BackgroundColor="#A6CE39" TextColor="White" FontSize="16" FontAttributes="Bold" Margin="0,16,0,0" />
+                </VerticalStackLayout>
+            </VerticalStackLayout>
+        </ScrollView>
+        <ActivityIndicator x:Name="BusyIndicator" IsRunning="False" IsVisible="False" HorizontalOptions="Center" VerticalOptions="Center" />
+    </Grid>
+</ContentPage>

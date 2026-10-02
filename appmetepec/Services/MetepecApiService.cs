@@ -217,6 +217,25 @@ public sealed class MetepecApiService
         return await ReadJsonAsync<BackendCiudadanoDto>(response, cancellationToken);
     }
 
+    public async Task<BackendCiudadanoDto?> UpdateMyCiudadanoAsync(BackendActualizarMiCiudadanoRequest request, CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Put, AppConstants.MetepecBackendUrl + "/ciudadanos/me")
+        {
+            Content = JsonContent(request)
+        };
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
+        {
+            var body = await ReadJsonAsync<ErrorResponse>(response, cancellationToken);
+            throw new InvalidOperationException(body?.error ?? "No se pudo actualizar tu perfil.");
+        }
+
+        response.EnsureSuccessStatusCode();
+        return await ReadJsonAsync<BackendCiudadanoDto>(response, cancellationToken);
+    }
+
     public async Task<BackendUploadResult?> UploadEvidenceAsync(FileResult attachment, CancellationToken cancellationToken = default)
     {
         await using var stream = await attachment.OpenReadAsync();
