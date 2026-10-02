@@ -514,6 +514,13 @@ public partial class HomePage : ContentPage
         await Shell.Current.GoToAsync(nameof(AlertaNaranjaPage));
     }
 
+    // Boton de panico general (no especifico de genero, ver PanicoPage/PanicoConfirmarPage):
+    // ocupa el mismo lugar en el encabezado donde antes estaba el icono de "Alerta de genero".
+    private async void OnPanicoTapped(object sender, TappedEventArgs e)
+    {
+        await Shell.Current.GoToAsync(nameof(PanicoPage));
+    }
+
     // Mismo numero que OpenReportAsync usa para el reporte "Llamada" (*7311), pero accesible
     // directo desde el encabezado sin tener que entrar a un reporte primero.
     private async void OnLlamarTapped(object sender, TappedEventArgs e)
@@ -584,6 +591,12 @@ public partial class HomePage : ContentPage
     {
         await CloseDrawerAsync();
         await Shell.Current.GoToAsync(nameof(MyTicketsPage));
+    }
+
+    private async void OnDrawerPerfilTapped(object sender, TappedEventArgs e)
+    {
+        await CloseDrawerAsync();
+        await Shell.Current.GoToAsync(nameof(PerfilPage));
     }
 
     private async void OnDrawerRecoleccionTapped(object sender, TappedEventArgs e)

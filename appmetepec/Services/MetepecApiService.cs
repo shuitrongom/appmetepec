@@ -217,6 +217,25 @@ public sealed class MetepecApiService
         return await ReadJsonAsync<BackendCiudadanoDto>(response, cancellationToken);
     }
 
+    public async Task<BackendCiudadanoDto?> UpdateMyCiudadanoAsync(BackendActualizarMiCiudadanoRequest request, CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Put, AppConstants.MetepecBackendUrl + "/ciudadanos/me")
+        {
+            Content = JsonContent(request)
+        };
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
+        {
+            var body = await ReadJsonAsync<ErrorResponse>(response, cancellationToken);
+            throw new InvalidOperationException(body?.error ?? "No se pudo actualizar tu perfil.");
+        }
+
+        response.EnsureSuccessStatusCode();
+        return await ReadJsonAsync<BackendCiudadanoDto>(response, cancellationToken);
+    }
+
     public async Task<BackendUploadResult?> UploadEvidenceAsync(FileResult attachment, CancellationToken cancellationToken = default)
     {
         await using var stream = await attachment.OpenReadAsync();
@@ -238,6 +257,16 @@ public sealed class MetepecApiService
         AddBackendAuthorization(message);
 
         using var response = await _httpClient.SendAsync(message, cancellationToken);
+        if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
+        {
+            // Un 400 "plano" (sin cuerpo JSON) aqui casi siempre significa que el archivo excedio
+            // el limite de tamano del endpoint (ver UploadsController.RequestSizeLimit); por eso el
+            // mensaje por defecto lo menciona en vez de dejar pasar el "No se pudo conectar" generico
+            // de ErrorMessageHelper, que resulta enganoso cuando el servidor si respondio.
+            var body = await ReadJsonAsync<ErrorResponse>(response, cancellationToken);
+            throw new InvalidOperationException(body?.error ?? "El archivo es demasiado grande o no es valido. Intenta con uno mas ligero.");
+        }
+
         response.EnsureSuccessStatusCode();
         return await ReadJsonAsync<BackendUploadResult>(response, cancellationToken);
     }

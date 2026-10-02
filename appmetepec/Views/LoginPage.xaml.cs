@@ -50,14 +50,35 @@ public partial class LoginPage : ContentPage
                 result.User.FullName,
                 result.User.Email,
                 result.User.PhoneNumber ?? "");
+
+            // appmetepec es exclusiva para ciudadanos: una cuenta de agente/usuario interno
+            // tambien puede autenticarse contra /seguridad/login (lo comparte con el sitio web),
+            // pero no tiene Ciudadano asociado. GET /ciudadanos/me regresa 404 limpio (sin
+            // excepcion) en ese caso -- eso es lo que se rechaza aqui. Una excepcion (sin
+            // conexion momentanea) NO se trata como "no es ciudadano": no se bloquea el login por
+            // eso, ReportPage vuelve a intentar la misma verificacion antes de crear un ticket.
+            int? idCiudadano = null;
+            var verificado = false;
             try
             {
-                _preferences.CiudadanoId = await _api.GetMyCiudadanoAsync() ?? 0;
+                idCiudadano = await _api.GetMyCiudadanoAsync();
+                verificado = true;
             }
             catch (Exception)
             {
-                // No bloquea el login; ReportPage vuelve a intentarlo antes de crear un ticket.
             }
+
+            if (verificado && idCiudadano is null)
+            {
+                _preferences.Logout();
+                await DisplayAlert(
+                    "Acceso no permitido",
+                    "Esta aplicación es exclusiva para ciudadanos. Esta cuenta no tiene un perfil de ciudadano asociado.",
+                    "Aceptar");
+                return;
+            }
+
+            _preferences.CiudadanoId = idCiudadano ?? 0;
 
             // Se dispara aqui (ademas de HomePage.OnAppearing) para que cada login reintente el
             // registro, incluso si un intento previo fallo en silencio (permiso no otorgado,

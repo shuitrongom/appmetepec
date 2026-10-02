@@ -145,6 +145,9 @@ public sealed class PendingTicketSubmission
     public string Comments { get; set; } = "";
     public string? LocalPhotoPath { get; set; }
     public string? PhotoDescription { get; set; }
+    // Null en registros guardados antes de este campo (retrocompatibilidad): MyTicketsPage cae a
+    // "image/jpeg" en ese caso, igual que el comportamiento previo a soportar video.
+    public string? PhotoMimeType { get; set; }
     public bool IsBache { get; set; }
     public string? LastError { get; set; }
 }
@@ -680,6 +683,72 @@ public sealed class BackendCiudadanoDto
 
     [JsonPropertyName("fechaPrimerAcceso")]
     public DateTime? FechaPrimerAcceso { get; set; }
+
+    [JsonPropertyName("nombre")]
+    public string Nombre { get; set; } = "";
+
+    [JsonPropertyName("apaterno")]
+    public string? Apaterno { get; set; }
+
+    [JsonPropertyName("amaterno")]
+    public string? Amaterno { get; set; }
+
+    [JsonPropertyName("telefonofijo")]
+    public string? Telefonofijo { get; set; }
+
+    [JsonPropertyName("telefonomovil")]
+    public string? Telefonomovil { get; set; }
+
+    [JsonPropertyName("whatsapp")]
+    public string? Whatsapp { get; set; }
+
+    [JsonPropertyName("correoelectronico")]
+    public string? Correoelectronico { get; set; }
+
+    [JsonPropertyName("curp")]
+    public string? Curp { get; set; }
+
+    [JsonPropertyName("codigopostal")]
+    public string? Codigopostal { get; set; }
+
+    // Llega como "yyyy-MM-dd" (DateOnly del back-end); se deja como DateTime porque
+    // System.Text.Json lo parsea sin problema y MAUI's DatePicker ya trabaja con DateTime.
+    [JsonPropertyName("fechanacimiento")]
+    public DateTime? Fechanacimiento { get; set; }
+}
+
+// No incluye Correoelectronico a proposito: es el medio de ingreso (login) del ciudadano y no se
+// edita desde el autoservicio (ver ActualizarMiCiudadanoRequest en el back-end).
+public sealed class BackendActualizarMiCiudadanoRequest
+{
+    [JsonPropertyName("nombre")]
+    public string Nombre { get; set; } = "";
+
+    [JsonPropertyName("apaterno")]
+    public string Apaterno { get; set; } = "";
+
+    [JsonPropertyName("amaterno")]
+    public string? Amaterno { get; set; }
+
+    [JsonPropertyName("curp")]
+    public string? Curp { get; set; }
+
+    [JsonPropertyName("telefonofijo")]
+    public string? Telefonofijo { get; set; }
+
+    [JsonPropertyName("telefonomovil")]
+    public string? Telefonomovil { get; set; }
+
+    [JsonPropertyName("whatsapp")]
+    public string? Whatsapp { get; set; }
+
+    [JsonPropertyName("codigopostal")]
+    public string? Codigopostal { get; set; }
+
+    // Formateado como "yyyy-MM-dd" al construir el request (ver PerfilPage.xaml.cs), para que
+    // calce exacto con lo que espera el DateOnly? del back-end.
+    [JsonPropertyName("fechanacimiento")]
+    public string? Fechanacimiento { get; set; }
 }
 
 public sealed class BackendPublicacionDto

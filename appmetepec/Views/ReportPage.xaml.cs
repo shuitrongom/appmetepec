@@ -1,7 +1,27 @@
+using System.Collections.ObjectModel;
 using appmetepec.Models;
 using appmetepec.Services;
 
 namespace appmetepec.Views;
+
+// Un elemento de evidencia ya seleccionado (foto o video, tomado o elegido de la galeria) en
+// espera de subirse al enviar el reporte. EsVideo se decide segun la accion que el ciudadano
+// eligio en el action sheet (CapturarVideoAsync/PickVideoAsync vs CapturePhotoAsync/
+// PickPhotoAsync), no por inspeccion de ContentType, porque ya se sabe en el momento de crearlo.
+public sealed class EvidenciaSeleccionada
+{
+    public FileResult Archivo { get; }
+    public bool EsVideo { get; }
+    public bool EsFoto => !EsVideo;
+    public ImageSource? Miniatura { get; }
+
+    public EvidenciaSeleccionada(FileResult archivo, bool esVideo)
+    {
+        Archivo = archivo;
+        EsVideo = esVideo;
+        Miniatura = esVideo ? null : ImageSource.FromFile(archivo.FullPath);
+    }
+}
 
 public partial class ReportPage : ContentPage
 {
@@ -10,7 +30,10 @@ public partial class ReportPage : ContentPage
     private readonly NavigationState _navigationState;
     private readonly PendingTicketsService _pendingTickets;
     private ScreenReport? _report;
-    private FileResult? _attachment;
+    // Varias evidencias (fotos y/o videos): se pueden agregar y quitar antes de enviar el
+    // reporte. El envio en si (OnSendClicked) sube cada una y solo la primera lleva la
+    // descripcion capturada en EvidenciaDescripcionEntry (EsEvidenciaInicial).
+    private readonly ObservableCollection<EvidenciaSeleccionada> _evidencias = [];
     private string _coordinates = "";
     private List<BackendArticuloConocimientoDto> _articulos = [];
     // Servicio.Requierefoto == Id del TipoObligatoriedadEvidencia de clave "OBLIGATORIA": si no
@@ -34,6 +57,7 @@ public partial class ReportPage : ContentPage
         _navigationState = navigationState;
         _pendingTickets = pendingTickets;
         _geocoding = geocoding;
+        EvidenciasView.ItemsSource = _evidencias;
     }
 
     protected override void OnAppearing()
@@ -63,8 +87,9 @@ public partial class ReportPage : ContentPage
         EmailEntry.Text = user.Email;
 
         _evidenciaObligatoria = false;
-        EvidenciaLabel.Text = "Agrega una evidencia:";
-        EvidenciaDescripcionEntry.Placeholder = "Describe brevemente la foto (opcional)";
+        EvidenciaLabel.Text = "Agrega una o más evidencias:";
+        EvidenciaDescripcionEntry.Placeholder = "Describe brevemente la evidencia (opcional)";
+        _evidencias.Clear();
         _coberturaGeografica = false;
         UbicacionRequeridaLabel.IsVisible = false;
         VialidadEstatalAviso.IsVisible = false;
@@ -102,10 +127,10 @@ public partial class ReportPage : ContentPage
 
             if (_evidenciaObligatoria)
             {
-                EvidenciaLabel.Text = "Agrega una evidencia (obligatoria):";
+                EvidenciaLabel.Text = "Agrega una o más evidencias (obligatorio):";
                 // "Opcional" ya no aplica: al menos esta descripcion o los Comentarios generales
                 // se vuelven obligatorios (ver OnSendClicked).
-                EvidenciaDescripcionEntry.Placeholder = "Describe brevemente la foto";
+                EvidenciaDescripcionEntry.Placeholder = "Describe brevemente la evidencia";
             }
 
             _coberturaGeografica = string.Equals(
@@ -254,30 +279,38 @@ public partial class ReportPage : ContentPage
         try
         {
             var options = MediaPicker.Default.IsCaptureSupported
-                ? new[] { "Tomar foto", "Elegir de la galeria" }
-                : new[] { "Elegir de la galeria" };
+                ? new[] { "Tomar foto", "Elegir foto de la galería", "Grabar video", "Elegir video de la galería" }
+                : new[] { "Elegir foto de la galería", "Elegir video de la galería" };
 
             var choice = await DisplayActionSheet("Agrega una evidencia", "Cancelar", null, options);
 
-            FileResult? result = choice switch
+            (FileResult? Archivo, bool EsVideo) seleccion = choice switch
             {
-                "Tomar foto" => await MediaPicker.Default.CapturePhotoAsync(),
-                "Elegir de la galeria" => await MediaPicker.Default.PickPhotoAsync(),
-                _ => null
+                "Tomar foto" => (await MediaPicker.Default.CapturePhotoAsync(), false),
+                "Elegir foto de la galería" => (await MediaPicker.Default.PickPhotoAsync(), false),
+                "Grabar video" => (await MediaPicker.Default.CaptureVideoAsync(), true),
+                "Elegir video de la galería" => (await MediaPicker.Default.PickVideoAsync(), true),
+                _ => (null, false)
             };
 
-            if (result is null)
+            if (seleccion.Archivo is null)
             {
                 return;
             }
 
-            _attachment = result;
-            AttachmentLabel.Text = _attachment.FileName;
-            PreviewImage.Source = ImageSource.FromFile(_attachment.FullPath);
+            _evidencias.Add(new EvidenciaSeleccionada(seleccion.Archivo, seleccion.EsVideo));
         }
         catch (Exception ex)
         {
             await DisplayAlert("No se pudo agregar la evidencia", ErrorMessageHelper.Traducir(ex), "Aceptar");
+        }
+    }
+
+    private void OnRemoveEvidenciaTapped(object sender, TappedEventArgs e)
+    {
+        if (e.Parameter is EvidenciaSeleccionada item)
+        {
+            _evidencias.Remove(item);
         }
     }
 
@@ -305,19 +338,19 @@ public partial class ReportPage : ContentPage
             return;
         }
 
-        if (_evidenciaObligatoria && _attachment is null)
+        if (_evidenciaObligatoria && _evidencias.Count == 0)
         {
-            await DisplayAlert("Evidencia requerida", "Este tipo de reporte requiere que agregues una foto de evidencia antes de enviarlo.", "Aceptar");
+            await DisplayAlert("Evidencia requerida", "Este tipo de reporte requiere que agregues una foto o video de evidencia antes de enviarlo.", "Aceptar");
             return;
         }
 
-        // Cuando la evidencia es obligatoria, la foto sola no basta: se exige tambien algo de
-        // texto que le de contexto (los "Comentarios" generales o, en su defecto, la descripcion
-        // especifica de la foto) -- cualquiera de los dos es valido, no se piden ambos.
+        // Cuando la evidencia es obligatoria, la foto/video solo no basta: se exige tambien algo
+        // de texto que le de contexto (los "Comentarios" generales o, en su defecto, la
+        // descripcion de la evidencia) -- cualquiera de los dos es valido, no se piden ambos.
         var evidenciaDescripcion = EvidenciaDescripcionEntry.Text?.Trim() ?? "";
         if (_evidenciaObligatoria && string.IsNullOrWhiteSpace(comments) && string.IsNullOrWhiteSpace(evidenciaDescripcion))
         {
-            await DisplayAlert("Descripción requerida", "Este tipo de reporte requiere que describas el problema: agrega comentarios o una descripción de la foto antes de enviarlo.", "Aceptar");
+            await DisplayAlert("Descripción requerida", "Este tipo de reporte requiere que describas el problema: agrega comentarios o una descripción de la evidencia antes de enviarlo.", "Aceptar");
             return;
         }
 
@@ -345,28 +378,34 @@ public partial class ReportPage : ContentPage
                 return;
             }
 
+            // Varias evidencias: se suben una por una (no hay endpoint de subida multiple) y solo
+            // la primera lleva la descripcion que capturo el ciudadano (EsEvidenciaInicial),
+            // igual que el criterio de un solo adjunto de antes.
             List<BackendEvidenciaItemRequest>? evidencias = null;
-            if (_attachment is not null)
+            if (_evidencias.Count > 0)
             {
-                var uploaded = await _api.UploadEvidenceAsync(_attachment);
-                if (uploaded is not null)
+                evidencias = [];
+                for (var i = 0; i < _evidencias.Count; i++)
                 {
-                    evidencias =
-                    [
-                        new BackendEvidenciaItemRequest
-                        {
-                            // Nombre amigable en vez del nombre de archivo que le puso la camara/
-                            // galeria del dispositivo (ej. "1000255651.jpg") -- eso es lo que se
-                            // muestra en el sistema web al revisar el ticket. RutaArchivo (donde
-                            // realmente se guarda/sirve el archivo) no cambia.
-                            NombreArchivo = "Evidencia" + Path.GetExtension(uploaded.NombreOriginal),
-                            RutaArchivo = uploaded.Ruta,
-                            TipoMime = uploaded.MimeType,
-                            TamanoBytes = uploaded.Peso,
-                            EsEvidenciaInicial = true,
-                            Descripcion = string.IsNullOrWhiteSpace(evidenciaDescripcion) ? null : evidenciaDescripcion
-                        }
-                    ];
+                    var uploaded = await _api.UploadEvidenceAsync(_evidencias[i].Archivo);
+                    if (uploaded is null)
+                    {
+                        continue;
+                    }
+
+                    evidencias.Add(new BackendEvidenciaItemRequest
+                    {
+                        // Nombre amigable en vez del nombre de archivo que le puso la camara/
+                        // galeria del dispositivo (ej. "1000255651.jpg") -- eso es lo que se
+                        // muestra en el sistema web al revisar el ticket. RutaArchivo (donde
+                        // realmente se guarda/sirve el archivo) no cambia.
+                        NombreArchivo = $"Evidencia{i + 1}" + Path.GetExtension(uploaded.NombreOriginal),
+                        RutaArchivo = uploaded.Ruta,
+                        TipoMime = uploaded.MimeType,
+                        TamanoBytes = uploaded.Peso,
+                        EsEvidenciaInicial = i == 0,
+                        Descripcion = i == 0 && !string.IsNullOrWhiteSpace(evidenciaDescripcion) ? evidenciaDescripcion : null
+                    });
                 }
             }
 
@@ -502,9 +541,14 @@ public partial class ReportPage : ContentPage
             LastError = lastError
         };
 
-        if (_attachment is not null)
+        // El respaldo offline ("Mis reportes" -> reintentar) solo conserva la PRIMERA evidencia
+        // si el ciudadano agrego varias: MyTicketsPage.xaml.cs reintenta un solo adjunto por
+        // reporte pendiente. Limitacion conocida, no silenciosa -- ver comentario alla.
+        var primera = _evidencias.FirstOrDefault();
+        if (primera is not null)
         {
-            submission.LocalPhotoPath = await _pendingTickets.SavePhotoAsync(_attachment);
+            submission.LocalPhotoPath = await _pendingTickets.SavePhotoAsync(primera.Archivo);
+            submission.PhotoMimeType = primera.Archivo.ContentType;
             submission.PhotoDescription = string.IsNullOrWhiteSpace(EvidenciaDescripcionEntry.Text) ? null : EvidenciaDescripcionEntry.Text.Trim();
         }
 
