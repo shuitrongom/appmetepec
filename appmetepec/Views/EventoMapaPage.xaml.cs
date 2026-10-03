@@ -30,6 +30,12 @@ public partial class EventoMapaPage : ContentPage
     private double _panXInicio;
     private double _panYInicio;
 
+    // Duracion de la intro de portada antes de pasar sola al mapa.
+    private static readonly TimeSpan DuracionIntro = TimeSpan.FromMilliseconds(2200);
+    // La intro se muestra una sola vez por instancia de pagina (al cargar el evento).
+    private bool _introMostrada;
+    private CancellationTokenSource? _introCts;
+
     public EventoMapaPage(EventosService eventos, NavigationState navigationState)
     {
         InitializeComponent();
@@ -66,7 +72,7 @@ public partial class EventoMapaPage : ContentPage
             ErrorPanel.IsVisible = false;
 
             _evento = await _eventos.GetEventoDetalleAsync(idEvento);
-            if (_evento is null || string.IsNullOrWhiteSpace(_evento.ImagenUrl))
+            if (_evento is null || string.IsNullOrWhiteSpace(_evento.ImagenMapaUrl))
             {
                 MostrarError();
                 return;
@@ -77,12 +83,15 @@ public partial class EventoMapaPage : ContentPage
             // La imagen puede venir como URL del backend (http...) o como nombre de recurso
             // local de la app (datos de ejemplo). MAUI resuelve ambos: una URI absoluta se baja
             // de la red; cualquier otro valor se trata como recurso empaquetado (FromFile).
-            MapaImagen.Source = Uri.TryCreate(_evento.ImagenUrl, UriKind.Absolute, out var uri)
+            MapaImagen.Source = Uri.TryCreate(_evento.ImagenMapaUrl, UriKind.Absolute, out var uri)
                                 && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
                 ? ImageSource.FromUri(uri)
-                : ImageSource.FromFile(_evento.ImagenUrl);
+                : ImageSource.FromFile(_evento.ImagenMapaUrl);
 
             DibujarHotspots();
+
+            // Intro de portada: una sola vez al abrir el evento, si lo trae.
+            await MostrarIntroPortadaAsync();
         }
         catch (Exception ex)
         {
@@ -117,6 +126,72 @@ public partial class EventoMapaPage : ContentPage
     {
         ErrorPanel.IsVisible = true;
         BusyIndicator.IsVisible = BusyIndicator.IsRunning = false;
+    }
+
+    // --- Intro de portada (una sola vez al abrir el evento) ---
+
+    // Si el evento trae imagenPortadaUrl, muestra una intro a pantalla completa con fade +
+    // zoom suave y la oculta sola tras DuracionIntro (o cuando el usuario toca). Si no hay
+    // portada, no hace nada y el usuario ve el mapa directamente.
+    private async Task MostrarIntroPortadaAsync()
+    {
+        if (_introMostrada || _evento is null) return;
+        _introMostrada = true;
+
+        var portada = _evento.ImagenPortadaUrl;
+        if (string.IsNullOrWhiteSpace(portada))
+        {
+            return; // sin portada -> directo al mapa
+        }
+
+        // Igual que el mapa: URL absoluta -> red; cualquier otro valor -> recurso local.
+        PortadaImagen.Source = Uri.TryCreate(portada, UriKind.Absolute, out var uri)
+                               && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
+            ? ImageSource.FromUri(uri)
+            : ImageSource.FromFile(portada);
+
+        // Token para que un toque pueda saltar la intro en cualquier momento (incluso durante
+        // la animacion de entrada).
+        _introCts = new CancellationTokenSource();
+
+        // Estado inicial de la animacion: invisible y ligeramente ampliada (zoom-in al entrar).
+        IntroOverlay.Opacity = 0;
+        IntroOverlay.Scale = 1.08;
+        IntroOverlay.IsVisible = true;
+
+        await Task.WhenAll(
+            IntroOverlay.FadeTo(1, 450, Easing.CubicOut),
+            IntroOverlay.ScaleTo(1.0, 2200, Easing.CubicOut));
+
+        // Espera el resto del tiempo de lucimiento; si el usuario toca, se cancela y sale ya.
+        // El token puede estar ya cancelado si el toque llegó durante la animación de entrada.
+        try
+        {
+            await Task.Delay(DuracionIntro, _introCts.Token);
+        }
+        catch (TaskCanceledException)
+        {
+            // El usuario saltó la intro con un toque: salimos sin esperar.
+        }
+
+        await OcultarIntroAsync();
+    }
+
+    // El toque para saltar la intro puede llegar en cualquier momento (incluso durante la
+    // animacion de entrada). Cancelar el token hace que la espera termine ya; si el toque
+    // llega antes del Delay, el token queda cancelado y el Delay sale de inmediato.
+    private void OnSaltarIntroTapped(object sender, TappedEventArgs e)
+    {
+        _introCts?.Cancel();
+    }
+
+    private async Task OcultarIntroAsync()
+    {
+        if (!IntroOverlay.IsVisible) return;
+
+        await IntroOverlay.FadeTo(0, 300, Easing.CubicIn);
+        IntroOverlay.IsVisible = false;
+        PortadaImagen.Source = null; // libera la imagen
     }
 
     private async void OnReintentarClicked(object sender, EventArgs e)
@@ -281,6 +356,15 @@ public partial class EventoMapaPage : ContentPage
     private async void OnBackTapped(object sender, TappedEventArgs e)
     {
         await Shell.Current.GoToAsync("..");
+    }
+
+    protected override void OnDisappearing()
+    {
+        base.OnDisappearing();
+        // Si la pagina se cierra con la intro aun en curso, cancela su espera y libera el token.
+        _introCts?.Cancel();
+        _introCts?.Dispose();
+        _introCts = null;
     }
 
     // Convierte el hex del backend ("#RRGGBB") en Color. Si viene vacio o invalido,

@@ -69,7 +69,7 @@ public partial class EscenarioProgramaPage : ContentPage
 
         var items = _escenario.Actividades
             .Where(a => a.Fecha.Date == _diaSeleccionado)
-            .OrderBy(a => a.HoraInicio ?? TimeSpan.Zero)
+            .OrderBy(a => MinutosDesdeMedianoche(a.HoraInicio))
             .Select(a => new ActividadItem(a, _colorEscenario))
             .ToList();
 
@@ -150,35 +150,120 @@ public partial class EscenarioProgramaPage : ContentPage
         return texto.Length > 0 ? char.ToUpper(texto[0], Es) + texto[1..] : texto;
     }
 
+    // Convierte "HH:mm" a minutos desde medianoche para ordenar. null/invalido -> int.MaxValue
+    // (las actividades sin hora van al final).
+    private static int MinutosDesdeMedianoche(string? hhmm)
+    {
+        if (string.IsNullOrWhiteSpace(hhmm)) return int.MaxValue;
+        var partes = hhmm.Split(':');
+        if (partes.Length < 2) return int.MaxValue;
+        if (int.TryParse(partes[0], out var h) && int.TryParse(partes[1], out var m))
+        {
+            return (h * 60) + m;
+        }
+        return int.MaxValue;
+    }
+
     // Item de presentacion para el CollectionView.
     private sealed class ActividadItem
     {
-        public ActividadItem(BackendActividadDto a, Color color)
+        // Color por defecto de una linea cuando el backend no define uno.
+        private static readonly Color TextoPorDefecto = Color.FromArgb("#222222");
+
+        public ActividadItem(BackendActividadDto a, Color colorEscenario)
         {
-            HoraTexto = a.HoraInicio is { } h
-                ? (a.HoraFin is { } f ? $"{Formato(h)}\n{Formato(f)}" : Formato(h))
-                : "";
-            // Si hay pais, se antepone como etiqueta corta (ej. "FR").
-            Titulo = string.IsNullOrWhiteSpace(a.Pais) ? a.Titulo : $"{a.Titulo}  ·  {a.Pais}";
-            Descripcion = a.Descripcion ?? "";
-            TieneDescripcion = !string.IsNullOrWhiteSpace(a.Descripcion);
-            Color = color;
+            HoraTexto = ConstruirHora(a.HoraInicio, a.HoraFin);
+            Color = colorEscenario;
+            Contenido = ConstruirContenido(a);
         }
 
         public string HoraTexto { get; }
-        public string Titulo { get; }
-        public string Descripcion { get; }
-        public bool TieneDescripcion { get; }
         public Color Color { get; }
 
-        // Formateo nativo del TimeSpan: no construye un DateTime (que lanzaria excepcion si
-        // el backend manda una hora fuera de 0-24h). Normaliza al rango de un dia por seguridad.
-        private static string Formato(TimeSpan t)
+        // Contenido con formato: cada linea de la actividad se vuelve un Span con su propio
+        // estilo (negrita, cursiva, color, fuente, tamano). Las lineas se separan con salto
+        // de linea. Si la actividad no trae lineas, muestra un texto discreto por defecto.
+        public FormattedString Contenido { get; }
+
+        private static FormattedString ConstruirContenido(BackendActividadDto a)
         {
-            var normal = t;
-            if (normal < TimeSpan.Zero) normal = TimeSpan.Zero;
-            if (normal >= TimeSpan.FromDays(1)) normal = new TimeSpan(normal.Hours % 24, normal.Minutes, 0);
-            return normal.ToString(@"hh\:mm") + " h";
+            var fs = new FormattedString();
+
+            if (a.Lineas.Count == 0)
+            {
+                fs.Spans.Add(new Span
+                {
+                    Text = "Actividad sin descripción",
+                    TextColor = Color.FromArgb("#999999"),
+                    FontSize = 13
+                });
+                return fs;
+            }
+
+            for (var i = 0; i < a.Lineas.Count; i++)
+            {
+                var linea = a.Lineas[i];
+                var prefijo = i == 0 ? "" : "\n";
+
+                var span = new Span
+                {
+                    Text = prefijo + linea.Texto,
+                    TextColor = ResolverColorLinea(linea.Color),
+                    FontAttributes = AtributosDe(linea)
+                };
+
+                if (linea.Tamano is { } t && t > 0)
+                {
+                    span.FontSize = t;
+                }
+
+                if (!string.IsNullOrWhiteSpace(linea.Fuente))
+                {
+                    span.FontFamily = linea.Fuente;
+                }
+
+                fs.Spans.Add(span);
+            }
+
+            return fs;
+        }
+
+        private static FontAttributes AtributosDe(BackendActividadLineaDto l)
+        {
+            var attrs = FontAttributes.None;
+            if (l.Negrita) attrs |= FontAttributes.Bold;
+            if (l.Cursiva) attrs |= FontAttributes.Italic;
+            return attrs;
+        }
+
+        private static Color ResolverColorLinea(string? hex)
+        {
+            if (string.IsNullOrWhiteSpace(hex)) return TextoPorDefecto;
+            try { return Color.FromArgb(hex); }
+            catch { return TextoPorDefecto; }
+        }
+
+        // Rango horario a partir de las horas ya formateadas "HH:mm" del backend.
+        // Inicio y fin van en dos renglones (como el programa impreso); si solo hay inicio,
+        // muestra solo ese; si no hay hora, cadena vacia.
+        private static string ConstruirHora(string? inicio, string? fin)
+        {
+            var ini = Normalizar(inicio);
+            var f = Normalizar(fin);
+            if (ini is not null && f is not null) return $"{ini}\n{f}";
+            if (ini is not null) return ini;
+            if (f is not null) return f;
+            return "";
+        }
+
+        // Deja la hora "HH:mm" tal cual (ya viene formateada del backend). Si viniera con
+        // segundos "HH:mm:ss", recorta a "HH:mm". null/vacio -> null.
+        private static string? Normalizar(string? hhmm)
+        {
+            if (string.IsNullOrWhiteSpace(hhmm)) return null;
+            var partes = hhmm.Split(':');
+            if (partes.Length >= 2) return $"{partes[0]}:{partes[1]}";
+            return hhmm;
         }
     }
 }

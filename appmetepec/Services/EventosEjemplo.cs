@@ -2,18 +2,28 @@ using appmetepec.Models;
 
 namespace appmetepec.Services;
 
-// Datos de EJEMPLO para desarrollar/probar el modulo de Eventos mientras el backend no
-// expone /eventos. NO es dato real de produccion; se reemplaza por el API cuando exista
-// (ver EventosService.UsarDatosDeEjemplo). Las posiciones posX/posY son porcentajes
-// aproximados sobre una imagen de mapa; el admin real los marcara con precision.
+// Datos de EJEMPLO para desarrollar/probar el modulo de Eventos mientras se conecta el
+// backend real (GET api/eventos). NO es dato de produccion; se reemplaza por el API cuando
+// EventosUsarDatosDeEjemplo = false. Las actividades usan LINEAS con formato (negrita,
+// cursiva, color, tamano) igual que el contrato real, para probar el render premium tal
+// como se vera con datos del admin. Las posiciones posX/posY son porcentajes aproximados
+// sobre la imagen de mapa; el admin real las marcara con precision.
 internal static class EventosEjemplo
 {
     // Mapa de muestra incluido como recurso local de la app (el mapa real lo subira el
     // admin via backend). Debe existir el archivo:
     //   appmetepec/Resources/Images/mapa_eventos.png
     // (MAUI empaqueta Resources/Images/* automaticamente). Al ser recurso local, se ve sin
-    // depender de internet. Para produccion, EventosService toma la imagenUrl del backend.
+    // depender de internet. Para produccion, EventosService toma imagenMapaUrl del backend.
     private const string ImagenMapa = "mapa_eventos.png";
+
+    // Portada del evento. Si existe el recurso, la app muestra la intro animada una vez antes
+    // del mapa. Debe existir el archivo appmetepec/Resources/Images/portada_eventos.png
+    // (recurso local empaquetado por MAUI). Para datos reales, el backend manda imagenPortadaUrl.
+    private const string? ImagenPortada = "portada_eventos.png";
+
+    // Paleta por sede (coincide con el Color del escenario) para los titulos de cada bloque.
+    private const string FuenteTitulo = "OpenSans-Bold";
 
     public static List<BackendEventoDto> Listado() =>
     [
@@ -22,12 +32,12 @@ internal static class EventosEjemplo
             Id = 1,
             Nombre = "Quimera 2026",
             Descripcion = "Festival Internacional Metepec Quimera. Toca un escenario en el mapa para ver su programación.",
-            ImagenUrl = ImagenMapa,
+            ImagenMapaUrl = ImagenMapa,
+            ImagenPortadaUrl = ImagenPortada,
             ImagenAncho = 616,
             ImagenAlto = 709,
             FechaInicio = Hoy.AddDays(-1),
             FechaFin = Hoy.AddDays(14),
-            Activo = true,
             Orden = 1
         }
     ];
@@ -46,9 +56,36 @@ internal static class EventosEjemplo
 
     private static DateTime Hoy => DateTime.Today;
 
+    // --- Helpers para construir lineas con formato de forma legible ---
+
+    // Titulo del bloque: negrita, con el color de la sede y un poco mas grande.
+    private static BackendActividadLineaDto Titulo(string texto, string color) => new()
+    {
+        Texto = texto, Negrita = true, Color = color, Fuente = FuenteTitulo, Tamano = 16
+    };
+
+    // Subtitulo/descripcion: texto normal, gris, tamano medio.
+    private static BackendActividadLineaDto Sub(string texto) => new()
+    {
+        Texto = texto, Color = "#555555", Tamano = 13.5
+    };
+
+    // Nota en cursiva (ej. compania, pais, procedencia).
+    private static BackendActividadLineaDto Nota(string texto) => new()
+    {
+        Texto = texto, Cursiva = true, Color = "#777777", Tamano = 12.5
+    };
+
+    private static BackendActividadDto Act(int id, DateTime fecha, string? ini, string? fin,
+        params BackendActividadLineaDto[] lineas) => new()
+    {
+        Id = id, Fecha = fecha, HoraInicio = ini, HoraFin = fin,
+        Lineas = [.. lineas]
+    };
+
     // Posiciones (posX/posY en %) aproximadas sobre el mapa isometrico de Metepec
     // (Resources/Images/mapa_eventos.png). Son de MUESTRA; el admin real las marcara con
-    // precision al subir su mapa. Nombres/direcciones tomados del programa Q (12 escenarios).
+    // precision. Nombres/direcciones tomados del programa Q (12 escenarios).
     private static List<BackendEscenarioDto> Escenarios() =>
     [
         new BackendEscenarioDto
@@ -58,8 +95,14 @@ internal static class EventosEjemplo
             Color = "#4CAF50", PosX = 41, PosY = 38,
             Actividades =
             [
-                new BackendActividadDto { Id = 101, Titulo = "Inauguración Quimera", Descripcion = "Ceremonia de apertura", Fecha = Hoy, HoraInicio = new TimeSpan(17,0,0) },
-                new BackendActividadDto { Id = 102, Titulo = "Concierto de gala", Descripcion = "Orquesta sinfónica", Pais = "MX", Fecha = Hoy.AddDays(1), HoraInicio = new TimeSpan(19,30,0) },
+                Act(101, Hoy, "17:00", null,
+                    Titulo("Inauguración Quimera", "#4CAF50"),
+                    Sub("Ceremonia de apertura del festival"),
+                    Nota("Autoridades municipales y artistas invitados")),
+                Act(102, Hoy.AddDays(1), "19:30", "21:00",
+                    Titulo("Concierto de gala", "#4CAF50"),
+                    Sub("Orquesta Sinfónica del Estado de México"),
+                    Nota("México")),
             ]
         },
         new BackendEscenarioDto
@@ -69,9 +112,18 @@ internal static class EventosEjemplo
             Color = "#E91E8C", PosX = 44, PosY = 25,
             Actividades =
             [
-                new BackendActividadDto { Id = 201, Titulo = "Transe Express — Poupées Géantes", Descripcion = "Espectáculo circense desde Francia", Pais = "FR", Fecha = Hoy, HoraInicio = new TimeSpan(18,0,0) },
-                new BackendActividadDto { Id = 202, Titulo = "Transe Express — Mobile home", Descripcion = "Espectáculo circense desde Francia", Pais = "FR", Fecha = Hoy, HoraInicio = new TimeSpan(19,0,0) },
-                new BackendActividadDto { Id = 203, Titulo = "Compañía Aérea Nacional", Descripcion = "Danza aérea", Pais = "MX", Fecha = Hoy.AddDays(4), HoraInicio = new TimeSpan(20,0,0) },
+                Act(201, Hoy, "18:00", null,
+                    Titulo("Transe Express — Poupées Géantes", "#E91E8C"),
+                    Sub("Espectáculo circense de gran formato"),
+                    Nota("Francia")),
+                Act(202, Hoy, "19:00", null,
+                    Titulo("Transe Express — Mobile Home", "#E91E8C"),
+                    Sub("Carrusel aéreo musical sobre el público"),
+                    Nota("Francia")),
+                Act(203, Hoy.AddDays(4), "20:00", null,
+                    Titulo("Compañía Aérea Nacional", "#E91E8C"),
+                    Sub("Danza aérea contemporánea"),
+                    Nota("México")),
             ]
         },
         new BackendEscenarioDto
@@ -81,7 +133,10 @@ internal static class EventosEjemplo
             Color = "#7E57C2", PosX = 76, PosY = 30,
             Actividades =
             [
-                new BackendActividadDto { Id = 301, Titulo = "Obra: El Principito", Descripcion = "Teatro para toda la familia", Fecha = Hoy.AddDays(2), HoraInicio = new TimeSpan(18,0,0) },
+                Act(301, Hoy.AddDays(2), "18:00", "19:30",
+                    Titulo("El Principito", "#7E57C2"),
+                    Sub("Teatro para toda la familia"),
+                    Nota("Compañía Teatro del Estado")),
             ]
         },
         new BackendEscenarioDto
@@ -91,7 +146,10 @@ internal static class EventosEjemplo
             Color = "#FF7043", PosX = 9, PosY = 30,
             Actividades =
             [
-                new BackendActividadDto { Id = 401, Titulo = "Exposición de alfarería", Descripcion = "Arte tradicional metepequense", Fecha = Hoy, HoraInicio = new TimeSpan(10,0,0) },
+                Act(401, Hoy, "10:00", "18:00",
+                    Titulo("Exposición de alfarería", "#FF7043"),
+                    Sub("Arte tradicional metepequense"),
+                    Nota("Entrada libre todo el día")),
             ]
         },
         new BackendEscenarioDto
@@ -101,7 +159,10 @@ internal static class EventosEjemplo
             Color = "#26C6DA", PosX = 66, PosY = 26,
             Actividades =
             [
-                new BackendActividadDto { Id = 501, Titulo = "Presentación de libro", Descripcion = "Charla con el autor", Fecha = Hoy.AddDays(1), HoraInicio = new TimeSpan(17,0,0) },
+                Act(501, Hoy.AddDays(1), "17:00", null,
+                    Titulo("Presentación de libro", "#26C6DA"),
+                    Sub("Charla y firma con el autor"),
+                    Nota("Narrativa mexicana contemporánea")),
             ]
         },
         new BackendEscenarioDto
@@ -111,7 +172,10 @@ internal static class EventosEjemplo
             Color = "#9575CD", PosX = 29, PosY = 42,
             Actividades =
             [
-                new BackendActividadDto { Id = 601, Titulo = "Concierto de cámara", Descripcion = "Música clásica en el claustro", Fecha = Hoy, HoraInicio = new TimeSpan(19,0,0) },
+                Act(601, Hoy, "19:00", "20:30",
+                    Titulo("Concierto de cámara", "#9575CD"),
+                    Sub("Música clásica en el claustro"),
+                    Nota("Cuarteto de cuerdas")),
             ]
         },
         new BackendEscenarioDto
@@ -121,8 +185,13 @@ internal static class EventosEjemplo
             Color = "#5E35B1", PosX = 16, PosY = 60,
             Actividades =
             [
-                new BackendActividadDto { Id = 701, Titulo = "Festival gastronómico", Descripcion = "Cocina tradicional mexiquense", Fecha = Hoy, HoraInicio = new TimeSpan(13,0,0) },
-                new BackendActividadDto { Id = 702, Titulo = "Música en vivo", Descripcion = "Grupos locales", Fecha = Hoy, HoraInicio = new TimeSpan(16,0,0) },
+                Act(701, Hoy, "13:00", "22:00",
+                    Titulo("Festival gastronómico", "#5E35B1"),
+                    Sub("Cocina tradicional mexiquense"),
+                    Nota("Más de 20 cocineras tradicionales")),
+                Act(702, Hoy, "16:00", null,
+                    Titulo("Música en vivo", "#5E35B1"),
+                    Sub("Grupos locales")),
             ]
         },
         new BackendEscenarioDto
@@ -132,7 +201,10 @@ internal static class EventosEjemplo
             Color = "#FFA726", PosX = 79, PosY = 52,
             Actividades =
             [
-                new BackendActividadDto { Id = 801, Titulo = "Mercado de artesanías", Descripcion = "Artesanos locales todo el día", Fecha = Hoy, HoraInicio = new TimeSpan(11,0,0), HoraFin = new TimeSpan(21,0,0) },
+                Act(801, Hoy, "11:00", "21:00",
+                    Titulo("Mercado de artesanías", "#FFA726"),
+                    Sub("Artesanos locales todo el día"),
+                    Nota("Barro, textiles y orfebrería")),
             ]
         },
         new BackendEscenarioDto
@@ -142,7 +214,10 @@ internal static class EventosEjemplo
             Color = "#7986CB", PosX = 17, PosY = 86,
             Actividades =
             [
-                new BackendActividadDto { Id = 901, Titulo = "Taller de pintura infantil", Descripcion = "Actividad para niños", Fecha = Hoy.AddDays(2), HoraInicio = new TimeSpan(11,0,0) },
+                Act(901, Hoy.AddDays(2), "11:00", "13:00",
+                    Titulo("Taller de pintura infantil", "#7986CB"),
+                    Sub("Actividad para niñas y niños"),
+                    Nota("Cupo limitado, registro en sitio")),
             ]
         },
         new BackendEscenarioDto
@@ -152,7 +227,10 @@ internal static class EventosEjemplo
             Color = "#5C6BC0", PosX = 82, PosY = 68,
             Actividades =
             [
-                new BackendActividadDto { Id = 1001, Titulo = "Exposición de muralismo", Descripcion = "Homenaje a Leopoldo Flores", Fecha = Hoy.AddDays(3), HoraInicio = new TimeSpan(10,0,0) },
+                Act(1001, Hoy.AddDays(3), "10:00", "19:00",
+                    Titulo("Exposición de muralismo", "#5C6BC0"),
+                    Sub("Homenaje a Leopoldo Flores"),
+                    Nota("Obra plástica y bocetos originales")),
             ]
         },
         new BackendEscenarioDto
@@ -162,17 +240,23 @@ internal static class EventosEjemplo
             Color = "#42A5F5", PosX = 54, PosY = 70,
             Actividades =
             [
-                new BackendActividadDto { Id = 1101, Titulo = "Recital de poesía", Descripcion = "Voces de Metepec", Fecha = Hoy.AddDays(1), HoraInicio = new TimeSpan(18,0,0) },
+                Act(1101, Hoy.AddDays(1), "18:00", null,
+                    Titulo("Recital de poesía", "#42A5F5"),
+                    Sub("Voces de Metepec"),
+                    Nota("Poetas locales e invitados")),
             ]
         },
         new BackendEscenarioDto
         {
             Id = 12, Numero = 12, Nombre = "Casa de Cultura Margarita García Luna Ortega",
             Direccion = "Prolongación Josefa Ortiz de Domínguez s/n, San Bartolomé Tlaltelulco",
-            Color = "#5C6BC0", PosX = 73, PosY = 84,
+            Color = "#26A69A", PosX = 73, PosY = 84,
             Actividades =
             [
-                new BackendActividadDto { Id = 1201, Titulo = "Danza folclórica", Descripcion = "Ballet regional", Fecha = Hoy.AddDays(2), HoraInicio = new TimeSpan(19,0,0) },
+                Act(1201, Hoy.AddDays(2), "19:00", "20:30",
+                    Titulo("Danza folclórica", "#26A69A"),
+                    Sub("Ballet regional"),
+                    Nota("Repertorio del Estado de México")),
             ]
         },
     ];

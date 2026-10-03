@@ -67,13 +67,11 @@
                                 <!-- Acento vertical con el color del escenario -->
                                 <BoxView Grid.Column="1" WidthRequest="3" Color="{Binding Color}"
                                          VerticalOptions="Fill" HorizontalOptions="Center" />
-                                <!-- Detalle -->
-                                <VerticalStackLayout Grid.Column="2" Spacing="2">
-                                    <Label Text="{Binding Titulo}" FontSize="15" FontAttributes="Bold"
-                                           TextColor="#222" />
-                                    <Label Text="{Binding Descripcion}" FontSize="13" TextColor="#666"
-                                           IsVisible="{Binding TieneDescripcion}" />
-                                </VerticalStackLayout>
+                                <!-- Detalle: lineas con formato (negrita/cursiva/color/fuente/tamano)
+                                     renderizadas como un unico Label con FormattedText construido en
+                                     el code-behind a partir de las lineas de la actividad. -->
+                                <Label Grid.Column="2" FormattedText="{Binding Contenido}"
+                                       LineBreakMode="WordWrap" VerticalOptions="Center" />
                             </Grid>
                         </DataTemplate>
                     </CollectionView.ItemTemplate>

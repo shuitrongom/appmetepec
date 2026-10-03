@@ -38,7 +38,9 @@ public static class AppConstants
     // Modulo Eventos: en true sirve datos de ejemplo (Quimera) para probar la UI sin backend.
     // En PRODUCCION va en false: el modulo queda invisible (no aparece Quimera de prueba)
     // hasta que exista el API real. Poner en true solo para probar la UI en TestFlight.
-    public static readonly bool EventosUsarDatosDeEjemplo = false;
+    // ACTIVADO temporalmente para validar la UI del modulo en dispositivo/emulador antes de
+    // conectar el backend real. VOLVER A false cuando se pase a datos reales (Fase 3).
+    public static readonly bool EventosUsarDatosDeEjemplo = true;
 
     // El API real /eventos todavia no existe. Mientras esto sea false, la app NO llama al
     // backend de eventos (evita peticiones fallidas en cada arranque) y el modulo queda
