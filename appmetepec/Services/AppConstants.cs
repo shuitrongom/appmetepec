@@ -36,14 +36,13 @@ public static class AppConstants
     public const int MinimumSplashDurationMs = 1800;
 
     // Modulo Eventos: en true sirve datos de ejemplo (Quimera) para probar la UI sin backend.
-    // En PRODUCCION va en false: el modulo queda invisible (no aparece Quimera de prueba)
-    // hasta que exista el API real. Poner en true solo para probar la UI en TestFlight.
-    // ACTIVADO temporalmente para validar la UI del modulo en dispositivo/emulador antes de
-    // conectar el backend real. VOLVER A false cuando se pase a datos reales (Fase 3).
-    public static readonly bool EventosUsarDatosDeEjemplo = true;
+    // Datos de ejemplo (Quimera) para probar la UI sin backend. En false, el modulo consume
+    // el API real (api/eventos) si EventosBackendDisponible esta en true. Se desactiva ahora
+    // que el backend del modulo esta desplegado y la app jala eventos reales (Fase 3).
+    public static readonly bool EventosUsarDatosDeEjemplo = false;
 
-    // El API real /eventos todavia no existe. Mientras esto sea false, la app NO llama al
-    // backend de eventos (evita peticiones fallidas en cada arranque) y el modulo queda
-    // oculto. Poner en true cuando el backend publique el endpoint /eventos.
-    public static readonly bool EventosBackendDisponible = false;
+    // Backend del modulo de Eventos ya desplegado: la app consume MetepecBackendUrl + "/eventos"
+    // y "/eventos/{id}". Si el admin no tiene eventos activos, el backend devuelve lista vacia y
+    // el modulo simplemente no aparece (control total desde el panel, sin recompilar).
+    public static readonly bool EventosBackendDisponible = true;
 }
