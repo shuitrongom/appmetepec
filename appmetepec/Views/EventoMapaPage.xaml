@@ -32,6 +32,11 @@
 
             <!-- Contenido que se escala y traslada (imagen + pines). -->
             <AbsoluteLayout x:Name="MapaLayout" HorizontalOptions="Center" VerticalOptions="Center">
+                <!-- La imagen llena el MapaLayout con AspectFit (nunca deforma). Como el
+                     code-behind dimensiona el MapaLayout con la proporcion REAL del archivo
+                     (medida tras cargar la imagen, no con los enteros del backend que pueden
+                     tener redondeo), AspectFit no deja margen y la capa de pines coincide 1:1
+                     con la imagen, igual que el admin. -->
                 <Image x:Name="MapaImagen"
                        AbsoluteLayout.LayoutBounds="0,0,1,1"
                        AbsoluteLayout.LayoutFlags="All"

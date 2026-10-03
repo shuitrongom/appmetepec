@@ -23,6 +23,14 @@ public partial class EventoMapaPage : ContentPage
 
     private BackendEventoDto? _evento;
     private readonly List<View> _pines = [];
+    // Relaciona cada escenario con su pin para reposicionarlo cuando cambie el tamano del lienzo.
+    private readonly List<(BackendEscenarioDto Escenario, View Pin)> _pinPorEscenario = [];
+
+    // Dimensiones REALES del archivo de imagen (medidas al cargar), no las del backend. Se usan
+    // para la proporcion del lienzo: asi coincide exactamente con la imagen y los pines caen 1:1,
+    // sin el minimo desfase que daban los enteros ImagenAncho/ImagenAlto si no eran exactos.
+    private double _imgRealW;
+    private double _imgRealH;
 
     // Estado de zoom/pan.
     private double _escala = 1;
@@ -36,11 +44,31 @@ public partial class EventoMapaPage : ContentPage
     private bool _introMostrada;
     private CancellationTokenSource? _introCts;
 
+    // Evita suscribir el SizeChanged del Viewport mas de una vez.
+    private bool _viewportSuscrito;
+
     public EventoMapaPage(EventosService eventos, NavigationState navigationState)
     {
         InitializeComponent();
         _eventos = eventos;
         _navigationState = navigationState;
+    }
+
+    // Al cambiar el tamano del area del mapa (orientacion, primer layout, etc.) se recalcula el
+    // lienzo para que la imagen siga entrando entera. El reposicionamiento de los pines se
+    // dispara solo cuando el MapaLayout cambia de tamano (OnMapaLayoutSizeChanged).
+    private void OnViewportSizeChanged(object? sender, EventArgs e)
+    {
+        if (_evento is null) return;
+        DimensionarLienzo();
+    }
+
+    // Cuando el lienzo ya tiene (o cambia) su tamano real, recoloca los pines con coordenadas
+    // absolutas exactas. Esto hace el posicionamiento inmune al timing del layout.
+    private void OnMapaLayoutSizeChanged(object? sender, EventArgs e)
+    {
+        if (_evento is null) return;
+        PosicionarHotspots();
     }
 
     protected override async void OnAppearing()
@@ -78,6 +106,18 @@ public partial class EventoMapaPage : ContentPage
                 return;
             }
 
+            // Recalcula el lienzo y reposiciona los pines ante cambios de tamano (una suscripcion).
+            if (!_viewportSuscrito)
+            {
+                Viewport.SizeChanged += OnViewportSizeChanged;
+                MapaLayout.SizeChanged += OnMapaLayoutSizeChanged;
+                _viewportSuscrito = true;
+            }
+
+            // Mide las dimensiones REALES del archivo de imagen (no las del backend) para que la
+            // proporcion del lienzo sea exacta. Si no se pudieran medir, cae a las del backend.
+            await MedirImagenRealAsync();
+
             DimensionarLienzo();
 
             // La imagen puede venir como URL del backend (http...) o como nombre de recurso
@@ -104,22 +144,81 @@ public partial class EventoMapaPage : ContentPage
         }
     }
 
-    // Fija el tamano del lienzo manteniendo la proporcion real de la imagen, para que los
-    // porcentajes de los pines caigan donde deben. Si el backend no manda dimensiones, usa
-    // una proporcion por defecto para no dejar el alto indefinido.
+    // Dimensiona el lienzo (MapaLayout) al rectangulo EXACTO que ocupa la imagen completa
+    // dentro del area visible (Viewport), con la proporcion real de la imagen. Esto replica el
+    // comportamiento de "fitBounds" del admin (Leaflet): la imagen entra entera, limitada por el
+    // ancho O por el alto segun cual sea mas restrictivo, y el lienzo queda con la MISMA
+    // proporcion que la imagen. Como la imagen llena el lienzo sin margenes (no sobra espacio
+    // por AspectFit), los pines -posicionados en % sobre el lienzo- caen 1:1 sobre la imagen,
+    // identico al admin. Se recalcula en cada cambio de tamano del Viewport (ver suscripcion en
+    // CargarEventoAsync) para no depender del momento exacto de layout.
     private void DimensionarLienzo()
     {
-        var ancho = Viewport.Width > 0 ? Viewport.Width
-            : DeviceDisplay.MainDisplayInfo.Width / DeviceDisplay.MainDisplayInfo.Density;
-
-        double proporcion = 1.3; // alto/ancho por defecto
-        if (_evento is { ImagenAncho: > 0, ImagenAlto: > 0 })
+        // Proporcion REAL del archivo si se pudo medir; si no, los enteros del backend.
+        double imgW = _imgRealW > 0 ? _imgRealW : _evento?.ImagenAncho ?? 0;
+        double imgH = _imgRealH > 0 ? _imgRealH : _evento?.ImagenAlto ?? 0;
+        if (imgW <= 0 || imgH <= 0)
         {
-            proporcion = (double)_evento.ImagenAlto / _evento.ImagenAncho;
+            return;
         }
 
-        MapaLayout.WidthRequest = ancho;
-        MapaLayout.HeightRequest = ancho * proporcion;
+        // Tamano disponible del area del mapa. Si aun no esta medido, se difiere (SizeChanged
+        // volvera a llamar cuando ya tenga dimensiones reales).
+        var dispW = Viewport.Width;
+        var dispH = Viewport.Height;
+        if (dispW <= 0 || dispH <= 0)
+        {
+            return;
+        }
+
+        // "Fit": escala para que la imagen COMPLETA quepa en el viewport, limitada por el lado
+        // mas restrictivo (igual que object-fit: contain / Leaflet fitBounds).
+        var escala = Math.Min(dispW / imgW, dispH / imgH);
+
+        MapaLayout.WidthRequest = imgW * escala;
+        MapaLayout.HeightRequest = imgH * escala;
+    }
+
+    // Descarga/lee el archivo de imagen y obtiene su tamano REAL (ancho/alto en px) decodificando
+    // con PlatformImage. Esto evita depender de ImagenAncho/ImagenAlto del backend, que pueden
+    // tener redondeo y causar un leve desfase vertical de los pines. Best-effort: si falla, se
+    // queda en 0 y DimensionarLienzo cae a los valores del backend.
+    private async Task MedirImagenRealAsync()
+    {
+        _imgRealW = 0;
+        _imgRealH = 0;
+        var url = _evento?.ImagenMapaUrl;
+        if (string.IsNullOrWhiteSpace(url)) return;
+
+        try
+        {
+            Stream stream;
+            if (Uri.TryCreate(url, UriKind.Absolute, out var uri)
+                && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
+            {
+                using var http = new HttpClient();
+                var bytes = await http.GetByteArrayAsync(uri);
+                stream = new MemoryStream(bytes);
+            }
+            else
+            {
+                stream = await FileSystem.OpenAppPackageFileAsync(url);
+            }
+
+            await using (stream)
+            {
+                var image = Microsoft.Maui.Graphics.Platform.PlatformImage.FromStream(stream);
+                if (image is not null && image.Width > 0 && image.Height > 0)
+                {
+                    _imgRealW = image.Width;
+                    _imgRealH = image.Height;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Eventos] No se pudo medir la imagen real: {ex}");
+        }
     }
 
     private void MostrarError()
@@ -213,21 +312,42 @@ public partial class EventoMapaPage : ContentPage
             MapaLayout.Children.Remove(pin);
         }
         _pines.Clear();
+        _pinPorEscenario.Clear();
 
         foreach (var escenario in _evento.Escenarios)
         {
             var pin = CrearHotspot(escenario);
-
-            // Clamp defensivo: datos del admin fuera de 0-100 no sacan el pin del mapa.
-            var x = Math.Clamp(escenario.PosX, 0, 100) / 100.0;
-            var y = Math.Clamp(escenario.PosY, 0, 100) / 100.0;
-
-            AbsoluteLayout.SetLayoutFlags(pin, AbsoluteLayoutFlags.PositionProportional);
-            AbsoluteLayout.SetLayoutBounds(pin,
-                new Rect(x, y, AreaTactil, AreaTactil));
-
             MapaLayout.Children.Add(pin);
             _pines.Add(pin);
+            _pinPorEscenario.Add((escenario, pin));
+        }
+
+        PosicionarHotspots();
+    }
+
+    // Coloca cada pin con coordenadas ABSOLUTAS sobre el MapaLayout: el CENTRO del pin cae
+    // exactamente en (posX%, posY%) del lienzo (que coincide 1:1 con la imagen). Se centra
+    // restando media area tactil, el mismo criterio que el admin (left:x% + translate(-50%,-50%)).
+    // NO se usa PositionProportional porque este introduce el tamano del pin en la ecuacion y
+    // descuadra el punto. Se recalcula cuando cambia el tamano del lienzo (ver SizeChanged).
+    private void PosicionarHotspots()
+    {
+        var w = MapaLayout.Width;
+        var h = MapaLayout.Height;
+        if (w <= 0 || h <= 0) return;
+
+        foreach (var (escenario, pin) in _pinPorEscenario)
+        {
+            // Clamp defensivo: datos del admin fuera de 0-100 no sacan el pin del mapa.
+            var fx = Math.Clamp(escenario.PosX, 0, 100) / 100.0;
+            var fy = Math.Clamp(escenario.PosY, 0, 100) / 100.0;
+
+            var cx = fx * w;
+            var cy = fy * h;
+
+            AbsoluteLayout.SetLayoutFlags(pin, AbsoluteLayoutFlags.None);
+            AbsoluteLayout.SetLayoutBounds(pin,
+                new Rect(cx - (AreaTactil / 2), cy - (AreaTactil / 2), AreaTactil, AreaTactil));
         }
     }
 
@@ -257,14 +377,14 @@ public partial class EventoMapaPage : ContentPage
             VerticalOptions = LayoutOptions.Center
         };
 
-        // Contenedor del area tactil; se centra sobre el punto exacto desplazando media area.
+        // Contenedor del area tactil. El centrado sobre el punto exacto lo hace DibujarHotspots
+        // via los bounds absolutos (restando media area), NO con TranslationX/Y: asi hay un solo
+        // mecanismo de centrado y el pin cae justo en posX%/posY% de la imagen, igual que el admin.
         var contenedor = new Grid
         {
             WidthRequest = AreaTactil,
             HeightRequest = AreaTactil,
             BackgroundColor = Colors.Transparent,
-            TranslationX = -AreaTactil / 2,
-            TranslationY = -AreaTactil / 2,
             Children = { pinVisual }
         };
 
@@ -365,6 +485,14 @@ public partial class EventoMapaPage : ContentPage
         _introCts?.Cancel();
         _introCts?.Dispose();
         _introCts = null;
+
+        // Libera los handlers de tamano.
+        if (_viewportSuscrito)
+        {
+            Viewport.SizeChanged -= OnViewportSizeChanged;
+            MapaLayout.SizeChanged -= OnMapaLayoutSizeChanged;
+            _viewportSuscrito = false;
+        }
     }
 
     // Convierte el hex del backend ("#RRGGBB") en Color. Si viene vacio o invalido,
