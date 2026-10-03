@@ -42,6 +42,54 @@ public sealed class EvidencePhotoService
     public Task<EvidencePhoto?> PickPhotoAsync(CancellationToken cancellationToken = default) =>
         MaterializeAsync(() => MediaPicker.Default.PickPhotoAsync(), cancellationToken);
 
+    /// <summary>
+    /// Materializa un <see cref="FileResult"/> ya obtenido (foto o VIDEO) en un archivo local
+    /// estable, copiando el contenido byte a byte SIN transcodificar. Resuelve el caso de iOS
+    /// donde el FileResult del picker (sobre todo videos grabados) apunta a un temporal en una
+    /// zona protegida del sistema (PluginKitPlugin/tmp) que la app no puede leer directamente
+    /// al subir (UnauthorizedAccess_IODenied). Para fotos que requieran transcodificacion a
+    /// JPEG se usa CapturePhotoAsync/PickPhotoAsync; este metodo es para cuando ya se tiene el
+    /// FileResult (flujo de evidencia multiple) y solo hace falta una ruta local confiable.
+    /// </summary>
+    public async Task<EvidencePhoto?> MaterializeFileAsync(FileResult? result, CancellationToken cancellationToken = default)
+    {
+        if (result is null)
+        {
+            return null;
+        }
+
+        Directory.CreateDirectory(_workingDirectory);
+
+        var extension = Path.GetExtension(result.FileName);
+        if (string.IsNullOrWhiteSpace(extension))
+        {
+            extension = ".dat";
+        }
+
+        var localPath = Path.Combine(_workingDirectory, $"{Guid.NewGuid():N}{extension}");
+
+        // Copia por streaming (sin cargar todo el video en memoria, que puede ser grande).
+        await using (var source = await result.OpenReadAsync().ConfigureAwait(false))
+        await using (var destino = File.Create(localPath))
+        {
+            await source.CopyToAsync(destino, cancellationToken).ConfigureAwait(false);
+        }
+
+        var info = new FileInfo(localPath);
+        if (info.Length == 0)
+        {
+            TryDelete(localPath);
+            throw new InvalidOperationException(
+                "El archivo no se pudo leer del dispositivo. Intenta de nuevo o elige otro.");
+        }
+
+        var contentType = string.IsNullOrWhiteSpace(result.ContentType)
+            ? ResolveContentType(extension)
+            : result.ContentType;
+
+        return new EvidencePhoto(localPath, Path.GetFileName(localPath), contentType, info.Length);
+    }
+
     private async Task<EvidencePhoto?> MaterializeAsync(
         Func<Task<FileResult?>> pick, CancellationToken cancellationToken)
     {
@@ -161,6 +209,9 @@ public sealed class EvidencePhotoService
         ".png" => "image/png",
         ".heic" or ".heif" => "image/heic",
         ".webp" => "image/webp",
+        ".mov" => "video/quicktime",
+        ".mp4" or ".m4v" => "video/mp4",
+        ".3gp" => "video/3gpp",
         _ => "application/octet-stream"
     };
 }

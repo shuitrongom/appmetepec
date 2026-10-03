@@ -100,8 +100,9 @@ public partial class EscenarioProgramaPage : ContentPage
         var inicio = _navigationState.SelectedEvento?.FechaInicio ?? dias.Min();
         var fin = _navigationState.SelectedEvento?.FechaFin ?? dias.Max();
 
-        // Calendario visual del mes: marca los dias con eventos y resalta el actual.
-        var elegido = await CalendarioEventosPage.PickAsync(Navigation, dias, _diaSeleccionado, inicio, fin);
+        // Calendario visual del mes: marca los dias con eventos y resalta el actual, con el
+        // color de la sede para que sea coherente con el encabezado de la programacion.
+        var elegido = await CalendarioEventosPage.PickAsync(Navigation, dias, _diaSeleccionado, inicio, fin, _colorEscenario);
         if (elegido is { } dia)
         {
             MostrarDia(dia);

@@ -13,7 +13,7 @@
 
                 <!-- Encabezado: mes + navegacion -->
                 <Grid ColumnDefinitions="Auto,*,Auto">
-                    <Label Grid.Column="0" Text="&#8249;" FontSize="30" TextColor="#5B2A86"
+                    <Label Grid.Column="0" x:Name="MesAnteriorLabel" Text="&#8249;" FontSize="30" TextColor="#5B2A86"
                            WidthRequest="40" HorizontalTextAlignment="Center" VerticalOptions="Center">
                         <Label.GestureRecognizers>
                             <TapGestureRecognizer Tapped="OnMesAnteriorTapped" />
@@ -21,7 +21,7 @@
                     </Label>
                     <Label Grid.Column="1" x:Name="MesLabel" Text="" FontSize="18" FontAttributes="Bold"
                            TextColor="#5B2A86" HorizontalTextAlignment="Center" VerticalOptions="Center" />
-                    <Label Grid.Column="2" Text="&#8250;" FontSize="30" TextColor="#5B2A86"
+                    <Label Grid.Column="2" x:Name="MesSiguienteLabel" Text="&#8250;" FontSize="30" TextColor="#5B2A86"
                            WidthRequest="40" HorizontalTextAlignment="Center" VerticalOptions="Center">
                         <Label.GestureRecognizers>
                             <TapGestureRecognizer Tapped="OnMesSiguienteTapped" />
@@ -48,12 +48,12 @@
 
                 <!-- Leyenda -->
                 <HorizontalStackLayout Spacing="8" HorizontalOptions="Center">
-                    <Border WidthRequest="12" HeightRequest="12" BackgroundColor="#5B2A86"
+                    <Border x:Name="LeyendaDot" WidthRequest="12" HeightRequest="12" BackgroundColor="#5B2A86"
                             StrokeThickness="0" StrokeShape="RoundRectangle 6" VerticalOptions="Center" />
                     <Label Text="Días con eventos" FontSize="12" TextColor="#666" VerticalOptions="Center" />
                 </HorizontalStackLayout>
 
-                <Button Text="Cerrar" Clicked="OnCerrarClicked"
+                <Button x:Name="CerrarBtn" Text="Cerrar" Clicked="OnCerrarClicked"
                         BackgroundColor="Transparent" TextColor="#5B2A86" FontAttributes="Bold" />
             </VerticalStackLayout>
         </Border>
