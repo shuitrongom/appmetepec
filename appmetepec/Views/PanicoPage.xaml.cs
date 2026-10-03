@@ -10,13 +10,15 @@ public partial class PanicoPage : ContentPage
 {
     private readonly PreferencesService _preferences;
     private readonly NavigationState _navigationState;
+    private readonly GeocodingService _geocoding;
     private string _coordinates = "";
 
-    public PanicoPage(PreferencesService preferences, NavigationState navigationState)
+    public PanicoPage(PreferencesService preferences, NavigationState navigationState, GeocodingService geocoding)
     {
         InitializeComponent();
         _preferences = preferences;
         _navigationState = navigationState;
+        _geocoding = geocoding;
     }
 
     protected override void OnAppearing()
@@ -34,11 +36,22 @@ public partial class PanicoPage : ContentPage
     {
         try
         {
+            CoordinatesLabel.Text = "Obteniendo ubicación...";
             var location = await Geolocation.Default.GetLocationAsync(new GeolocationRequest(GeolocationAccuracy.Best, TimeSpan.FromSeconds(10)));
-            if (location is not null)
+            if (location is null)
             {
-                _coordinates = $"{location.Latitude},{location.Longitude}";
-                CoordinatesLabel.Text = _coordinates;
+                CoordinatesLabel.Text = "";
+                return;
+            }
+
+            _coordinates = $"{location.Latitude},{location.Longitude}";
+            CoordinatesLabel.Text = _coordinates;
+
+            // Solo precarga el campo Direccion; CoordinatesLabel se queda mostrando la coordenada.
+            var direccion = await _geocoding.ReverseGeocodeAsync(location.Latitude, location.Longitude);
+            if (!string.IsNullOrWhiteSpace(direccion))
+            {
+                AddressEditor.Text = direccion;
             }
         }
         catch (Exception ex)
