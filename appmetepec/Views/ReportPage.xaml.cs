@@ -1,7 +1,27 @@
+using System.Collections.ObjectModel;
 using appmetepec.Models;
 using appmetepec.Services;
 
 namespace appmetepec.Views;
+
+// Un elemento de evidencia ya seleccionado (foto o video, tomado o elegido de la galeria) en
+// espera de subirse al enviar el reporte. EsVideo se decide segun la accion que el ciudadano
+// eligio en el action sheet (CapturarVideoAsync/PickVideoAsync vs CapturePhotoAsync/
+// PickPhotoAsync), no por inspeccion de ContentType, porque ya se sabe en el momento de crearlo.
+public sealed class EvidenciaSeleccionada
+{
+    public FileResult Archivo { get; }
+    public bool EsVideo { get; }
+    public bool EsFoto => !EsVideo;
+    public ImageSource? Miniatura { get; }
+
+    public EvidenciaSeleccionada(FileResult archivo, bool esVideo)
+    {
+        Archivo = archivo;
+        EsVideo = esVideo;
+        Miniatura = esVideo ? null : ImageSource.FromFile(archivo.FullPath);
+    }
+}
 
 public partial class ReportPage : ContentPage
 {
@@ -10,10 +30,10 @@ public partial class ReportPage : ContentPage
     private readonly NavigationState _navigationState;
     private readonly PendingTicketsService _pendingTickets;
     private ScreenReport? _report;
-    // Foto de evidencia ya materializada en disco (no el FileResult crudo del picker):
-    // garantiza que preview, subida y guardado offline usen un archivo integro, evitando
-    // el bug de iOS donde la foto de camara llegaba vacia. Ver EvidencePhotoService.
-    private EvidencePhoto? _attachment;
+    // Varias evidencias (fotos y/o videos): se pueden agregar y quitar antes de enviar el
+    // reporte. El envio en si (OnSendClicked) sube cada una y solo la primera lleva la
+    // descripcion capturada en EvidenciaDescripcionEntry (EsEvidenciaInicial).
+    private readonly ObservableCollection<EvidenciaSeleccionada> _evidencias = [];
     private string _coordinates = "";
     private List<BackendArticuloConocimientoDto> _articulos = [];
     // Servicio.Requierefoto == Id del TipoObligatoriedadEvidencia de clave "OBLIGATORIA": si no
@@ -25,17 +45,11 @@ public partial class ReportPage : ContentPage
     // AppConstants.ClaveModoCoberturaGeocerca).
     private bool _coberturaGeografica;
     private readonly GeocodingService _geocoding;
-    private readonly EvidencePhotoService _evidencePhotos;
     // Al cerrar el modal del mapa se vuelve a disparar OnAppearing; sin esto se reiniciaria el
     // formulario (nombre/telefono/correo editados por el ciudadano, requerimientos, etc.).
     private bool _volviendoDelMapa;
-    // En iOS, al volver del picker de camara/galeria tambien se dispara OnAppearing; sin esta
-    // proteccion se reiniciaba el formulario y, sobre todo, se reseteaba _coberturaGeografica y
-    // se relanzaba CargarRequerimientosAsync de forma asincrona, dejando el estado inconsistente
-    // (p.ej. un reporte con geocerca cuya ubicacion ya capturada terminaba fuera de zona al enviar).
-    private bool _volviendoDeFoto;
 
-    public ReportPage(PreferencesService preferences, MetepecApiService api, NavigationState navigationState, PendingTicketsService pendingTickets, GeocodingService geocoding, EvidencePhotoService evidencePhotos)
+    public ReportPage(PreferencesService preferences, MetepecApiService api, NavigationState navigationState, PendingTicketsService pendingTickets, GeocodingService geocoding)
     {
         InitializeComponent();
         _preferences = preferences;
@@ -43,7 +57,7 @@ public partial class ReportPage : ContentPage
         _navigationState = navigationState;
         _pendingTickets = pendingTickets;
         _geocoding = geocoding;
-        _evidencePhotos = evidencePhotos;
+        EvidenciasView.ItemsSource = _evidencias;
     }
 
     protected override void OnAppearing()
@@ -52,14 +66,6 @@ public partial class ReportPage : ContentPage
         if (_volviendoDelMapa)
         {
             _volviendoDelMapa = false;
-            return;
-        }
-
-        // Volviendo del picker de foto (iOS re-dispara OnAppearing): no reinicializar el
-        // formulario ni recargar requerimientos, para conservar ubicacion, banderas y campos.
-        if (_volviendoDeFoto)
-        {
-            _volviendoDeFoto = false;
             return;
         }
 
@@ -81,8 +87,9 @@ public partial class ReportPage : ContentPage
         EmailEntry.Text = user.Email;
 
         _evidenciaObligatoria = false;
-        EvidenciaLabel.Text = "Agrega una evidencia:";
-        EvidenciaDescripcionEntry.Placeholder = "Describe brevemente la foto (opcional)";
+        EvidenciaLabel.Text = "Agrega una o más evidencias:";
+        EvidenciaDescripcionEntry.Placeholder = "Describe brevemente la evidencia (opcional)";
+        _evidencias.Clear();
         _coberturaGeografica = false;
         UbicacionRequeridaLabel.IsVisible = false;
         VialidadEstatalAviso.IsVisible = false;
@@ -120,10 +127,10 @@ public partial class ReportPage : ContentPage
 
             if (_evidenciaObligatoria)
             {
-                EvidenciaLabel.Text = "Agrega una evidencia (obligatoria):";
+                EvidenciaLabel.Text = "Agrega una o más evidencias (obligatorio):";
                 // "Opcional" ya no aplica: al menos esta descripcion o los Comentarios generales
                 // se vuelven obligatorios (ver OnSendClicked).
-                EvidenciaDescripcionEntry.Placeholder = "Describe brevemente la foto";
+                EvidenciaDescripcionEntry.Placeholder = "Describe brevemente la evidencia";
             }
 
             _coberturaGeografica = string.Equals(
@@ -203,30 +210,8 @@ public partial class ReportPage : ContentPage
                 return;
             }
 
-            // InvariantCulture (punto decimal) OBLIGATORIO: ParseCoordinates hace Split(',')
-            // y parsea con InvariantCulture. En un dispositivo con locale es-MX la interpolacion
-            // normal usaria coma decimal ("19,26,-99,57"), rompiendo el Split y dejando las
-            // coordenadas invalidas -> el backend rechaza los servicios con geocerca (p.ej.
-            // bacheo) con "fuera de zona de cobertura". El map-picker ya usa InvariantCulture.
-            _coordinates = string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{location.Latitude},{location.Longitude}");
+            _coordinates = $"{location.Latitude},{location.Longitude}";
             CoordinatesLabel.Text = _coordinates;
-
-            // Rellenar la direccion a partir de las coordenadas (igual que el map-picker), para
-            // que el ciudadano no tenga que escribirla. Best-effort: si el geocoding no responde
-            // o no encuentra direccion, se deja lo que ya hubiera en el campo (no se borra).
-            try
-            {
-                var direccion = await _geocoding.ReverseGeocodeAsync(location.Latitude, location.Longitude);
-                if (!string.IsNullOrWhiteSpace(direccion))
-                {
-                    AddressEditor.Text = direccion;
-                }
-            }
-            catch
-            {
-                // Sin bloquear la captura de ubicacion si el geocoding externo falla.
-            }
-
             _ = VerificarVialidadEstatalAsync();
         }
         catch (Exception ex)
@@ -293,46 +278,39 @@ public partial class ReportPage : ContentPage
     {
         try
         {
-            var options = _evidencePhotos.IsCaptureSupported
-                ? new[] { "Tomar foto", "Elegir de la galeria" }
-                : new[] { "Elegir de la galeria" };
+            var options = MediaPicker.Default.IsCaptureSupported
+                ? new[] { "Tomar foto", "Elegir foto de la galería", "Grabar video", "Elegir video de la galería" }
+                : new[] { "Elegir foto de la galería", "Elegir video de la galería" };
 
             var choice = await DisplayActionSheet("Agrega una evidencia", "Cancelar", null, options);
 
-            if (choice is not ("Tomar foto" or "Elegir de la galeria"))
+            (FileResult? Archivo, bool EsVideo) seleccion = choice switch
             {
-                return;
-            }
-
-            // El picker de camara/galeria aparece como vista modal; en iOS eso re-dispara
-            // OnAppearing al volver. Marcamos la bandera para que OnAppearing no reinicialice
-            // el formulario (ver OnAppearing) y no se pierda la ubicacion ya capturada.
-            _volviendoDeFoto = true;
-
-            var photo = choice switch
-            {
-                "Tomar foto" => await _evidencePhotos.CapturePhotoAsync(),
-                "Elegir de la galeria" => await _evidencePhotos.PickPhotoAsync(),
-                _ => null
+                "Tomar foto" => (await MediaPicker.Default.CapturePhotoAsync(), false),
+                "Elegir foto de la galería" => (await MediaPicker.Default.PickPhotoAsync(), false),
+                "Grabar video" => (await MediaPicker.Default.CaptureVideoAsync(), true),
+                "Elegir video de la galería" => (await MediaPicker.Default.PickVideoAsync(), true),
+                _ => (null, false)
             };
 
-            if (photo is null)
+            if (seleccion.Archivo is null)
             {
                 return;
             }
 
-            // Si ya habia una foto seleccionada, liberamos su archivo temporal.
-            _evidencePhotos.Delete(_attachment?.LocalPath);
-
-            _attachment = photo;
-            AttachmentLabel.Text = _attachment.FileName;
-            // Preview desde el archivo local ya materializado: en iOS esto es lo que
-            // evita la imagen en blanco de las fotos recien tomadas con la camara.
-            PreviewImage.Source = ImageSource.FromFile(_attachment.LocalPath);
+            _evidencias.Add(new EvidenciaSeleccionada(seleccion.Archivo, seleccion.EsVideo));
         }
         catch (Exception ex)
         {
             await DisplayAlert("No se pudo agregar la evidencia", ErrorMessageHelper.Traducir(ex), "Aceptar");
+        }
+    }
+
+    private void OnRemoveEvidenciaTapped(object sender, TappedEventArgs e)
+    {
+        if (e.Parameter is EvidenciaSeleccionada item)
+        {
+            _evidencias.Remove(item);
         }
     }
 
@@ -360,19 +338,19 @@ public partial class ReportPage : ContentPage
             return;
         }
 
-        if (_evidenciaObligatoria && _attachment is null)
+        if (_evidenciaObligatoria && _evidencias.Count == 0)
         {
-            await DisplayAlert("Evidencia requerida", "Este tipo de reporte requiere que agregues una foto de evidencia antes de enviarlo.", "Aceptar");
+            await DisplayAlert("Evidencia requerida", "Este tipo de reporte requiere que agregues una foto o video de evidencia antes de enviarlo.", "Aceptar");
             return;
         }
 
-        // Cuando la evidencia es obligatoria, la foto sola no basta: se exige tambien algo de
-        // texto que le de contexto (los "Comentarios" generales o, en su defecto, la descripcion
-        // especifica de la foto) -- cualquiera de los dos es valido, no se piden ambos.
+        // Cuando la evidencia es obligatoria, la foto/video solo no basta: se exige tambien algo
+        // de texto que le de contexto (los "Comentarios" generales o, en su defecto, la
+        // descripcion de la evidencia) -- cualquiera de los dos es valido, no se piden ambos.
         var evidenciaDescripcion = EvidenciaDescripcionEntry.Text?.Trim() ?? "";
         if (_evidenciaObligatoria && string.IsNullOrWhiteSpace(comments) && string.IsNullOrWhiteSpace(evidenciaDescripcion))
         {
-            await DisplayAlert("Descripción requerida", "Este tipo de reporte requiere que describas el problema: agrega comentarios o una descripción de la foto antes de enviarlo.", "Aceptar");
+            await DisplayAlert("Descripción requerida", "Este tipo de reporte requiere que describas el problema: agrega comentarios o una descripción de la evidencia antes de enviarlo.", "Aceptar");
             return;
         }
 
@@ -400,28 +378,34 @@ public partial class ReportPage : ContentPage
                 return;
             }
 
+            // Varias evidencias: se suben una por una (no hay endpoint de subida multiple) y solo
+            // la primera lleva la descripcion que capturo el ciudadano (EsEvidenciaInicial),
+            // igual que el criterio de un solo adjunto de antes.
             List<BackendEvidenciaItemRequest>? evidencias = null;
-            if (_attachment is not null)
+            if (_evidencias.Count > 0)
             {
-                var uploaded = await _api.UploadEvidenceAsync(_attachment);
-                if (uploaded is not null)
+                evidencias = [];
+                for (var i = 0; i < _evidencias.Count; i++)
                 {
-                    evidencias =
-                    [
-                        new BackendEvidenciaItemRequest
-                        {
-                            // Nombre amigable en vez del nombre de archivo que le puso la camara/
-                            // galeria del dispositivo (ej. "1000255651.jpg") -- eso es lo que se
-                            // muestra en el sistema web al revisar el ticket. RutaArchivo (donde
-                            // realmente se guarda/sirve el archivo) no cambia.
-                            NombreArchivo = "Evidencia" + Path.GetExtension(uploaded.NombreOriginal),
-                            RutaArchivo = uploaded.Ruta,
-                            TipoMime = uploaded.MimeType,
-                            TamanoBytes = uploaded.Peso,
-                            EsEvidenciaInicial = true,
-                            Descripcion = string.IsNullOrWhiteSpace(evidenciaDescripcion) ? null : evidenciaDescripcion
-                        }
-                    ];
+                    var uploaded = await _api.UploadEvidenceAsync(_evidencias[i].Archivo);
+                    if (uploaded is null)
+                    {
+                        continue;
+                    }
+
+                    evidencias.Add(new BackendEvidenciaItemRequest
+                    {
+                        // Nombre amigable en vez del nombre de archivo que le puso la camara/
+                        // galeria del dispositivo (ej. "1000255651.jpg") -- eso es lo que se
+                        // muestra en el sistema web al revisar el ticket. RutaArchivo (donde
+                        // realmente se guarda/sirve el archivo) no cambia.
+                        NombreArchivo = $"Evidencia{i + 1}" + Path.GetExtension(uploaded.NombreOriginal),
+                        RutaArchivo = uploaded.Ruta,
+                        TipoMime = uploaded.MimeType,
+                        TamanoBytes = uploaded.Peso,
+                        EsEvidenciaInicial = i == 0,
+                        Descripcion = i == 0 && !string.IsNullOrWhiteSpace(evidenciaDescripcion) ? evidenciaDescripcion : null
+                    });
                 }
             }
 
@@ -557,9 +541,14 @@ public partial class ReportPage : ContentPage
             LastError = lastError
         };
 
-        if (_attachment is not null)
+        // El respaldo offline ("Mis reportes" -> reintentar) solo conserva la PRIMERA evidencia
+        // si el ciudadano agrego varias: MyTicketsPage.xaml.cs reintenta un solo adjunto por
+        // reporte pendiente. Limitacion conocida, no silenciosa -- ver comentario alla.
+        var primera = _evidencias.FirstOrDefault();
+        if (primera is not null)
         {
-            submission.LocalPhotoPath = await _pendingTickets.SavePhotoAsync(_attachment);
+            submission.LocalPhotoPath = await _pendingTickets.SavePhotoAsync(primera.Archivo);
+            submission.PhotoMimeType = primera.Archivo.ContentType;
             submission.PhotoDescription = string.IsNullOrWhiteSpace(EvidenciaDescripcionEntry.Text) ? null : EvidenciaDescripcionEntry.Text.Trim();
         }
 

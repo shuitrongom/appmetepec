@@ -69,7 +69,13 @@ namespace appmetepec
 #endif
 
             builder.Services.AddSingleton<PreferencesService>();
-            builder.Services.AddSingleton(sp => new HttpClient(new AuthExpiredHandler(sp.GetRequiredService<PreferencesService>())));
+            // Timeout por defecto de HttpClient (100s) no alcanza para subir un video de evidencia
+            // de varios minutos por datos moviles; se amplia para toda la app (las demas llamadas
+            // son rapidas y nunca se acercan a este limite).
+            builder.Services.AddSingleton(sp => new HttpClient(new AuthExpiredHandler(sp.GetRequiredService<PreferencesService>()))
+            {
+                Timeout = TimeSpan.FromMinutes(10)
+            });
             builder.Services.AddSingleton<ReportCatalogService>();
             builder.Services.AddSingleton<MetepecApiService>();
             builder.Services.AddSingleton<PushRegistrationService>();
@@ -91,9 +97,12 @@ namespace appmetepec
             builder.Services.AddTransient<ArticuloDetailPage>();
             builder.Services.AddTransient<RecoleccionPage>();
             builder.Services.AddTransient<AlertaNaranjaPage>();
+            builder.Services.AddTransient<PanicoPage>();
+            builder.Services.AddTransient<PanicoConfirmarPage>();
             builder.Services.AddTransient<MyTicketsPage>();
             builder.Services.AddTransient<TicketDetailPage>();
             builder.Services.AddTransient<EncuestaPage>();
+            builder.Services.AddTransient<PerfilPage>();
             builder.Services.AddTransient<EventoMapaPage>();
             builder.Services.AddTransient<EscenarioProgramaPage>();
 

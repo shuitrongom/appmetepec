@@ -66,19 +66,18 @@
 
                 <Image x:Name="LogoImage" Grid.Column="1" Source="placeholder.png" HeightRequest="50" WidthRequest="100" Aspect="AspectFit" />
 
-                <Image Grid.Column="2" Source="phone_call_green.png" HeightRequest="32" WidthRequest="32" Aspect="AspectFit" HorizontalOptions="End" VerticalOptions="Center">
-                    <Image.GestureRecognizers>
-                        <TapGestureRecognizer Tapped="OnLlamarTapped" />
-                    </Image.GestureRecognizers>
-                </Image>
-
-                <!--HorizontalStackLayout Grid.Column="2" Spacing="6" HorizontalOptions="End" VerticalOptions="Center">
-                    <Label Text="ALERTA DE&#10;GENERO" FontSize="10" FontAttributes="Bold" TextColor="{AppThemeBinding Light=#555, Dark=#C7CDD3}" HorizontalTextAlignment="End" VerticalOptions="Center" />
-                    <Image Source="ic_alerta_on.png" HeightRequest="30" WidthRequest="30" />
-                    <HorizontalStackLayout.GestureRecognizers>
-                        <TapGestureRecognizer Tapped="OnAlertaTapped" />
-                    </HorizontalStackLayout.GestureRecognizers>
-                </HorizontalStackLayout-->
+                <HorizontalStackLayout Grid.Column="2" Spacing="14" HorizontalOptions="End" VerticalOptions="Center">
+                    <Image Source="alerta_naranja.png" HeightRequest="30" WidthRequest="30" Aspect="AspectFit">
+                        <Image.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnPanicoTapped" />
+                        </Image.GestureRecognizers>
+                    </Image>
+                    <Image Source="phone_call_green.png" HeightRequest="32" WidthRequest="32" Aspect="AspectFit">
+                        <Image.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnLlamarTapped" />
+                        </Image.GestureRecognizers>
+                    </Image>
+                </HorizontalStackLayout>
             </Grid>
 
             <CarouselView x:Name="BannerCarousel"
@@ -237,6 +236,14 @@
                             <Label Grid.Column="1" Text="Mis reportes" FontSize="15" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" VerticalOptions="Center" />
                             <Grid.GestureRecognizers>
                                 <TapGestureRecognizer Tapped="OnDrawerMyTicketsTapped" />
+                            </Grid.GestureRecognizers>
+                        </Grid>
+
+                        <Grid ColumnDefinitions="46,*" Padding="20,14" ColumnSpacing="14">
+                            <Image Source="ic_user.png" HeightRequest="24" WidthRequest="24" HorizontalOptions="Center" />
+                            <Label Grid.Column="1" Text="Mi perfil" FontSize="15" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" VerticalOptions="Center" />
+                            <Grid.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="OnDrawerPerfilTapped" />
                             </Grid.GestureRecognizers>
                         </Grid>
 

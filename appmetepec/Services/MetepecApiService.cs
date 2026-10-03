@@ -217,6 +217,25 @@ public sealed class MetepecApiService
         return await ReadJsonAsync<BackendCiudadanoDto>(response, cancellationToken);
     }
 
+    public async Task<BackendCiudadanoDto?> UpdateMyCiudadanoAsync(BackendActualizarMiCiudadanoRequest request, CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Put, AppConstants.MetepecBackendUrl + "/ciudadanos/me")
+        {
+            Content = JsonContent(request)
+        };
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
+        {
+            var body = await ReadJsonAsync<ErrorResponse>(response, cancellationToken);
+            throw new InvalidOperationException(body?.error ?? "No se pudo actualizar tu perfil.");
+        }
+
+        response.EnsureSuccessStatusCode();
+        return await ReadJsonAsync<BackendCiudadanoDto>(response, cancellationToken);
+    }
+
     public async Task<BackendUploadResult?> UploadEvidenceAsync(FileResult attachment, CancellationToken cancellationToken = default)
     {
         await using var stream = await attachment.OpenReadAsync();
@@ -248,12 +267,20 @@ public sealed class MetepecApiService
 
         using var response = await _httpClient.SendAsync(message, cancellationToken);
 
-        // Si el backend rechaza el archivo (formato no aceptado, tamano, etc.) devuelve un
-        // 4xx/5xx con un cuerpo que explica el motivo. Antes se hacia EnsureSuccessStatusCode()
-        // a secas, que convertia ese rechazo en un HttpRequestException generico que la UI
-        // mostraba como "No se pudo conectar con el servidor" (mensaje enganoso). Ahora leemos
-        // el cuerpo real y lo propagamos como InvalidOperationException (ErrorMessageHelper lo
-        // deja pasar tal cual), para que el usuario/soporte vea la causa verdadera.
+        // Manejo de errores del upload (combina ambos criterios):
+        // - 400 BadRequest: casi siempre el archivo excedio el limite de tamano del endpoint
+        //   (UploadsController.RequestSizeLimit). Se lee el cuerpo tipado ErrorResponse y se
+        //   usa su mensaje (patron consistente con el resto de MetepecApiService), con un
+        //   fallback amigable.
+        // - Cualquier otro error (5xx, etc.): se lee el cuerpo real y se propaga con el status,
+        //   en vez de un EnsureSuccessStatusCode() a secas que la UI mostraria como el generico
+        //   "No se pudo conectar con el servidor" (enganoso cuando el servidor si respondio).
+        if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
+        {
+            var body = await ReadJsonAsync<ErrorResponse>(response, cancellationToken);
+            throw new InvalidOperationException(body?.error ?? "El archivo es demasiado grande o no es valido. Intenta con uno mas ligero.");
+        }
+
         if (!response.IsSuccessStatusCode)
         {
             string detalle = "";

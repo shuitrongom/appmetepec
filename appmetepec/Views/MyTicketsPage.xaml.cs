@@ -86,11 +86,14 @@ public partial class MyTicketsPage : ContentPage
                 return;
             }
 
+            // Solo una evidencia por reporte pendiente: ReportPage.xaml.cs permite agregar varias
+            // (fotos y/o video) al enviar en linea, pero el respaldo offline solo guarda la
+            // primera (ver comentario en GuardarReportePendienteAsync alla). Limitacion conocida.
             List<BackendEvidenciaItemRequest>? evidencias = null;
             if (!string.IsNullOrWhiteSpace(pending.LocalPhotoPath) && File.Exists(pending.LocalPhotoPath))
             {
                 await using var stream = File.OpenRead(pending.LocalPhotoPath);
-                var uploaded = await _api.UploadEvidenceAsync(stream, Path.GetFileName(pending.LocalPhotoPath), "image/jpeg");
+                var uploaded = await _api.UploadEvidenceAsync(stream, Path.GetFileName(pending.LocalPhotoPath), pending.PhotoMimeType ?? "image/jpeg");
                 if (uploaded is not null)
                 {
                     evidencias =
