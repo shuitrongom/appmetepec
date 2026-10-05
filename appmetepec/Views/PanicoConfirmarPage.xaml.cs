@@ -110,8 +110,8 @@ public partial class PanicoConfirmarPage : ContentPage
         {
             Idciudadano = _preferences.CiudadanoId,
             IdCanalIngreso = idCanalIngreso,
-            Asunto = "BOTÓN DE PÁNICO",
-            Descripcion = "Botón de pánico activado desde la app.",
+            Asunto = "SERVICIO DE EMERGENCIA",
+            Descripcion = "Servicio de emergencia activado desde la app.",
             Correoelectronico = datos.Email,
             Numerotelefonico = datos.Phone,
             Dependencia = ZendeskDependencia.C2.DisplayName(),
@@ -127,7 +127,7 @@ public partial class PanicoConfirmarPage : ContentPage
             Observacion = new BackendTicketObservacionRequest
             {
                 IdTipoMensaje = 1,
-                Observaciones = "BOTÓN DE PÁNICO",
+                Observaciones = "SERVICIO DE EMERGENCIA",
                 VisibleCiudadano = true
             }
         };

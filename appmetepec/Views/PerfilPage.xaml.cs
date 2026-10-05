@@ -45,6 +45,9 @@ public partial class PerfilPage : ContentPage
             CurpEntry.Text = ciudadano.Curp;
             CodigoPostalEntry.Text = ciudadano.Codigopostal;
             FechaNacimientoPicker.Date = ciudadano.Fechanacimiento ?? FechaNacimientoPicker.MaximumDate.AddYears(-18);
+
+            var direccion = await _api.GetMyDireccionPrincipalAsync();
+            DireccionEditor.Text = direccion?.Direccion;
         }
         catch (Exception ex)
         {
@@ -82,6 +85,7 @@ public partial class PerfilPage : ContentPage
         {
             BusyIndicator.IsRunning = BusyIndicator.IsVisible = true;
             await _api.UpdateMyCiudadanoAsync(request);
+            await _api.UpdateMyDireccionPrincipalAsync(new BackendActualizarMiDireccionRequest { Direccion = DireccionEditor.Text?.Trim() });
             await DisplayAlert("Mi perfil", "Tus datos se actualizaron correctamente.", "Aceptar");
         }
         catch (Exception ex)

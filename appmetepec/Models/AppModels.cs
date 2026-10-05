@@ -751,6 +751,24 @@ public sealed class BackendActualizarMiCiudadanoRequest
     public string? Fechanacimiento { get; set; }
 }
 
+// Autoservicio (appmetepec, "Mi perfil"): solo la direccion PRINCIPAL del ciudadano (ver
+// CiudadanoDireccion.EsPrincipal en el back-end), y solo el texto -- sin catalogos
+// (Fraccionamiento/Sector/PosicionGeografica) ni coordenadas, eso lo sigue capturando un agente.
+public sealed class BackendCiudadanoDireccionDto
+{
+    [JsonPropertyName("id")]
+    public int Id { get; set; }
+
+    [JsonPropertyName("direccion")]
+    public string? Direccion { get; set; }
+}
+
+public sealed class BackendActualizarMiDireccionRequest
+{
+    [JsonPropertyName("direccion")]
+    public string? Direccion { get; set; }
+}
+
 public sealed class BackendPublicacionDto
 {
     [JsonPropertyName("id")]

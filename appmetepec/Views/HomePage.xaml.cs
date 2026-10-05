@@ -477,9 +477,7 @@ public partial class HomePage : ContentPage
     {
         if (report.Title == "Llamada")
         {
-            // telprompt: fuerza el dialogo nativo de iOS antes de marcar, evitando que
-            // WhatsApp intercepte el numero especial *7311 en iPhones con esa app instalada.
-            await Launcher.Default.OpenAsync("telprompt:*7311");
+            await MarcarNumeroEmergenciaAsync("*7311");
             return;
         }
 
@@ -538,12 +536,22 @@ public partial class HomePage : ContentPage
     {
         try
         {
-            await Launcher.Default.OpenAsync("telprompt:*7311");
+            await MarcarNumeroEmergenciaAsync("*7311");
         }
         catch (Exception ex)
         {
             await DisplayAlert("No se pudo iniciar la llamada", ErrorMessageHelper.Traducir(ex), "Aceptar");
         }
+    }
+
+    // telprompt: fuerza el dialogo nativo de iOS antes de marcar (evita que WhatsApp intercepte el
+    // numero especial *7311 en iPhones con esa app instalada), pero es un esquema EXCLUSIVO de
+    // iOS: en Android no hay ninguna app que lo maneje y el intent truena ("No Activity found to
+    // handle Intent"). En Android se usa el esquema estandar tel:.
+    private static Task MarcarNumeroEmergenciaAsync(string numero)
+    {
+        var prefijo = DeviceInfo.Current.Platform == DevicePlatform.iOS ? "telprompt:" : "tel:";
+        return Launcher.Default.OpenAsync($"{prefijo}{numero}");
     }
 
     private async void OnMenuTapped(object sender, TappedEventArgs e)
