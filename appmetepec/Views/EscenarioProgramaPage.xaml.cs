@@ -1,6 +1,8 @@
 using System.Globalization;
 using appmetepec.Models;
 using appmetepec.Services;
+using Microsoft.Maui.ApplicationModel;
+using Microsoft.Maui.Devices.Sensors;
 
 namespace appmetepec.Views;
 
@@ -45,6 +47,9 @@ public partial class EscenarioProgramaPage : ContentPage
         EscenarioNombre.Text = _escenario.Nombre;
         EscenarioDireccion.Text = _escenario.Direccion ?? "";
         EscenarioDireccion.IsVisible = !string.IsNullOrWhiteSpace(_escenario.Direccion);
+
+        // "Como llegar" solo tiene sentido si el escenario trae direccion.
+        ComoLlegarBtn.IsVisible = !string.IsNullOrWhiteSpace(_escenario.Direccion);
 
         // El escenario trae su propio color (lo define el admin en el front): tenimos
         // el encabezado y los acentos con ese color para que cada sede sea identificable.
@@ -110,6 +115,56 @@ public partial class EscenarioProgramaPage : ContentPage
     }
 
     private void OnHoyClicked(object sender, EventArgs e) => MostrarDia(DateTime.Today);
+
+    // "Como llegar": abre la app de mapas nativa (Google Maps en Android, Apple Maps en iOS)
+    // con la direccion de la sede como destino, en modo navegacion/ruta. El mapa calcula la
+    // ruta desde la ubicacion del usuario (lo pide el propio mapa, no la app). Como el escenario
+    // solo tiene la direccion en texto (no coordenadas geograficas; posX/posY son % sobre la
+    // imagen del plano, no lat/lng), se abre con la direccion para que el mapa la geolocalice.
+    private async void OnComoLlegarTapped(object sender, EventArgs e)
+    {
+        var direccion = _escenario?.Direccion;
+        if (string.IsNullOrWhiteSpace(direccion))
+        {
+            return;
+        }
+
+        try
+        {
+            // Añade "Metepec, Estado de Mexico, Mexico" si la direccion no menciona el municipio,
+            // para que el geocoder no la confunda con una calle homonima de otra ciudad.
+            var destino = direccion.Trim();
+            if (!destino.Contains("Metepec", StringComparison.OrdinalIgnoreCase))
+            {
+                destino = $"{destino}, Metepec, Estado de México, México";
+            }
+
+            // URL universal de Google Maps en modo ruta hacia el destino (texto). Funciona en
+            // Android (abre Google Maps) y en iOS (abre Google Maps si esta instalado, o Safari
+            // -> Google Maps web, que ofrece abrir en Apple Maps). El mapa calcula la ruta desde
+            // la ubicacion del usuario, que pide el propio mapa.
+            var url = $"https://www.google.com/maps/dir/?api=1&destination={Uri.EscapeDataString(destino)}";
+
+            var abierto = await Launcher.Default.TryOpenAsync(url);
+            if (!abierto)
+            {
+                // Fallback: intentar con el mapa nativo del sistema via Placemark.
+                await Map.Default.OpenAsync(new Placemark
+                {
+                    CountryName = "México",
+                    AdminArea = "Estado de México",
+                    Locality = "Metepec",
+                    Thoroughfare = direccion
+                }, new MapLaunchOptions { Name = _escenario?.Nombre, NavigationMode = NavigationMode.Driving });
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ComoLlegar] No se pudo abrir el mapa: {ex}");
+            await DisplayAlert("Cómo llegar",
+                "No se pudo abrir la aplicación de mapas en este dispositivo.", "Aceptar");
+        }
+    }
 
     // Tine el encabezado y los acentos con el color del escenario. Una barra del dia con
     // una version muy clara del mismo color da un acabado premium y coherente.

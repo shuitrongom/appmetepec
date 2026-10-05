@@ -18,13 +18,8 @@
             <Label Grid.Column="1" x:Name="TitleLabel" Text="Eventos" FontSize="18" FontAttributes="Bold"
                    VerticalOptions="Center" HorizontalOptions="Center" TextColor="#5B2A86"
                    LineBreakMode="TailTruncation" />
-            <!-- Boton para restablecer el zoom/encaje -->
-            <Label Grid.Column="2" Text="&#8982;" FontSize="22" TextColor="#5B2A86"
-                   VerticalOptions="Center" WidthRequest="34" HorizontalTextAlignment="Center">
-                <Label.GestureRecognizers>
-                    <TapGestureRecognizer Tapped="OnResetZoomTapped" />
-                </Label.GestureRecognizers>
-            </Label>
+            <!-- Columna derecha reservada para equilibrar el titulo centrado (sin boton de zoom). -->
+            <BoxView Grid.Column="2" WidthRequest="34" Color="Transparent" />
         </Grid>
 
         <!-- Area del mapa: un contenedor fijo (clip) donde se mueve/escala el contenido. -->
@@ -44,11 +39,8 @@
                 <!-- Los pines (hotspots) se agregan por codigo, posicionados por %. -->
             </AbsoluteLayout>
 
-            <!-- Gestos sobre el area completa (no compiten con un ScrollView). -->
-            <Grid.GestureRecognizers>
-                <PinchGestureRecognizer PinchUpdated="OnPinchUpdated" />
-                <PanGestureRecognizer PanUpdated="OnPanUpdated" />
-            </Grid.GestureRecognizers>
+            <!-- Sin gestos de zoom/pan: el mapa se muestra fijo y completo. La interaccion es
+                 tocar los pines (que flotan con sombra para dar profundidad 3D). -->
 
             <!-- Carga -->
             <ActivityIndicator x:Name="BusyIndicator" IsVisible="False" IsRunning="False"
@@ -65,7 +57,7 @@
         </Grid>
 
         <!-- Pista -->
-        <Label Grid.Row="1" Text="Toca un número para ver su programación · pellizca para acercar"
+        <Label Grid.Row="1" Text="Toca un número para ver su programación"
                VerticalOptions="End" HorizontalOptions="Center" Margin="16,0,16,16"
                FontSize="12" TextColor="#5B2A86" BackgroundColor="#F2E9FA" Padding="12,6"
                HorizontalTextAlignment="Center" />

@@ -4,16 +4,14 @@ using Microsoft.Maui.Layouts;
 
 namespace appmetepec.Views;
 
-// Mapa interactivo de un evento: imagen con zoom (pinch) y desplazamiento (pan) acotado,
-// y los numeros de cada escenario posicionados por PORCENTAJE sobre la imagen. Al tocar
-// un numero se navega a la programacion de ese escenario. Funciona en iOS/Android y
-// cualquier tamano porque las posiciones son relativas (%).
+// Mapa de un evento: la imagen del plano se muestra fija y completa (sin zoom ni pan), con los
+// numeros de cada escenario posicionados por PORCENTAJE sobre la imagen. Los pines flotan con
+// sombra para dar sensacion 3D y, al tocarlos, rebotan y navegan a la programacion del escenario.
+// Funciona en iOS/Android y cualquier tamano porque las posiciones son relativas (%).
 public partial class EventoMapaPage : ContentPage
 {
     private const double PinDiametro = 36;      // tamano visual del pin
     private const double AreaTactil = 44;       // area minima de toque (accesibilidad)
-    private const double EscalaMin = 1;
-    private const double EscalaMax = 5;
 
     // Color por defecto del pin cuando el backend no define uno por escenario.
     private static readonly Color PinColorPorDefecto = Color.FromArgb("#5B2A86");
@@ -31,12 +29,6 @@ public partial class EventoMapaPage : ContentPage
     // sin el minimo desfase que daban los enteros ImagenAncho/ImagenAlto si no eran exactos.
     private double _imgRealW;
     private double _imgRealH;
-
-    // Estado de zoom/pan.
-    private double _escala = 1;
-    private double _escalaInicio = 1;
-    private double _panXInicio;
-    private double _panYInicio;
 
     // Duracion de la intro de portada antes de pasar sola al mapa.
     private static readonly TimeSpan DuracionIntro = TimeSpan.FromMilliseconds(2200);
@@ -374,7 +366,15 @@ public partial class EventoMapaPage : ContentPage
             StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = (float)(PinDiametro / 2) },
             Content = numero,
             HorizontalOptions = LayoutOptions.Center,
-            VerticalOptions = LayoutOptions.Center
+            VerticalOptions = LayoutOptions.Center,
+            // Sombra proyectada: da sensacion de que el pin FLOTA sobre el mapa (efecto 3D).
+            Shadow = new Shadow
+            {
+                Brush = Brush.Black,
+                Opacity = 0.45f,
+                Radius = 8,
+                Offset = new Point(0, 5)
+            }
         };
 
         // Contenedor del area tactil. El centrado sobre el punto exacto lo hace DibujarHotspots
@@ -389,88 +389,46 @@ public partial class EventoMapaPage : ContentPage
         };
 
         var tap = new TapGestureRecognizer();
-        tap.Tapped += async (_, _) => await AbrirProgramacionAsync(escenario);
+        tap.Tapped += async (_, _) =>
+        {
+            // Rebote de confirmacion al tocar (crece y vuelve) antes de abrir la programacion.
+            await pinVisual.ScaleTo(1.35, 110, Easing.CubicOut);
+            await pinVisual.ScaleTo(1.0, 90, Easing.CubicIn);
+            await AbrirProgramacionAsync(escenario);
+        };
         contenedor.GestureRecognizers.Add(tap);
 
+        // Flotar sutil continuo sobre el circulo (no el contenedor, para no mover el area tactil
+        // ni el posicionamiento). Da sensacion de que el pin flota sobre el plano (3D).
+        IniciarFlotar(pinVisual);
+
         return contenedor;
+    }
+
+    // Lazo suave e infinito: el circulo del pin sube y baja unos pocos px. Se detiene solo
+    // cuando el pin deja de estar en pantalla (pagina cerrada -> Parent nulo).
+    private static async void IniciarFlotar(View pinVisual)
+    {
+        try
+        {
+            // Pequeño desfase aleatorio para que los pines no floten todos al unisono.
+            await Task.Delay(Random.Shared.Next(0, 600));
+            while (pinVisual.Parent is not null)
+            {
+                await pinVisual.TranslateTo(0, -4, 1200, Easing.SinInOut);
+                await pinVisual.TranslateTo(0, 0, 1200, Easing.SinInOut);
+            }
+        }
+        catch
+        {
+            // Si el pin se libera a mitad de la animacion, se ignora.
+        }
     }
 
     private async Task AbrirProgramacionAsync(BackendEscenarioDto escenario)
     {
         _navigationState.SelectedEscenario = escenario;
         await Shell.Current.GoToAsync(nameof(EscenarioProgramaPage));
-    }
-
-    // --- Zoom (pinch): escala la imagen; los pines se mantienen de tamano constante. ---
-    private void OnPinchUpdated(object? sender, PinchGestureUpdatedEventArgs e)
-    {
-        switch (e.Status)
-        {
-            case GestureStatus.Started:
-                _escalaInicio = _escala;
-                break;
-            case GestureStatus.Running:
-                _escala = Math.Clamp(_escalaInicio * e.Scale, EscalaMin, EscalaMax);
-                AplicarEscala();
-                AcotarPan();
-                break;
-        }
-    }
-
-    private void AplicarEscala()
-    {
-        MapaImagen.Scale = _escala;
-        // Pines: escala inversa para que NO crezcan con el zoom (tamano constante en pantalla).
-        var inversa = 1.0 / _escala;
-        foreach (var pin in _pines)
-        {
-            pin.Scale = inversa;
-        }
-    }
-
-    // --- Pan acotado al area visible segun la escala ---
-    private void OnPanUpdated(object? sender, PanUpdatedEventArgs e)
-    {
-        if (_escala <= 1)
-        {
-            MapaLayout.TranslationX = 0;
-            MapaLayout.TranslationY = 0;
-            return;
-        }
-
-        switch (e.StatusType)
-        {
-            case GestureStatus.Started:
-                _panXInicio = MapaLayout.TranslationX;
-                _panYInicio = MapaLayout.TranslationY;
-                break;
-            case GestureStatus.Running:
-                MapaLayout.TranslationX = _panXInicio + e.TotalX;
-                MapaLayout.TranslationY = _panYInicio + e.TotalY;
-                AcotarPan();
-                break;
-        }
-    }
-
-    // Limita la traslacion para que la imagen ampliada no se salga de la vista.
-    private void AcotarPan()
-    {
-        var maxX = Math.Max(0, (MapaLayout.Width * (_escala - 1)) / 2);
-        var maxY = Math.Max(0, (MapaLayout.Height * (_escala - 1)) / 2);
-        MapaLayout.TranslationX = Math.Clamp(MapaLayout.TranslationX, -maxX, maxX);
-        MapaLayout.TranslationY = Math.Clamp(MapaLayout.TranslationY, -maxY, maxY);
-    }
-
-    private void OnResetZoomTapped(object sender, TappedEventArgs e)
-    {
-        _escala = 1;
-        MapaImagen.Scale = 1;
-        MapaLayout.TranslationX = 0;
-        MapaLayout.TranslationY = 0;
-        foreach (var pin in _pines)
-        {
-            pin.Scale = 1;
-        }
     }
 
     private async void OnBackTapped(object sender, TappedEventArgs e)

@@ -26,22 +26,40 @@
                 </Border.GestureRecognizers>
             </Border>
 
-            <VerticalStackLayout Grid.Column="1" Spacing="0" VerticalOptions="Center" Margin="10,0">
+            <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center" Margin="10,0">
+                <!-- Nombre y direccion COMPLETOS: hacen wrap en varias lineas (el header crece
+                     en alto) en vez de truncar con "...". Asi el ciudadano ve el nombre entero
+                     de la sede y su direccion completa. -->
                 <Label x:Name="EscenarioNombre" Text="" FontSize="17" FontAttributes="Bold" TextColor="White"
-                       LineBreakMode="TailTruncation" />
+                       LineBreakMode="WordWrap" MaxLines="3" />
                 <Label x:Name="EscenarioDireccion" Text="" FontSize="12" TextColor="#F0E8FA"
-                       LineBreakMode="TailTruncation" />
+                       LineBreakMode="WordWrap" MaxLines="2" />
             </VerticalStackLayout>
 
-            <!-- Icono de calendario: abre el calendario del mes para elegir otro dia -->
-            <Border Grid.Column="2" WidthRequest="40" HeightRequest="40" BackgroundColor="#33FFFFFF"
-                    StrokeThickness="0" VerticalOptions="Center"
-                    StrokeShape="RoundRectangle 20">
-                <Label Text="📅" FontSize="20" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
-                <Border.GestureRecognizers>
-                    <TapGestureRecognizer Tapped="OnCalendarioTapped" />
-                </Border.GestureRecognizers>
-            </Border>
+            <!-- Acciones del escenario: "como llegar" (abre Maps con la ruta a la direccion) y
+                 el calendario del mes. Van juntos a la derecha, alineados arriba para que el
+                 nombre/direccion (que ahora puede ocupar varias lineas) crezca sin empujarlos. -->
+            <HorizontalStackLayout Grid.Column="2" Spacing="8" VerticalOptions="Start">
+                <!-- Como llegar: solo visible si el escenario tiene direccion -->
+                <Border x:Name="ComoLlegarBtn" WidthRequest="40" HeightRequest="40" BackgroundColor="#33FFFFFF"
+                        StrokeThickness="0" VerticalOptions="Center"
+                        StrokeShape="RoundRectangle 20">
+                    <Label Text="🧭" FontSize="20" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnComoLlegarTapped" />
+                    </Border.GestureRecognizers>
+                </Border>
+
+                <!-- Icono de calendario: abre el calendario del mes para elegir otro dia -->
+                <Border WidthRequest="40" HeightRequest="40" BackgroundColor="#33FFFFFF"
+                        StrokeThickness="0" VerticalOptions="Center"
+                        StrokeShape="RoundRectangle 20">
+                    <Label Text="📅" FontSize="20" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnCalendarioTapped" />
+                    </Border.GestureRecognizers>
+                </Border>
+            </HorizontalStackLayout>
         </Grid>
 
         <!-- Barra del dia seleccionado + boton "hoy" cuando se ve otro dia -->
