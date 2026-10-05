@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="appmetepec.Views.EscenarioProgramaPage"
+             Shell.NavBarIsVisible="False"
+             BackgroundColor="White">
+
+    <Grid RowDefinitions="Auto,Auto,*">
+
+        <!-- Encabezado: volver al mapa + nombre del escenario + icono calendario.
+             El color de fondo lo define cada escenario (lo asigna el code-behind). -->
+        <Grid Grid.Row="0" x:Name="HeaderGrid" ColumnDefinitions="Auto,*,Auto" Padding="12,10" BackgroundColor="#5B2A86">
+
+            <!-- Boton claro "volver al mapa": pastilla con flecha + texto -->
+            <Border Grid.Column="0" x:Name="VolverMapaBtn" VerticalOptions="Center"
+                    BackgroundColor="#33FFFFFF" StrokeThickness="0" Padding="10,6"
+                    StrokeShape="RoundRectangle 18">
+                <HorizontalStackLayout Spacing="6">
+                    <Label Text="‹" FontSize="20" FontAttributes="Bold" TextColor="White"
+                           VerticalTextAlignment="Center" />
+                    <Label Text="Mapa" FontSize="13" FontAttributes="Bold" TextColor="White"
+                           VerticalTextAlignment="Center" />
+                </HorizontalStackLayout>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnBackTapped" />
+                </Border.GestureRecognizers>
+            </Border>
+
+            <VerticalStackLayout Grid.Column="1" Spacing="0" VerticalOptions="Center" Margin="10,0">
+                <Label x:Name="EscenarioNombre" Text="" FontSize="17" FontAttributes="Bold" TextColor="White"
+                       LineBreakMode="TailTruncation" />
+                <Label x:Name="EscenarioDireccion" Text="" FontSize="12" TextColor="#F0E8FA"
+                       LineBreakMode="TailTruncation" />
+            </VerticalStackLayout>
+
+            <!-- Icono de calendario: abre el calendario del mes para elegir otro dia -->
+            <Border Grid.Column="2" WidthRequest="40" HeightRequest="40" BackgroundColor="#33FFFFFF"
+                    StrokeThickness="0" VerticalOptions="Center"
+                    StrokeShape="RoundRectangle 20">
+                <Label Text="📅" FontSize="20" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnCalendarioTapped" />
+                </Border.GestureRecognizers>
+            </Border>
+        </Grid>
+
+        <!-- Barra del dia seleccionado + boton "hoy" cuando se ve otro dia -->
+        <Grid Grid.Row="1" x:Name="DiaBar" ColumnDefinitions="*,Auto" Padding="16,12,16,8" BackgroundColor="#F2E9FA">
+            <Label Grid.Column="0" x:Name="DiaLabel" Text="" FontSize="16" FontAttributes="Bold"
+                   TextColor="#5B2A86" VerticalOptions="Center" />
+            <Button Grid.Column="1" x:Name="HoyButton" Text="Hoy" IsVisible="False"
+                    FontSize="13" Padding="14,4" CornerRadius="16"
+                    BackgroundColor="#5B2A86" TextColor="White" Clicked="OnHoyClicked" />
+        </Grid>
+
+        <!-- Programacion del dia -->
+        <ScrollView Grid.Row="2">
+            <VerticalStackLayout Padding="16" Spacing="12">
+                <CollectionView x:Name="ActividadesView" SelectionMode="None">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <Grid ColumnDefinitions="Auto,Auto,*" Padding="0,8" ColumnSpacing="12">
+                                <!-- Hora -->
+                                <Label Grid.Column="0" Text="{Binding HoraTexto}" FontSize="15"
+                                       FontAttributes="Bold" TextColor="{Binding Color}" WidthRequest="60"
+                                       VerticalOptions="Start" />
+                                <!-- Acento vertical con el color del escenario -->
+                                <BoxView Grid.Column="1" WidthRequest="3" Color="{Binding Color}"
+                                         VerticalOptions="Fill" HorizontalOptions="Center" />
+                                <!-- Detalle: lineas con formato (negrita/cursiva/color/fuente/tamano)
+                                     renderizadas como un unico Label con FormattedText construido en
+                                     el code-behind a partir de las lineas de la actividad. -->
+                                <Label Grid.Column="2" FormattedText="{Binding Contenido}"
+                                       LineBreakMode="WordWrap" VerticalOptions="Center" />
+                            </Grid>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+
+                <!-- Estado vacio -->
+                <Label x:Name="VacioLabel"
+                       Text="No hay eventos este día en esta sede. Toca el calendario 📅 para ver otros días."
+                       FontSize="14" TextColor="#888" HorizontalTextAlignment="Center"
+                       Margin="0,30" IsVisible="False" />
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+</ContentPage>

@@ -10,16 +10,22 @@ namespace appmetepec.Views;
 // PickPhotoAsync), no por inspeccion de ContentType, porque ya se sabe en el momento de crearlo.
 public sealed class EvidenciaSeleccionada
 {
-    public FileResult Archivo { get; }
+    // Evidencia ya MATERIALIZADA en un archivo local propio de la app (ver EvidencePhotoService):
+    // la ruta es estable y legible tanto en Android como en iOS. Antes se guardaba el FileResult
+    // crudo del picker, cuyo path en iOS (sobre todo videos) apunta a un temporal protegido
+    // (PluginKitPlugin/tmp) que al subir daba UnauthorizedAccess_IODenied.
+    public EvidencePhoto Material { get; }
     public bool EsVideo { get; }
     public bool EsFoto => !EsVideo;
     public ImageSource? Miniatura { get; }
 
-    public EvidenciaSeleccionada(FileResult archivo, bool esVideo)
+    public EvidenciaSeleccionada(EvidencePhoto material, bool esVideo)
     {
-        Archivo = archivo;
+        Material = material;
         EsVideo = esVideo;
-        Miniatura = esVideo ? null : ImageSource.FromFile(archivo.FullPath);
+        // La miniatura de foto se arma desde la ruta local materializada (en iOS esto evita la
+        // imagen en blanco de la camara). Para video no se muestra miniatura.
+        Miniatura = esVideo ? null : ImageSource.FromFile(material.LocalPath);
     }
 }
 
@@ -45,11 +51,16 @@ public partial class ReportPage : ContentPage
     // AppConstants.ClaveModoCoberturaGeocerca).
     private bool _coberturaGeografica;
     private readonly GeocodingService _geocoding;
+    // Materializa fotos/videos del picker a un archivo local estable (clave para iOS).
+    private readonly EvidencePhotoService _evidencePhotos;
     // Al cerrar el modal del mapa se vuelve a disparar OnAppearing; sin esto se reiniciaria el
     // formulario (nombre/telefono/correo editados por el ciudadano, requerimientos, etc.).
     private bool _volviendoDelMapa;
+    // El picker (camara/galeria) aparece como vista modal; en iOS eso re-dispara OnAppearing al
+    // volver. Esta bandera evita que OnAppearing reinicialice el formulario tras seleccionar.
+    private bool _volviendoDeEvidencia;
 
-    public ReportPage(PreferencesService preferences, MetepecApiService api, NavigationState navigationState, PendingTicketsService pendingTickets, GeocodingService geocoding)
+    public ReportPage(PreferencesService preferences, MetepecApiService api, NavigationState navigationState, PendingTicketsService pendingTickets, GeocodingService geocoding, EvidencePhotoService evidencePhotos)
     {
         InitializeComponent();
         _preferences = preferences;
@@ -57,6 +68,7 @@ public partial class ReportPage : ContentPage
         _navigationState = navigationState;
         _pendingTickets = pendingTickets;
         _geocoding = geocoding;
+        _evidencePhotos = evidencePhotos;
         EvidenciasView.ItemsSource = _evidencias;
     }
 
@@ -66,6 +78,12 @@ public partial class ReportPage : ContentPage
         if (_volviendoDelMapa)
         {
             _volviendoDelMapa = false;
+            return;
+        }
+
+        if (_volviendoDeEvidencia)
+        {
+            _volviendoDeEvidencia = false;
             return;
         }
 
@@ -210,13 +228,44 @@ public partial class ReportPage : ContentPage
                 return;
             }
 
-            _coordinates = $"{location.Latitude},{location.Longitude}";
+            _coordinates = string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{location.Latitude},{location.Longitude}");
             CoordinatesLabel.Text = _coordinates;
             _ = VerificarVialidadEstatalAsync();
+
+            // Geocodificacion inversa (coordenadas -> direccion), igual que el map-picker: se
+            // rellena el campo de direccion automaticamente. Solo si el campo esta vacio o tiene
+            // una direccion anterior auto-generada, para no pisar algo que el ciudadano escribio.
+            // Best-effort: si Nominatim no responde, quedan al menos las coordenadas.
+            await RellenarDireccionDesdeCoordenadasAsync(location.Latitude, location.Longitude);
         }
         catch (Exception ex)
         {
             await DisplayAlert("Ubicacion", ErrorMessageHelper.Traducir(ex), "Aceptar");
+        }
+    }
+
+    // Convierte coordenadas en una direccion legible (Nominatim) y la coloca en el campo de
+    // direccion. Muestra un indicador mientras consulta. Si no se obtiene direccion, no toca el
+    // campo (las coordenadas ya quedaron guardadas y el reporte se puede enviar igual).
+    private async Task RellenarDireccionDesdeCoordenadasAsync(double lat, double lng)
+    {
+        try
+        {
+            UbicacionBusyIndicator.IsVisible = UbicacionBusyIndicator.IsRunning = true;
+            var direccion = await _geocoding.ReverseGeocodeAsync(lat, lng);
+            if (!string.IsNullOrWhiteSpace(direccion))
+            {
+                AddressEditor.Text = direccion;
+            }
+        }
+        catch (Exception ex)
+        {
+            // No bloquea: si falla, el ciudadano puede escribir la direccion a mano.
+            System.Diagnostics.Debug.WriteLine($"[Ubicacion] Reverse geocode fallo: {ex}");
+        }
+        finally
+        {
+            UbicacionBusyIndicator.IsVisible = UbicacionBusyIndicator.IsRunning = false;
         }
     }
 
@@ -283,22 +332,36 @@ public partial class ReportPage : ContentPage
                 : new[] { "Elegir foto de la galería", "Elegir video de la galería" };
 
             var choice = await DisplayActionSheet("Agrega una evidencia", "Cancelar", null, options);
-
-            (FileResult? Archivo, bool EsVideo) seleccion = choice switch
+            if (choice is not ("Tomar foto" or "Elegir foto de la galería" or "Grabar video" or "Elegir video de la galería"))
             {
-                "Tomar foto" => (await MediaPicker.Default.CapturePhotoAsync(), false),
-                "Elegir foto de la galería" => (await MediaPicker.Default.PickPhotoAsync(), false),
-                "Grabar video" => (await MediaPicker.Default.CaptureVideoAsync(), true),
-                "Elegir video de la galería" => (await MediaPicker.Default.PickVideoAsync(), true),
-                _ => (null, false)
-            };
-
-            if (seleccion.Archivo is null)
-            {
-                return;
+                return; // canceló
             }
 
-            _evidencias.Add(new EvidenciaSeleccionada(seleccion.Archivo, seleccion.EsVideo));
+            // El picker abre como modal; en iOS re-dispara OnAppearing al volver. Evitamos que
+            // reinicialice el formulario (perdiendo lo ya capturado y las evidencias agregadas).
+            _volviendoDeEvidencia = true;
+
+            var esVideo = choice is "Grabar video" or "Elegir video de la galería";
+
+            // Materializamos SIEMPRE a un archivo local estable:
+            // - Fotos: Capture/PickPhotoAsync del servicio (en iOS ademas transcodifica HEIC->JPEG).
+            // - Videos: se obtiene el FileResult y se copia byte a byte (MaterializeFileAsync),
+            //   lo que resuelve el UnauthorizedAccess de iOS al leer el temporal protegido.
+            EvidencePhoto? material = choice switch
+            {
+                "Tomar foto" => await _evidencePhotos.CapturePhotoAsync(),
+                "Elegir foto de la galería" => await _evidencePhotos.PickPhotoAsync(),
+                "Grabar video" => await _evidencePhotos.MaterializeFileAsync(await MediaPicker.Default.CaptureVideoAsync()),
+                "Elegir video de la galería" => await _evidencePhotos.MaterializeFileAsync(await MediaPicker.Default.PickVideoAsync()),
+                _ => null
+            };
+
+            if (material is null)
+            {
+                return; // el usuario canceló el picker/camara
+            }
+
+            _evidencias.Add(new EvidenciaSeleccionada(material, esVideo));
         }
         catch (Exception ex)
         {
@@ -387,7 +450,9 @@ public partial class ReportPage : ContentPage
                 evidencias = [];
                 for (var i = 0; i < _evidencias.Count; i++)
                 {
-                    var uploaded = await _api.UploadEvidenceAsync(_evidencias[i].Archivo);
+                    // Sube desde el archivo local YA materializado (lectura confiable en iOS,
+                    // sin tocar el temporal protegido del picker).
+                    var uploaded = await _api.UploadEvidenceAsync(_evidencias[i].Material);
                     if (uploaded is null)
                     {
                         continue;
@@ -547,8 +612,9 @@ public partial class ReportPage : ContentPage
         var primera = _evidencias.FirstOrDefault();
         if (primera is not null)
         {
-            submission.LocalPhotoPath = await _pendingTickets.SavePhotoAsync(primera.Archivo);
-            submission.PhotoMimeType = primera.Archivo.ContentType;
+            // Guarda desde el archivo local ya materializado (ruta estable en iOS y Android).
+            submission.LocalPhotoPath = await _pendingTickets.SavePhotoAsync(primera.Material);
+            submission.PhotoMimeType = primera.Material.ContentType;
             submission.PhotoDescription = string.IsNullOrWhiteSpace(EvidenciaDescripcionEntry.Text) ? null : EvidenciaDescripcionEntry.Text.Trim();
         }
 

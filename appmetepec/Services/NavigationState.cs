@@ -11,6 +11,11 @@ public sealed class NavigationState
     public string? EncuestaClave { get; set; }
     // Precarga el correo en RecoverAccountPage cuando se llega desde "este correo ya existe" en el registro.
     public string? RecoverAccountEmail { get; set; }
+
+    // Modulo de Eventos: evento elegido (para el mapa) y escenario tocado (para su programacion).
+    public BackendEventoDto? SelectedEvento { get; set; }
+    public BackendEscenarioDto? SelectedEscenario { get; set; }
+
     // Datos capturados en PanicoPage, para la segunda confirmacion en PanicoConfirmarPage antes
     // de detonar (crear el ticket y llamar). Null si se entra a PanicoConfirmarPage sin pasar
     // por PanicoPage primero (no deberia pasar, pero esa pagina lo valida igual).

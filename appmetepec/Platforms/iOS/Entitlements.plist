@@ -2,8 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- "development" para perfiles Development; cambiar a "production" para Ad Hoc / TestFlight / App Store. -->
+	<!-- "development" para perfiles Development; "production" para Ad Hoc / TestFlight / App Store. -->
 	<key>aps-environment</key>
-	<string>development</string>
+	<string>production</string>
 </dict>
 </plist>

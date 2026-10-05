@@ -34,4 +34,15 @@ public static class AppConstants
 
     // Corre en paralelo con la inicializacion (no sumado, a diferencia del delay de 4s secuencial de Android)
     public const int MinimumSplashDurationMs = 1800;
+
+    // Modulo Eventos: en true sirve datos de ejemplo (Quimera) para probar la UI sin backend.
+    // Datos de ejemplo (Quimera) para probar la UI sin backend. En false, el modulo consume
+    // el API real (api/eventos) si EventosBackendDisponible esta en true. Se desactiva ahora
+    // que el backend del modulo esta desplegado y la app jala eventos reales (Fase 3).
+    public static readonly bool EventosUsarDatosDeEjemplo = false;
+
+    // Backend del modulo de Eventos ya desplegado: la app consume MetepecBackendUrl + "/eventos"
+    // y "/eventos/{id}". Si el admin no tiene eventos activos, el backend devuelve lista vacia y
+    // el modulo simplemente no aparece (control total desde el panel, sin recompilar).
+    public static readonly bool EventosBackendDisponible = true;
 }

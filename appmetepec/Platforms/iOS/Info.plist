@@ -29,9 +29,11 @@
 	<key>XSAppIconAssets</key>
 	<string>Assets.xcassets/appicon.appiconset</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Usamos la camara para agregar una foto como evidencia de tu reporte.</string>
+	<string>Usamos la camara para agregar una foto o video como evidencia de tu reporte.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Usamos el microfono para grabar el audio de los videos que agregas como evidencia de tu reporte.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Usamos tu galeria para agregar una foto como evidencia de tu reporte.</string>
+	<string>Usamos tu galeria para agregar una foto o video como evidencia de tu reporte.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Usamos tu ubicacion para completar la direccion de tu reporte.</string>
 	<key>UIBackgroundModes</key>

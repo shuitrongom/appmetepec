@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="appmetepec.Views.EventoMapaPage"
+             Shell.NavBarIsVisible="False"
+             BackgroundColor="White">
+
+    <Grid RowDefinitions="Auto,*">
+
+        <!-- Encabezado -->
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Padding="12,10" BackgroundColor="White">
+            <Label Grid.Column="0" Text="&#8592;" FontSize="26" TextColor="#5B2A86"
+                   VerticalOptions="Center" WidthRequest="34">
+                <Label.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnBackTapped" />
+                </Label.GestureRecognizers>
+            </Label>
+            <Label Grid.Column="1" x:Name="TitleLabel" Text="Eventos" FontSize="18" FontAttributes="Bold"
+                   VerticalOptions="Center" HorizontalOptions="Center" TextColor="#5B2A86"
+                   LineBreakMode="TailTruncation" />
+            <!-- Boton para restablecer el zoom/encaje -->
+            <Label Grid.Column="2" Text="&#8982;" FontSize="22" TextColor="#5B2A86"
+                   VerticalOptions="Center" WidthRequest="34" HorizontalTextAlignment="Center">
+                <Label.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnResetZoomTapped" />
+                </Label.GestureRecognizers>
+            </Label>
+        </Grid>
+
+        <!-- Area del mapa: un contenedor fijo (clip) donde se mueve/escala el contenido. -->
+        <Grid Grid.Row="1" x:Name="Viewport" IsClippedToBounds="True" BackgroundColor="#F4F1FA">
+
+            <!-- Contenido que se escala y traslada (imagen + pines). -->
+            <AbsoluteLayout x:Name="MapaLayout" HorizontalOptions="Center" VerticalOptions="Center">
+                <!-- La imagen llena el MapaLayout con AspectFit (nunca deforma). Como el
+                     code-behind dimensiona el MapaLayout con la proporcion REAL del archivo
+                     (medida tras cargar la imagen, no con los enteros del backend que pueden
+                     tener redondeo), AspectFit no deja margen y la capa de pines coincide 1:1
+                     con la imagen, igual que el admin. -->
+                <Image x:Name="MapaImagen"
+                       AbsoluteLayout.LayoutBounds="0,0,1,1"
+                       AbsoluteLayout.LayoutFlags="All"
+                       Aspect="AspectFit" />
+                <!-- Los pines (hotspots) se agregan por codigo, posicionados por %. -->
+            </AbsoluteLayout>
+
+            <!-- Gestos sobre el area completa (no compiten con un ScrollView). -->
+            <Grid.GestureRecognizers>
+                <PinchGestureRecognizer PinchUpdated="OnPinchUpdated" />
+                <PanGestureRecognizer PanUpdated="OnPanUpdated" />
+            </Grid.GestureRecognizers>
+
+            <!-- Carga -->
+            <ActivityIndicator x:Name="BusyIndicator" IsVisible="False" IsRunning="False"
+                               HorizontalOptions="Center" VerticalOptions="Center" Color="#5B2A86" />
+
+            <!-- Error de imagen con reintento -->
+            <VerticalStackLayout x:Name="ErrorPanel" IsVisible="False" Spacing="10"
+                                 HorizontalOptions="Center" VerticalOptions="Center" Padding="24">
+                <Label Text="No se pudo cargar el mapa del evento."
+                       HorizontalTextAlignment="Center" TextColor="#555" FontSize="15" />
+                <Button Text="Reintentar" Clicked="OnReintentarClicked"
+                        BackgroundColor="#5B2A86" TextColor="White" CornerRadius="18" Padding="22,6" />
+            </VerticalStackLayout>
+        </Grid>
+
+        <!-- Pista -->
+        <Label Grid.Row="1" Text="Toca un número para ver su programación · pellizca para acercar"
+               VerticalOptions="End" HorizontalOptions="Center" Margin="16,0,16,16"
+               FontSize="12" TextColor="#5B2A86" BackgroundColor="#F2E9FA" Padding="12,6"
+               HorizontalTextAlignment="Center" />
+
+        <!-- ══ INTRO DE PORTADA (overlay) ══
+             Cubre toda la pantalla (las 2 filas) y se muestra UNA sola vez al abrir el
+             evento si este trae imagenPortadaUrl. Fade + zoom suave; se puede saltar con un
+             toque. El code-behind la oculta tras ~2.2 s o al tocar. Si no hay portada, nunca
+             se hace visible y el flujo va directo al mapa. -->
+        <Grid Grid.Row="0" Grid.RowSpan="2" x:Name="IntroOverlay" IsVisible="False"
+              BackgroundColor="Black">
+            <Image x:Name="PortadaImagen" Aspect="AspectFill"
+                   HorizontalOptions="Fill" VerticalOptions="Fill" />
+            <Label Text="Toca para entrar" FontSize="13" TextColor="White"
+                   HorizontalOptions="Center" VerticalOptions="End" Margin="0,0,0,40"
+                   Opacity="0.9" BackgroundColor="#55000000" Padding="16,8" />
+            <Grid.GestureRecognizers>
+                <TapGestureRecognizer Tapped="OnSaltarIntroTapped" />
+            </Grid.GestureRecognizers>
+        </Grid>
+    </Grid>
+</ContentPage>

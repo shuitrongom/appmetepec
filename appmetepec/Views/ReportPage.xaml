@@ -59,6 +59,13 @@
                     <Button Text="Elegir en el mapa" Clicked="OnPickOnMapClicked" ImageSource="ic_marker.png" BackgroundColor="#F89A1C" TextColor="White" FontSize="10" WidthRequest="140" HeightRequest="36" HorizontalOptions="End" VerticalOptions="End" />
                 </Grid>
                 <Label x:Name="CoordinatesLabel" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" FontSize="12" />
+
+                <!-- Indicador mientras se obtiene la direccion de las coordenadas (reverse geocode) -->
+                <HorizontalStackLayout x:Name="UbicacionBusyRow" Spacing="8" IsVisible="{Binding Source={x:Reference UbicacionBusyIndicator}, Path=IsRunning}">
+                    <ActivityIndicator x:Name="UbicacionBusyIndicator" IsVisible="False" IsRunning="False"
+                                       WidthRequest="16" HeightRequest="16" Color="#5B2A86" VerticalOptions="Center" />
+                    <Label Text="Buscando dirección..." FontSize="11" TextColor="#888" VerticalOptions="Center" />
+                </HorizontalStackLayout>
                 <Border x:Name="VialidadEstatalAviso" IsVisible="False" Stroke="#F89A1C" StrokeThickness="1" BackgroundColor="{AppThemeBinding Light=#FFF4E5, Dark=#3A2A12}" Padding="10,8">
                     <Border.StrokeShape>
                         <RoundRectangle CornerRadius="8" />

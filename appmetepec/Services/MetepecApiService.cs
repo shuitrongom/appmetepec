@@ -242,6 +242,15 @@ public sealed class MetepecApiService
         return await UploadEvidenceAsync(stream, attachment.FileName, attachment.ContentType, cancellationToken);
     }
 
+    // Sube una evidencia ya materializada en disco (ver EvidencePhotoService). Se lee
+    // del archivo local garantizado en vez del FileResult del picker, que en iOS puede
+    // entregar un stream vacio para fotos recien tomadas con la camara.
+    public async Task<BackendUploadResult?> UploadEvidenceAsync(EvidencePhoto photo, CancellationToken cancellationToken = default)
+    {
+        await using var stream = File.OpenRead(photo.LocalPath);
+        return await UploadEvidenceAsync(stream, photo.FileName, photo.ContentType, cancellationToken);
+    }
+
     public async Task<BackendUploadResult?> UploadEvidenceAsync(Stream fileStream, string fileName, string? contentType, CancellationToken cancellationToken = default)
     {
         using var content = new MultipartFormDataContent();
@@ -257,17 +266,34 @@ public sealed class MetepecApiService
         AddBackendAuthorization(message);
 
         using var response = await _httpClient.SendAsync(message, cancellationToken);
+
+        // Manejo de errores del upload (combina ambos criterios):
+        // - 400 BadRequest: casi siempre el archivo excedio el limite de tamano del endpoint
+        //   (UploadsController.RequestSizeLimit). Se lee el cuerpo tipado ErrorResponse y se
+        //   usa su mensaje (patron consistente con el resto de MetepecApiService), con un
+        //   fallback amigable.
+        // - Cualquier otro error (5xx, etc.): se lee el cuerpo real y se propaga con el status,
+        //   en vez de un EnsureSuccessStatusCode() a secas que la UI mostraria como el generico
+        //   "No se pudo conectar con el servidor" (enganoso cuando el servidor si respondio).
         if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
         {
-            // Un 400 "plano" (sin cuerpo JSON) aqui casi siempre significa que el archivo excedio
-            // el limite de tamano del endpoint (ver UploadsController.RequestSizeLimit); por eso el
-            // mensaje por defecto lo menciona en vez de dejar pasar el "No se pudo conectar" generico
-            // de ErrorMessageHelper, que resulta enganoso cuando el servidor si respondio.
             var body = await ReadJsonAsync<ErrorResponse>(response, cancellationToken);
             throw new InvalidOperationException(body?.error ?? "El archivo es demasiado grande o no es valido. Intenta con uno mas ligero.");
         }
 
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            string detalle = "";
+            try
+            {
+                detalle = await response.Content.ReadAsStringAsync(cancellationToken);
+            }
+            catch { /* si no hay cuerpo legible, usamos el status */ }
+
+            throw new InvalidOperationException(
+                $"El servidor rechazo la evidencia (HTTP {(int)response.StatusCode}). {detalle}".Trim());
+        }
+
         return await ReadJsonAsync<BackendUploadResult>(response, cancellationToken);
     }
 

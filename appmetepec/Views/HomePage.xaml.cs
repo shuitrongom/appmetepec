@@ -16,13 +16,16 @@ public partial class HomePage : ContentPage
     private readonly NavigationState _navigationState;
     private readonly PreferencesService _preferences;
     private readonly PushRegistrationService _pushRegistration;
+    private readonly EventosService _eventos;
     private bool _bannerTimerStarted;
     private bool _isDrawerOpen;
     private bool _newsLoaded;
     private bool _categoriesLoaded;
     private bool _loadingCategories;
+    private bool _eventosLoaded;
+    private BackendEventoDto? _eventoActivo;
 
-    public HomePage(ReportCatalogService catalog, MetepecApiService api, NavigationState navigationState, PreferencesService preferences, PushRegistrationService pushRegistration)
+    public HomePage(ReportCatalogService catalog, MetepecApiService api, NavigationState navigationState, PreferencesService preferences, PushRegistrationService pushRegistration, EventosService eventos)
     {
         InitializeComponent();
         _catalog = catalog;
@@ -30,6 +33,7 @@ public partial class HomePage : ContentPage
         _navigationState = navigationState;
         _preferences = preferences;
         _pushRegistration = pushRegistration;
+        _eventos = eventos;
         DrawerVersionLabel.Text = $"Versión {AppInfo.Current.VersionString}";
         DarkThemeSwitch.IsToggled = _preferences.DarkThemeEnabled;
         SetActiveTab(reportsActive: true);
@@ -60,6 +64,11 @@ public partial class HomePage : ContentPage
         if (!_newsLoaded)
         {
             await LoadNewsAsync();
+        }
+
+        if (!_eventosLoaded)
+        {
+            await LoadEventosAsync();
         }
 
         StartBannerTimer();
@@ -468,7 +477,9 @@ public partial class HomePage : ContentPage
     {
         if (report.Title == "Llamada")
         {
-            await Launcher.Default.OpenAsync("tel:*7311");
+            // telprompt: fuerza el dialogo nativo de iOS antes de marcar, evitando que
+            // WhatsApp intercepte el numero especial *7311 en iPhones con esa app instalada.
+            await Launcher.Default.OpenAsync("telprompt:*7311");
             return;
         }
 
@@ -527,7 +538,7 @@ public partial class HomePage : ContentPage
     {
         try
         {
-            await Launcher.Default.OpenAsync("tel:*7311");
+            await Launcher.Default.OpenAsync("telprompt:*7311");
         }
         catch (Exception ex)
         {
@@ -615,6 +626,87 @@ public partial class HomePage : ContentPage
     {
         await CloseDrawerAsync();
         OnNewsTabTapped(sender, e);
+    }
+
+    // Carga el evento activo (si lo hay) para mostrar la opcion "Eventos" en el menu. Si el
+    // admin desactiva todos los eventos, el backend devuelve lista vacia y la opcion no se
+    // muestra -- control total desde el panel sin recompilar. Best-effort: si falla la red,
+    // simplemente no aparece Eventos (no bloquea el resto del home).
+    private async Task LoadEventosAsync()
+    {
+        try
+        {
+            var activos = await _eventos.GetEventosActivosAsync();
+            _eventoActivo = activos.FirstOrDefault();
+
+            if (_eventoActivo is not null)
+            {
+                // Si el evento tiene nombre propio, se usa como etiqueta ("Quimera 2026");
+                // si no, queda el generico "Eventos".
+                var etiqueta = string.IsNullOrWhiteSpace(_eventoActivo.Nombre) ? "Eventos" : _eventoActivo.Nombre;
+                DrawerEventosLabel.Text = etiqueta;
+                DrawerEventosItem.IsVisible = true;
+
+                // Y tambien como tercer acceso en la barra inferior (junto a Gerencia y Noticias).
+                EventosTabLabel.Text = etiqueta.ToUpperInvariant();
+                MostrarTabEventos(true);
+            }
+            else
+            {
+                DrawerEventosItem.IsVisible = false;
+                MostrarTabEventos(false);
+            }
+
+            _eventosLoaded = true;
+        }
+        catch
+        {
+            DrawerEventosItem.IsVisible = false;
+            MostrarTabEventos(false);
+            // _eventosLoaded se queda en false: se reintenta en el proximo OnAppearing.
+        }
+    }
+
+    // Muestra/oculta el tab "Eventos" de la barra inferior y reparte las columnas para que
+    // no quede un hueco cuando no hay evento activo (2 columnas) vs cuando lo hay (3).
+    private void MostrarTabEventos(bool visible)
+    {
+        EventosTab.IsVisible = visible;
+
+        var columnas = BottomTabsGrid.ColumnDefinitions;
+        var deseadas = visible ? 3 : 2;
+        if (columnas.Count == deseadas)
+        {
+            return;
+        }
+
+        columnas.Clear();
+        for (var i = 0; i < deseadas; i++)
+        {
+            columnas.Add(new ColumnDefinition { Width = GridLength.Star });
+        }
+    }
+
+    private async void OnDrawerEventosTapped(object sender, TappedEventArgs e)
+    {
+        await CloseDrawerAsync();
+        await AbrirEventoActivoAsync();
+    }
+
+    private async void OnEventosTabTapped(object sender, TappedEventArgs e)
+    {
+        await AbrirEventoActivoAsync();
+    }
+
+    private async Task AbrirEventoActivoAsync()
+    {
+        if (_eventoActivo is null)
+        {
+            return;
+        }
+
+        _navigationState.SelectedEvento = _eventoActivo;
+        await Shell.Current.GoToAsync(nameof(EventoMapaPage));
     }
 
     private void OnDarkThemeToggled(object sender, ToggledEventArgs e)
