@@ -328,12 +328,12 @@ public partial class HomePage : ContentPage
             Color.FromArgb("#9B12B3"), "ic_denuncia_ciudadana.png", "DENUNCIAS", "CIUDADANAS")*/
         new(Color.FromArgb("#B8D927"), "btn_predial.png", "PREDIAL", "PAGO EN LINEA",
             Color.FromArgb("#7BCDEB"), "ic_opdapas.png", "OPDAPAS", "PAGO EN LINEA"),
+        
+        /*new(Color.FromArgb("#7BCDEB"), "ic_opdapas.png", "OPDAPAS", "PAGO EN LINEA",
+            Color.FromArgb("#9B12B3"), "ic_denuncia_ciudadana.png", "DENUNCIAS", "CIUDADANAS"),*/
 
-        new(Color.FromArgb("#7BCDEB"), "ic_opdapas.png", "OPDAPAS", "PAGO EN LINEA",
-            Color.FromArgb("#9B12B3"), "ic_denuncia_ciudadana.png", "DENUNCIAS", "CIUDADANAS"),
-
-        new(Color.FromArgb("#9B12B3"), "ic_denuncia_ciudadana.png", "DENUNCIAS", "CIUDADANAS",
-            Color.FromArgb("#B8D927"), "btn_predial.png", "PREDIAL", "PAGO EN LINEA")
+        //new(Color.FromArgb("#9B12B3"), "ic_denuncia_ciudadana.png", "DENUNCIAS", "CIUDADANAS",
+          //  Color.FromArgb("#B8D927"), "btn_predial.png", "PREDIAL", "PAGO EN LINEA")
         
     ];
 
@@ -461,6 +461,31 @@ public partial class HomePage : ContentPage
     {
         _navigationState.SelectedNews = news;
         await Shell.Current.GoToAsync(nameof(NewsDetailPage));
+    }
+
+    // Mitad de un banner promocional del carrusel (PromoBannerTemplate): PREDIAL y OPDAPAS abren
+    // su pagina de pago en el navegador; los demas (p. ej. DENUNCIAS) no tienen accion.
+    private async void OnPromoBannerTapped(object sender, TappedEventArgs e)
+    {
+        var url = (e.Parameter as string) switch
+        {
+            "PREDIAL" => AppConstants.PredialUrl,
+            "OPDAPAS" => AppConstants.OpdapasUrl,
+            _ => null
+        };
+        if (url is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await Launcher.Default.OpenAsync(new Uri(url));
+        }
+        catch
+        {
+            await DisplayAlert("No se pudo abrir", "No se encontró un navegador para abrir la página.", "Aceptar");
+        }
     }
 
     // Slide de noticia destacada dentro del BannerCarousel de arriba (ver ShowNews/NewsBannerTemplate

@@ -10,6 +10,9 @@ public static class AppConstants
     public const string RecoleccionApiKey = "M3T3p3c_Sm1_2022";
     public const string PrivacyUrl = "https://metepec7311.com/privacidad/";
     public const string SamUrl = "https://rebrand.ly/uqqh70m";
+    // Banners "PAGO EN LINEA" del carrusel de Inicio (HomePage.OnPromoBannerTapped).
+    public const string PredialUrl = "https://recaudacion.tesoreriametepec.com.mx/";
+    public const string OpdapasUrl = "https://odapasmetepec.gob.mx:8090/opdapasml/hola";
     public const string TwilioServiceUrl = "https://verify.twilio.com/v2/Services/VAe95228e82fe5721889956945b50a6fe3";
     // TODO: configurar antes de produccion (Account SID / Auth Token de Twilio); sin esto, el envio real de SMS devuelve 401.
     public const string TwilioAccountSid = "";
