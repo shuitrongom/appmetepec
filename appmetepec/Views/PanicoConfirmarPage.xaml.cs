@@ -50,7 +50,7 @@ public partial class PanicoConfirmarPage : ContentPage
             ConfirmarButton.IsEnabled = false;
             BusyIndicator.IsRunning = BusyIndicator.IsVisible = true;
 
-            int? ticketId = null;
+            string? ticketId = null;
             try
             {
                 ticketId = await CrearTicketPanicoAsync(_datos);
@@ -84,7 +84,7 @@ public partial class PanicoConfirmarPage : ContentPage
         }
     }
 
-    private async Task<int> CrearTicketPanicoAsync(PanicoDatos datos)
+    private async Task<string> CrearTicketPanicoAsync(PanicoDatos datos)
     {
         if (_preferences.CiudadanoId == 0)
         {

@@ -325,7 +325,7 @@ public sealed class MetepecApiService
         return await ReadJsonAsync<BackendUploadResult>(response, cancellationToken);
     }
 
-    public async Task<int> CreateTicketAsync(BackendCreateTicketRequest request, CancellationToken cancellationToken = default)
+    public async Task<string> CreateTicketAsync(BackendCreateTicketRequest request, CancellationToken cancellationToken = default)
     {
         using var message = new HttpRequestMessage(HttpMethod.Post, AppConstants.MetepecBackendUrl + "/tickets")
         {
@@ -342,7 +342,8 @@ public sealed class MetepecApiService
 
         response.EnsureSuccessStatusCode();
         var created = await ReadJsonAsync<BackendTicketDto>(response, cancellationToken);
-        return created?.Id ?? 0;
+        // Regresa el folio consecutivo (lo que se le muestra al ciudadano), no el Id interno.
+        return created?.FolioMostrar ?? "";
     }
 
     public async Task<BackendTicketDto?> ConfirmarResolucionTicketAsync(int idTicket, CancellationToken cancellationToken = default)

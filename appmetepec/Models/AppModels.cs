@@ -569,7 +569,10 @@ public sealed class BackendEvidenciaItemRequest
 public sealed class BackendTicketDto
 {
     public int Id { get; set; }
+    // Folio consecutivo que se le muestra al ciudadano (el Id es interno y brinca por el IDENTITY
+    // de SQL Server). Tickets anteriores al consecutivo tienen Folio = Id.
     public string? Folio { get; set; }
+    public string FolioMostrar => string.IsNullOrWhiteSpace(Folio) ? Id.ToString() : Folio;
     public string Asunto { get; set; } = "";
     public string? Descripcion { get; set; }
     public string? Descestatus { get; set; }

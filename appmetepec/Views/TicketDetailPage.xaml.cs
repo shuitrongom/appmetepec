@@ -46,12 +46,8 @@ public partial class TicketDetailPage : ContentPage
         EstatusChip.BackgroundColor = TryParseColor(_ticket.Colorestatus) ?? Color.FromArgb("#8A9BA8");
         ServicioLabel.Text = _ticket.Descservicio ?? "";
         DependenciaLabel.Text = _ticket.Dependencia ?? "";
-        // _ticket.Folio es un campo de texto libre que casi nunca se captura (queda vacio); el
-        // numero de ticket que el ciudadano de verdad necesita para dar seguimiento es _ticket.Id.
-        var folioTexto = string.IsNullOrWhiteSpace(_ticket.Folio)
-            ? $"Folio {_ticket.Id}"
-            : $"Folio {_ticket.Id} ({_ticket.Folio})";
-        FolioLabel.Text = $"{folioTexto}  •  {_ticket.Fechaalta:dd/MM/yyyy HH:mm}";
+        // Folio consecutivo del ticket (el Id es interno; tickets anteriores tienen Folio = Id).
+        FolioLabel.Text = $"Folio {_ticket.FolioMostrar}  •  {_ticket.Fechaalta:dd/MM/yyyy HH:mm}";
 
         await LoadObservacionesAsync(_ticket.Id);
         IniciarTemporizadorEncuestaPendiente();
@@ -257,10 +253,18 @@ public partial class TicketDetailPage : ContentPage
 
     private static readonly string[] ExtensionesImagen = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".heic"];
 
+    // Algunas fotos se guardan con TipoMime generico ("application/octet-stream": el picker del
+    // telefono no informo el tipo, o se adjunto desde la web) y antes se abrian en el navegador
+    // (descarga) en vez del visor. Ahora basta con que el tipo sea image/* O que el archivo
+    // (ruta o nombre) tenga extension de imagen.
     private static bool EsImagen(BackendTicketObservacionEvidenciaDto evidencia) =>
         evidencia.TipoMime?.StartsWith("image/", StringComparison.OrdinalIgnoreCase) == true ||
-        (string.IsNullOrWhiteSpace(evidencia.TipoMime) &&
-         ExtensionesImagen.Contains(Path.GetExtension(evidencia.RutaArchivo.Split('?')[0]), StringComparer.OrdinalIgnoreCase));
+        TieneExtensionImagen(evidencia.RutaArchivo) ||
+        TieneExtensionImagen(evidencia.NombreArchivo);
+
+    private static bool TieneExtensionImagen(string? archivo) =>
+        !string.IsNullOrWhiteSpace(archivo) &&
+        ExtensionesImagen.Contains(Path.GetExtension(archivo.Split('?')[0]), StringComparer.OrdinalIgnoreCase);
 
     private static Color? TryParseColor(string? hex)
     {
