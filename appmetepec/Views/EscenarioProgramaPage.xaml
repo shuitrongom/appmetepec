@@ -71,36 +71,52 @@
                     BackgroundColor="#5B2A86" TextColor="White" Clicked="OnHoyClicked" />
         </Grid>
 
-        <!-- Programacion del dia -->
-        <ScrollView Grid.Row="2">
-            <VerticalStackLayout Padding="16" Spacing="12">
-                <CollectionView x:Name="ActividadesView" SelectionMode="None">
-                    <CollectionView.ItemTemplate>
-                        <DataTemplate>
-                            <Grid ColumnDefinitions="Auto,Auto,*" Padding="0,8" ColumnSpacing="12">
-                                <!-- Hora -->
-                                <Label Grid.Column="0" Text="{Binding HoraTexto}" FontSize="15"
-                                       FontAttributes="Bold" TextColor="{Binding Color}" WidthRequest="60"
-                                       VerticalOptions="Start" />
-                                <!-- Acento vertical con el color del escenario -->
-                                <BoxView Grid.Column="1" WidthRequest="3" Color="{Binding Color}"
-                                         VerticalOptions="Fill" HorizontalOptions="Center" />
-                                <!-- Detalle: lineas con formato (negrita/cursiva/color/fuente/tamano)
-                                     renderizadas como un unico Label con FormattedText construido en
-                                     el code-behind a partir de las lineas de la actividad. -->
-                                <Label Grid.Column="2" FormattedText="{Binding Contenido}"
-                                       LineBreakMode="WordWrap" VerticalOptions="Center" />
-                            </Grid>
-                        </DataTemplate>
-                    </CollectionView.ItemTemplate>
-                </CollectionView>
+        <!-- Contenido: programacion (izquierda, con scroll) + ilustracion de la sede (derecha).
+             La imagen vive DENTRO de esta fila, por debajo del encabezado y la barra del dia,
+             asi "no llega hasta el calendario" y respeta el fondo blanco. Si el escenario no
+             tiene imagen, el panel se oculta y la programacion ocupa todo el ancho. -->
+        <Grid Grid.Row="2" ColumnDefinitions="*,Auto">
 
-                <!-- Estado vacio -->
-                <Label x:Name="VacioLabel"
-                       Text="No hay eventos este día en esta sede. Toca el calendario 📅 para ver otros días."
-                       FontSize="14" TextColor="#888" HorizontalTextAlignment="Center"
-                       Margin="0,30" IsVisible="False" />
-            </VerticalStackLayout>
-        </ScrollView>
+            <!-- Programacion del dia -->
+            <ScrollView Grid.Column="0">
+                <VerticalStackLayout Padding="16" Spacing="12">
+                    <CollectionView x:Name="ActividadesView" SelectionMode="None">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <Grid ColumnDefinitions="Auto,Auto,*" Padding="0,8" ColumnSpacing="12">
+                                    <!-- Hora -->
+                                    <Label Grid.Column="0" Text="{Binding HoraTexto}" FontSize="15"
+                                           FontAttributes="Bold" TextColor="{Binding Color}" WidthRequest="60"
+                                           VerticalOptions="Start" />
+                                    <!-- Acento vertical con el color del escenario -->
+                                    <BoxView Grid.Column="1" WidthRequest="3" Color="{Binding Color}"
+                                             VerticalOptions="Fill" HorizontalOptions="Center" />
+                                    <!-- Detalle: lineas con formato (negrita/cursiva/color/fuente/tamano)
+                                         renderizadas como un unico Label con FormattedText construido en
+                                         el code-behind a partir de las lineas de la actividad. -->
+                                    <Label Grid.Column="2" FormattedText="{Binding Contenido}"
+                                           LineBreakMode="WordWrap" VerticalOptions="Center" />
+                                </Grid>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+
+                    <!-- Estado vacio -->
+                    <Label x:Name="VacioLabel"
+                           Text="No hay eventos este día en esta sede. Toca el calendario 📅 para ver otros días."
+                           FontSize="14" TextColor="#888" HorizontalTextAlignment="Center"
+                           Margin="0,30" IsVisible="False" />
+                </VerticalStackLayout>
+            </ScrollView>
+
+            <!-- Ilustracion lateral de la sede (opcional). Ancho acotado para no tapar la
+                 programacion; alineada arriba y con un suave degradado inferior para que se
+                 funda con el fondo blanco sin perder contraste del texto de la izquierda. -->
+            <Grid Grid.Column="1" x:Name="ImagenEscenarioPanel" IsVisible="False"
+                  WidthRequest="120" Padding="0,16,12,16" VerticalOptions="Fill">
+                <Image x:Name="ImagenEscenario" Aspect="AspectFit"
+                       VerticalOptions="Start" HorizontalOptions="End" />
+            </Grid>
+        </Grid>
     </Grid>
 </ContentPage>

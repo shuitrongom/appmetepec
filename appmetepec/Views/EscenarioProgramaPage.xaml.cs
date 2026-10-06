@@ -48,8 +48,13 @@ public partial class EscenarioProgramaPage : ContentPage
         EscenarioDireccion.Text = _escenario.Direccion ?? "";
         EscenarioDireccion.IsVisible = !string.IsNullOrWhiteSpace(_escenario.Direccion);
 
-        // "Como llegar" solo tiene sentido si el escenario trae direccion.
-        ComoLlegarBtn.IsVisible = !string.IsNullOrWhiteSpace(_escenario.Direccion);
+        // "Como llegar" tiene sentido si el escenario trae coordenadas (punto exacto) o,
+        // en su defecto, una direccion en texto para que el mapa la geolocalice.
+        ComoLlegarBtn.IsVisible = TieneCoordenadas() || !string.IsNullOrWhiteSpace(_escenario.Direccion);
+
+        // Imagen propia de la sede (opcional, la sube el admin): si viene, se muestra a la
+        // derecha de la programacion como ilustracion premium de la sede.
+        MostrarImagenEscenario(_escenario.ImagenUrl);
 
         // El escenario trae su propio color (lo define el admin en el front): tenimos
         // el encabezado y los acentos con ese color para que cada sede sea identificable.
@@ -117,45 +122,44 @@ public partial class EscenarioProgramaPage : ContentPage
     private void OnHoyClicked(object sender, EventArgs e) => MostrarDia(DateTime.Today);
 
     // "Como llegar": abre la app de mapas nativa (Google Maps en Android, Apple Maps en iOS)
-    // con la direccion de la sede como destino, en modo navegacion/ruta. El mapa calcula la
-    // ruta desde la ubicacion del usuario (lo pide el propio mapa, no la app). Como el escenario
-    // solo tiene la direccion en texto (no coordenadas geograficas; posX/posY son % sobre la
-    // imagen del plano, no lat/lng), se abre con la direccion para que el mapa la geolocalice.
+    // en modo navegacion/ruta hacia la sede. El mapa calcula la ruta desde la ubicacion del
+    // usuario (lo pide el propio mapa, no la app).
+    //   1) Si el escenario trae coordenadas (lat/lng, las define el admin en el front), se usa
+    //      el PUNTO EXACTO -> la ruta llega justo a la sede, sin ambiguedad de geocoder.
+    //   2) Si no, se usa la direccion en texto para que el mapa la geolocalice.
     private async void OnComoLlegarTapped(object sender, EventArgs e)
     {
-        var direccion = _escenario?.Direccion;
-        if (string.IsNullOrWhiteSpace(direccion))
-        {
-            return;
-        }
+        if (_escenario is null) return;
 
         try
         {
-            // Añade "Metepec, Estado de Mexico, Mexico" si la direccion no menciona el municipio,
-            // para que el geocoder no la confunda con una calle homonima de otra ciudad.
-            var destino = direccion.Trim();
-            if (!destino.Contains("Metepec", StringComparison.OrdinalIgnoreCase))
+            var url = ConstruirUrlComoLlegar(_escenario);
+            if (url is null)
             {
-                destino = $"{destino}, Metepec, Estado de México, México";
+                return;
             }
-
-            // URL universal de Google Maps en modo ruta hacia el destino (texto). Funciona en
-            // Android (abre Google Maps) y en iOS (abre Google Maps si esta instalado, o Safari
-            // -> Google Maps web, que ofrece abrir en Apple Maps). El mapa calcula la ruta desde
-            // la ubicacion del usuario, que pide el propio mapa.
-            var url = $"https://www.google.com/maps/dir/?api=1&destination={Uri.EscapeDataString(destino)}";
 
             var abierto = await Launcher.Default.TryOpenAsync(url);
             if (!abierto)
             {
-                // Fallback: intentar con el mapa nativo del sistema via Placemark.
-                await Map.Default.OpenAsync(new Placemark
+                // Fallback: mapa nativo del sistema. Con coordenadas usa el punto exacto;
+                // si no, la direccion en texto.
+                var opciones = new MapLaunchOptions { Name = _escenario.Nombre, NavigationMode = NavigationMode.Driving };
+                if (TieneCoordenadas())
                 {
-                    CountryName = "México",
-                    AdminArea = "Estado de México",
-                    Locality = "Metepec",
-                    Thoroughfare = direccion
-                }, new MapLaunchOptions { Name = _escenario?.Nombre, NavigationMode = NavigationMode.Driving });
+                    var ubicacion = new Location((double)_escenario.Latitud!.Value, (double)_escenario.Longitud!.Value);
+                    await Map.Default.OpenAsync(ubicacion, opciones);
+                }
+                else
+                {
+                    await Map.Default.OpenAsync(new Placemark
+                    {
+                        CountryName = "México",
+                        AdminArea = "Estado de México",
+                        Locality = "Metepec",
+                        Thoroughfare = _escenario.Direccion
+                    }, opciones);
+                }
             }
         }
         catch (Exception ex)
@@ -163,6 +167,55 @@ public partial class EscenarioProgramaPage : ContentPage
             System.Diagnostics.Debug.WriteLine($"[ComoLlegar] No se pudo abrir el mapa: {ex}");
             await DisplayAlert("Cómo llegar",
                 "No se pudo abrir la aplicación de mapas en este dispositivo.", "Aceptar");
+        }
+    }
+
+    // Arma la URL universal de Google Maps en modo ruta. Prioriza coordenadas exactas; si no
+    // hay, cae a la direccion en texto (añadiendo el municipio para desambiguar). null si no
+    // hay ni coordenadas ni direccion.
+    private string? ConstruirUrlComoLlegar(BackendEscenarioDto escenario)
+    {
+        if (TieneCoordenadas())
+        {
+            // lat,lng con punto decimal (InvariantCulture) y sin espacios.
+            var lat = escenario.Latitud!.Value.ToString(CultureInfo.InvariantCulture);
+            var lng = escenario.Longitud!.Value.ToString(CultureInfo.InvariantCulture);
+            return $"https://www.google.com/maps/dir/?api=1&destination={lat},{lng}";
+        }
+
+        var direccion = escenario.Direccion;
+        if (string.IsNullOrWhiteSpace(direccion))
+        {
+            return null;
+        }
+
+        // Añade "Metepec, Estado de Mexico, Mexico" si la direccion no menciona el municipio,
+        // para que el geocoder no la confunda con una calle homonima de otra ciudad.
+        var destino = direccion.Trim();
+        if (!destino.Contains("Metepec", StringComparison.OrdinalIgnoreCase))
+        {
+            destino = $"{destino}, Metepec, Estado de México, México";
+        }
+
+        return $"https://www.google.com/maps/dir/?api=1&destination={Uri.EscapeDataString(destino)}";
+    }
+
+    // true si el escenario trae coordenadas geograficas validas (no nulas y no 0,0).
+    private bool TieneCoordenadas()
+    {
+        return _escenario is { Latitud: { } lat, Longitud: { } lng }
+               && !(lat == 0 && lng == 0);
+    }
+
+    // Muestra (o esconde) la ilustracion lateral de la sede. Solo visible si el admin subio una
+    // imagen; si no, la programacion ocupa todo el ancho.
+    private void MostrarImagenEscenario(string? imagenUrl)
+    {
+        var hay = !string.IsNullOrWhiteSpace(imagenUrl);
+        ImagenEscenarioPanel.IsVisible = hay;
+        if (hay)
+        {
+            ImagenEscenario.Source = imagenUrl;
         }
     }
 

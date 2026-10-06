@@ -70,6 +70,19 @@ public sealed class BackendEscenarioDto
     [JsonPropertyName("direccion")]
     public string? Direccion { get; set; }
 
+    // Coordenadas geograficas exactas de la sede (opcionales). Si vienen, el boton
+    // "Como llegar" abre Google/Apple Maps con el punto exacto en vez de buscar por texto.
+    [JsonPropertyName("latitud")]
+    public decimal? Latitud { get; set; }
+
+    [JsonPropertyName("longitud")]
+    public decimal? Longitud { get; set; }
+
+    // Imagen propia del escenario (la sube el admin, una por sede). Si viene, la pagina de
+    // programacion la muestra a la derecha como ilustracion premium de la sede.
+    [JsonPropertyName("imagenUrl")]
+    public string? ImagenUrl { get; set; }
+
     // Color del escenario (lo define el admin), hex "#RRGGBB". Identifica cada sede con su
     // color propio (como el programa impreso). Si el backend no lo manda, la app usa un
     // color por defecto.
