@@ -1,17 +1,28 @@
 using appmetepec.Models;
+using appmetepec.Models;
 using appmetepec.Services;
+using Microsoft.Maui.Devices.Sensors;
 using Microsoft.Maui.Layouts;
 
 namespace appmetepec.Views;
 
-// Mapa de un evento: la imagen del plano se muestra fija y completa (sin zoom ni pan), con los
-// numeros de cada escenario posicionados por PORCENTAJE sobre la imagen. Los pines flotan con
-// sombra para dar sensacion 3D y, al tocarlos, rebotan y navegan a la programacion del escenario.
-// Funciona en iOS/Android y cualquier tamano porque las posiciones son relativas (%).
+// Mapa de un evento: la imagen del plano se muestra completa (sin zoom ni pan) con un efecto
+// PARALLAX 3D que reacciona al giroscopio/acelerometro del telefono: al inclinar el dispositivo,
+// el mapa rota sutilmente en 3D y los pines se desplazan a otra profundidad, dando la ilusion de
+// una maqueta. Los numeros de cada escenario se posicionan por PORCENTAJE sobre la imagen, flotan
+// con sombra y rebotan al tocarlos antes de navegar a la programacion. Funciona en iOS/Android.
 public partial class EventoMapaPage : ContentPage
 {
     private const double PinDiametro = 36;      // tamano visual del pin
     private const double AreaTactil = 44;       // area minima de toque (accesibilidad)
+
+    // --- Parametros del efecto parallax 3D ---
+    // Inclinacion maxima del mapa en grados (topes suaves para que NUNCA se vea deforme).
+    private const double TiltMaxGrados = 10;
+    // Cuanto se desplazan los pines respecto al mapa (parallax): >1 = flotan por encima.
+    private const double PinParallaxFactor = 14;
+    // Suavizado: fraccion del movimiento que se aplica por frame (0-1). Mas bajo = mas suave.
+    private const double Suavizado = 0.12;
 
     // Color por defecto del pin cuando el backend no define uno por escenario.
     private static readonly Color PinColorPorDefecto = Color.FromArgb("#5B2A86");
@@ -38,6 +49,14 @@ public partial class EventoMapaPage : ContentPage
 
     // Evita suscribir el SizeChanged del Viewport mas de una vez.
     private bool _viewportSuscrito;
+
+    // --- Estado del parallax 3D ---
+    // Inclinacion objetivo (segun el sensor) y la actual (suavizada hacia el objetivo).
+    private double _tiltObjetivoX, _tiltObjetivoY;
+    private double _tiltActualX, _tiltActualY;
+    private bool _acelerometroActivo;
+    // Lazo de animacion que interpola la inclinacion actual hacia la objetivo (suave).
+    private bool _loopParallaxActivo;
 
     public EventoMapaPage(EventosService eventos, NavigationState navigationState)
     {
@@ -121,6 +140,9 @@ public partial class EventoMapaPage : ContentPage
                 : ImageSource.FromFile(_evento.ImagenMapaUrl);
 
             DibujarHotspots();
+
+            // Efecto parallax 3D: engancha el acelerometro y arranca el lazo de suavizado.
+            IniciarParallax3D();
 
             // Intro de portada: una sola vez al abrir el evento, si lo trae.
             await MostrarIntroPortadaAsync();
@@ -217,6 +239,97 @@ public partial class EventoMapaPage : ContentPage
     {
         ErrorPanel.IsVisible = true;
         BusyIndicator.IsVisible = BusyIndicator.IsRunning = false;
+    }
+
+    // --- Parallax 3D (giroscopio/acelerometro) ---
+
+    // Engancha el acelerometro y arranca el lazo que suaviza la inclinacion. Si el dispositivo
+    // no tiene sensor (o es un emulador que no lo simula), el mapa simplemente queda plano, sin
+    // error: el efecto es decorativo, nunca bloquea la vista.
+    private void IniciarParallax3D()
+    {
+        // Punto de rotacion: centro del lienzo, para que incline como una maqueta.
+        MapaLayout.AnchorX = 0.5;
+        MapaLayout.AnchorY = 0.5;
+
+        try
+        {
+            if (Accelerometer.Default.IsSupported && !_acelerometroActivo)
+            {
+                Accelerometer.Default.ReadingChanged += OnAcelerometroLeido;
+                Accelerometer.Default.Start(SensorSpeed.Game);
+                _acelerometroActivo = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Parallax] Acelerometro no disponible: {ex}");
+        }
+
+        // Lazo de suavizado (corre aunque no haya sensor; sin lecturas, el objetivo es 0 y el
+        // mapa queda plano, estable).
+        if (!_loopParallaxActivo)
+        {
+            _loopParallaxActivo = true;
+            _ = LoopParallaxAsync();
+        }
+    }
+
+    // Convierte la lectura del acelerometro (vector de gravedad) en una inclinacion objetivo.
+    // AccelerationX/Y van ~[-1,1] cuando el telefono se inclina; se escalan a grados con tope.
+    private void OnAcelerometroLeido(object? sender, AccelerometerChangedEventArgs e)
+    {
+        var ax = e.Reading.Acceleration.X; // + derecha / - izquierda
+        var ay = e.Reading.Acceleration.Y; // + arriba  / - abajo
+
+        // RotationY (giro sobre el eje vertical) sigue la inclinacion lateral del telefono;
+        // RotationX (giro sobre el eje horizontal) sigue la inclinacion frontal.
+        _tiltObjetivoY = Math.Clamp(ax * TiltMaxGrados, -TiltMaxGrados, TiltMaxGrados);
+        _tiltObjetivoX = Math.Clamp(ay * TiltMaxGrados, -TiltMaxGrados, TiltMaxGrados);
+    }
+
+    // Interpola suavemente la inclinacion ACTUAL hacia la OBJETIVO y la aplica al mapa (rotacion
+    // 3D) y a los pines (parallax: se mueven un poco mas, parecen flotar sobre el plano).
+    private async Task LoopParallaxAsync()
+    {
+        while (_loopParallaxActivo)
+        {
+            _tiltActualX += (_tiltObjetivoX - _tiltActualX) * Suavizado;
+            _tiltActualY += (_tiltObjetivoY - _tiltActualY) * Suavizado;
+
+            // Rotacion 3D del lienzo (mapa + pines rotan juntos como una maqueta).
+            MapaLayout.RotationX = _tiltActualX;
+            MapaLayout.RotationY = _tiltActualY;
+
+            // Parallax de los pines: desplazamiento extra proporcional a la inclinacion, para que
+            // floten a una profundidad distinta del mapa (efecto 3D por capas).
+            var offsetX = (-_tiltActualY / TiltMaxGrados) * PinParallaxFactor;
+            var offsetY = (_tiltActualX / TiltMaxGrados) * PinParallaxFactor;
+            foreach (var pin in _pines)
+            {
+                pin.TranslationX = offsetX;
+                // Conserva el "flotar" vertical propio del pin sumandole el parallax.
+                // (el flotar usa TranslationY animado; aqui solo agregamos el parallax leve)
+                pin.TranslationY = offsetY;
+            }
+
+            await Task.Delay(16); // ~60 fps
+        }
+    }
+
+    private void DetenerParallax3D()
+    {
+        _loopParallaxActivo = false;
+        if (_acelerometroActivo)
+        {
+            try
+            {
+                Accelerometer.Default.ReadingChanged -= OnAcelerometroLeido;
+                Accelerometer.Default.Stop();
+            }
+            catch { /* best-effort */ }
+            _acelerometroActivo = false;
+        }
     }
 
     // --- Intro de portada (una sola vez al abrir el evento) ---
@@ -443,6 +556,9 @@ public partial class EventoMapaPage : ContentPage
         _introCts?.Cancel();
         _introCts?.Dispose();
         _introCts = null;
+
+        // Detiene el efecto parallax y libera el acelerometro (importante para la bateria).
+        DetenerParallax3D();
 
         // Libera los handlers de tamano.
         if (_viewportSuscrito)
