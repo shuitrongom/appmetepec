@@ -2,8 +2,10 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:views="clr-namespace:appmetepec.Views"
+             xmlns:ios="clr-namespace:Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific;assembly=Microsoft.Maui.Controls"
              x:Class="appmetepec.Views.HomePage"
              Title="Metepec *7311"
+             ios:Page.UseSafeArea="True"
              Shell.NavBarIsVisible="False">
     <ContentPage.Resources>
         <DataTemplate x:Key="PromoBannerTemplate">
@@ -155,27 +157,32 @@
                 <Shadow Brush="Black" Opacity="0.10" Radius="8" Offset="0,-2" />
             </Border.Shadow>
             <!-- Barra inferior. La 3a columna (Eventos) solo aparece cuando hay un evento
-                 activo; el code-behind ajusta las columnas para que no quede hueco. -->
-            <Grid x:Name="BottomTabsGrid" ColumnDefinitions="*,*" Padding="14,10" ColumnSpacing="10">
-                <Border x:Name="ReportsTab" BackgroundColor="#F1EEFB" StrokeThickness="0" Padding="6" HorizontalOptions="Fill" VerticalOptions="Center">
+                 activo; el code-behind ajusta las columnas para que no quede hueco.
+                 Padding inferior extra (8) para separarla del borde en telefonos con barra de
+                 gestos; los textos hacen wrap a 2 lineas y se centran para que ninguno (ni el
+                 largo "GERENCIA DE LA CIUDAD") se corte en pantallas angostas. -->
+            <Grid x:Name="BottomTabsGrid" ColumnDefinitions="*,*" Padding="12,10,12,8" ColumnSpacing="8">
+                <Border x:Name="ReportsTab" BackgroundColor="#F1EEFB" StrokeThickness="0" Padding="4,8" HorizontalOptions="Fill" VerticalOptions="Fill" MinimumHeightRequest="58">
                     <Border.StrokeShape>
                         <RoundRectangle CornerRadius="14" />
                     </Border.StrokeShape>
-                    <VerticalStackLayout Spacing="4">
-                        <Image Source="ic_gerencia_cd.png" HeightRequest="24" WidthRequest="24" HorizontalOptions="Center" />
-                        <Label x:Name="ReportsTabLabel" Text="GERENCIA DE LA CIUDAD" FontSize="10" FontAttributes="Bold" TextColor="#28113E" HorizontalTextAlignment="Center" />
+                    <VerticalStackLayout Spacing="3" VerticalOptions="Center">
+                        <Image Source="ic_gerencia_cd.png" HeightRequest="22" WidthRequest="22" HorizontalOptions="Center" />
+                        <Label x:Name="ReportsTabLabel" Text="GERENCIA DE LA CIUDAD" FontSize="9" FontAttributes="Bold" TextColor="#28113E"
+                               HorizontalTextAlignment="Center" LineBreakMode="WordWrap" MaxLines="2" />
                     </VerticalStackLayout>
                     <Border.GestureRecognizers>
                         <TapGestureRecognizer Tapped="OnReportsTabTapped" />
                     </Border.GestureRecognizers>
                 </Border>
-                <Border x:Name="NewsTab" Grid.Column="1" BackgroundColor="Transparent" StrokeThickness="0" Padding="6" HorizontalOptions="Fill" VerticalOptions="Center">
+                <Border x:Name="NewsTab" Grid.Column="1" BackgroundColor="Transparent" StrokeThickness="0" Padding="4,8" HorizontalOptions="Fill" VerticalOptions="Fill" MinimumHeightRequest="58">
                     <Border.StrokeShape>
                         <RoundRectangle CornerRadius="14" />
                     </Border.StrokeShape>
-                    <VerticalStackLayout Spacing="4">
-                        <Image Source="btn_noticias.png" HeightRequest="24" WidthRequest="24" HorizontalOptions="Center" />
-                        <Label x:Name="NewsTabLabel" Text="NOTICIAS" FontSize="10" FontAttributes="Bold" TextColor="#9AA5B1" HorizontalTextAlignment="Center" />
+                    <VerticalStackLayout Spacing="3" VerticalOptions="Center">
+                        <Image Source="btn_noticias.png" HeightRequest="22" WidthRequest="22" HorizontalOptions="Center" />
+                        <Label x:Name="NewsTabLabel" Text="NOTICIAS" FontSize="9" FontAttributes="Bold" TextColor="#9AA5B1"
+                               HorizontalTextAlignment="Center" LineBreakMode="WordWrap" MaxLines="2" />
                     </VerticalStackLayout>
                     <Border.GestureRecognizers>
                         <TapGestureRecognizer Tapped="OnNewsTabTapped" />
@@ -183,13 +190,14 @@
                 </Border>
 
                 <!-- Tab Eventos: oculto por defecto; se muestra cuando hay evento activo. -->
-                <Border x:Name="EventosTab" Grid.Column="2" BackgroundColor="Transparent" StrokeThickness="0" Padding="6" HorizontalOptions="Fill" VerticalOptions="Center" IsVisible="False">
+                <Border x:Name="EventosTab" Grid.Column="2" BackgroundColor="Transparent" StrokeThickness="0" Padding="4,8" HorizontalOptions="Fill" VerticalOptions="Fill" MinimumHeightRequest="58" IsVisible="False">
                     <Border.StrokeShape>
                         <RoundRectangle CornerRadius="14" />
                     </Border.StrokeShape>
-                    <VerticalStackLayout Spacing="4">
-                        <Label Text="&#127914;" FontSize="22" HorizontalOptions="Center" HorizontalTextAlignment="Center" />
-                        <Label x:Name="EventosTabLabel" Text="EVENTOS" FontSize="10" FontAttributes="Bold" TextColor="#9AA5B1" HorizontalTextAlignment="Center" LineBreakMode="TailTruncation" MaxLines="1" />
+                    <VerticalStackLayout Spacing="3" VerticalOptions="Center">
+                        <Label Text="&#127914;" FontSize="20" HorizontalOptions="Center" HorizontalTextAlignment="Center" />
+                        <Label x:Name="EventosTabLabel" Text="EVENTOS" FontSize="9" FontAttributes="Bold" TextColor="#9AA5B1"
+                               HorizontalTextAlignment="Center" LineBreakMode="WordWrap" MaxLines="2" />
                     </VerticalStackLayout>
                     <Border.GestureRecognizers>
                         <TapGestureRecognizer Tapped="OnEventosTabTapped" />
