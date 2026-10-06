@@ -208,14 +208,146 @@ public partial class EscenarioProgramaPage : ContentPage
     }
 
     // Muestra (o esconde) la ilustracion lateral de la sede. Solo visible si el admin subio una
-    // imagen; si no, la programacion ocupa todo el ancho.
+    // imagen; si no, la programacion ocupa todo el ancho. Cuando hay imagen, la programacion
+    // reserva una franja a la derecha (Margin) para que la ilustracion -alargada y anclada
+    // abajo-derecha- nunca tape el texto, y se arranca el efecto 3D (flotacion + giroscopio).
     private void MostrarImagenEscenario(string? imagenUrl)
     {
         var hay = !string.IsNullOrWhiteSpace(imagenUrl);
-        ImagenEscenarioPanel.IsVisible = hay;
+        ImagenEscenario.IsVisible = hay;
+
         if (hay)
         {
             ImagenEscenario.Source = imagenUrl;
+            // Reserva espacio a la derecha para la ilustracion (que ocupa ~168px + rebase).
+            ProgramaStack.Padding = new Thickness(16, 16, 150, 16);
+            IniciarImagen3D();
+        }
+        else
+        {
+            ProgramaStack.Padding = new Thickness(16);
+        }
+    }
+
+    // --- Efecto 3D de la ilustracion de la sede (flotacion continua + parallax por giroscopio) ---
+    // Igual que el mapa: la imagen "levita" suave (sube/baja + leve balanceo 3D) y, al inclinar
+    // el telefono, se inclina y desplaza un poco (parallax), dando sensacion de que flota sobre
+    // la pantalla. Es decorativo: si no hay acelerometro (emulador), solo queda la flotacion y,
+    // si tampoco, la imagen queda estatica, sin errores.
+
+    // Inclinacion maxima en grados (suave, para no deformar la ilustracion).
+    private const double ImgTiltMaxGrados = 8;
+    // Desplazamiento (px) del parallax al inclinar.
+    private const double ImgParallaxFactor = 10;
+    // Suavizado del seguimiento del sensor (0-1): mas bajo = mas suave.
+    private const double ImgSuavizado = 0.14;
+
+    private double _imgTiltObjetivoX, _imgTiltObjetivoY;
+    private double _imgTiltActualX, _imgTiltActualY;
+    private bool _imgAcelerometroActivo;
+    private bool _imgLoopActivo;
+    private int _imgGeneracionLoop;
+    private bool _imgFlotarActivo;
+    private int _imgGeneracionFlotar;
+
+    private void IniciarImagen3D()
+    {
+        // Punto de rotacion: abajo-centro, para que "crezca/incline" desde su base apoyada.
+        ImagenEscenario.AnchorX = 0.7;
+        ImagenEscenario.AnchorY = 1.0;
+
+        try
+        {
+            if (Accelerometer.Default.IsSupported && !_imgAcelerometroActivo)
+            {
+                Accelerometer.Default.ReadingChanged += OnImgAcelerometroLeido;
+                Accelerometer.Default.Start(SensorSpeed.Game);
+                _imgAcelerometroActivo = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ImagenSede] Acelerometro no disponible: {ex}");
+        }
+
+        // Lazo de parallax suavizado (corre aunque no haya sensor; sin lecturas, queda plano).
+        if (!_imgLoopActivo)
+        {
+            _imgLoopActivo = true;
+            var generacion = ++_imgGeneracionLoop;
+            _ = LoopImagenParallaxAsync(generacion);
+        }
+
+        // Flotacion continua (independiente del sensor).
+        if (!_imgFlotarActivo)
+        {
+            _imgFlotarActivo = true;
+            var generacion = ++_imgGeneracionFlotar;
+            _ = FlotarImagenAsync(generacion);
+        }
+    }
+
+    private void OnImgAcelerometroLeido(object? sender, AccelerometerChangedEventArgs e)
+    {
+        var ax = e.Reading.Acceleration.X;
+        var ay = e.Reading.Acceleration.Y;
+        _imgTiltObjetivoY = Math.Clamp(ax * ImgTiltMaxGrados, -ImgTiltMaxGrados, ImgTiltMaxGrados);
+        _imgTiltObjetivoX = Math.Clamp(ay * ImgTiltMaxGrados, -ImgTiltMaxGrados, ImgTiltMaxGrados);
+    }
+
+    // Interpola la inclinacion hacia la objetivo y la aplica como rotacion 3D + desplazamiento
+    // (parallax). El flotar vertical lo maneja FlotarImagenAsync sobre TranslationY, asi que aqui
+    // el parallax actua sobre RotationX/Y y TranslationX para no pelear por la misma propiedad.
+    private async Task LoopImagenParallaxAsync(int generacion)
+    {
+        while (_imgLoopActivo && generacion == _imgGeneracionLoop)
+        {
+            _imgTiltActualX += (_imgTiltObjetivoX - _imgTiltActualX) * ImgSuavizado;
+            _imgTiltActualY += (_imgTiltObjetivoY - _imgTiltActualY) * ImgSuavizado;
+
+            ImagenEscenario.RotationX = _imgTiltActualX;
+            ImagenEscenario.RotationY = _imgTiltActualY;
+            // Parallax horizontal (base: la imagen esta trasladada 14px por el XAML, se suma el delta).
+            ImagenEscenario.TranslationX = 14 + ((-_imgTiltActualY / ImgTiltMaxGrados) * ImgParallaxFactor);
+
+            await Task.Delay(16); // ~60 fps
+        }
+    }
+
+    // Flotacion continua: la imagen sube y baja unos px, suave e infinita, mientras siga visible
+    // y la generacion sea la vigente (evita duplicar lazos al volver a la pagina).
+    private async Task FlotarImagenAsync(int generacion)
+    {
+        try
+        {
+            while (_imgFlotarActivo && generacion == _imgGeneracionFlotar && ImagenEscenario.IsVisible)
+            {
+                await ImagenEscenario.TranslateTo(ImagenEscenario.TranslationX, -8, 1600, Easing.SinInOut);
+                await ImagenEscenario.TranslateTo(ImagenEscenario.TranslationX, 0, 1600, Easing.SinInOut);
+            }
+        }
+        catch
+        {
+            // Si la imagen se libera a mitad de animacion, se ignora.
+        }
+    }
+
+    private void DetenerImagen3D()
+    {
+        _imgLoopActivo = false;
+        _imgGeneracionLoop++;
+        _imgFlotarActivo = false;
+        _imgGeneracionFlotar++;
+
+        if (_imgAcelerometroActivo)
+        {
+            try
+            {
+                Accelerometer.Default.ReadingChanged -= OnImgAcelerometroLeido;
+                Accelerometer.Default.Stop();
+            }
+            catch { /* best-effort */ }
+            _imgAcelerometroActivo = false;
         }
     }
 
@@ -250,6 +382,14 @@ public partial class EscenarioProgramaPage : ContentPage
     private async void OnBackTapped(object sender, TappedEventArgs e)
     {
         await Shell.Current.GoToAsync("..");
+    }
+
+    // Al salir de la pagina: detiene el efecto 3D de la imagen (libera el acelerometro y para
+    // los lazos) para no gastar bateria ni dejar animaciones corriendo.
+    protected override void OnDisappearing()
+    {
+        base.OnDisappearing();
+        DetenerImagen3D();
     }
 
     private static string CapitalizarFecha(DateTime d)

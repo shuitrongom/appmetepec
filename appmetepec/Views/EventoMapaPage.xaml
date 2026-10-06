@@ -68,7 +68,7 @@
              toque. El code-behind la oculta tras ~2.2 s o al tocar. Si no hay portada, nunca
              se hace visible y el flujo va directo al mapa. -->
         <Grid Grid.Row="0" Grid.RowSpan="2" x:Name="IntroOverlay" IsVisible="False"
-              BackgroundColor="Black">
+              InputTransparent="False" BackgroundColor="Transparent">
             <Image x:Name="PortadaImagen" Aspect="AspectFill"
                    HorizontalOptions="Fill" VerticalOptions="Fill" />
             <Label Text="Toca para entrar" FontSize="13" TextColor="White"

@@ -1,5 +1,4 @@
 using appmetepec.Models;
-using appmetepec.Models;
 using appmetepec.Services;
 using Microsoft.Maui.Devices.Sensors;
 using Microsoft.Maui.Layouts;
@@ -18,11 +17,27 @@ public partial class EventoMapaPage : ContentPage
 
     // --- Parametros del efecto parallax 3D ---
     // Inclinacion maxima del mapa en grados (topes suaves para que NUNCA se vea deforme).
-    private const double TiltMaxGrados = 10;
-    // Cuanto se desplazan los pines respecto al mapa (parallax): >1 = flotan por encima.
-    private const double PinParallaxFactor = 14;
+    // 9 en vez de 10: un grado menos de tope reduce la sensacion de deformacion en los bordes
+    // manteniendo una profundidad clara.
+    private const double TiltMaxGrados = 9;
+    // Factor BASE de parallax: desplazamiento maximo (px) de la capa MAS cercana (el pin del
+    // frente). Las capas al fondo se mueven menos, segun la formula por profundidad (ver
+    // CalcularFactorPin). Da el efecto 3D por capas: >0 = flotan por encima del mapa.
+    private const double PinParallaxFactor = 16;
     // Suavizado: fraccion del movimiento que se aplica por frame (0-1). Mas bajo = mas suave.
-    private const double Suavizado = 0.12;
+    // 0.14: un pelo mas de respuesta ("mantequilla" sin lag), sigue sintiendose suave.
+    private const double Suavizado = 0.14;
+    // Zoom sutil (<=3%) al inclinar: refuerza la sensacion de "maqueta" sin deformar, porque es
+    // una escala UNIFORME (no estira). A tilt 0 queda en Scale=1 exacto.
+    private const double EscalaMaxExtra = 0.03;
+    // Desplazamiento maximo (px) del offset de la sombra de los pines al inclinar: luz dinamica
+    // discreta. A tilt 0 vuelve al offset base (0,5).
+    private const double SombraOffsetMax = 4;
+    // Umbral de frame (grados): si el delta de inclinacion por frame es menor a esto en ambos
+    // ejes y ya se alcanzo el reposo, no se reasigna nada (evita trabajo redundante por frame).
+    private const double UmbralFrame = 0.05;
+    // Offset vertical base de la sombra de los pines (coincide con el Offset del Shadow al crear).
+    private const double SombraBaseY = 5;
 
     // Color por defecto del pin cuando el backend no define uno por escenario.
     private static readonly Color PinColorPorDefecto = Color.FromArgb("#5B2A86");
@@ -32,8 +47,11 @@ public partial class EventoMapaPage : ContentPage
 
     private BackendEventoDto? _evento;
     private readonly List<View> _pines = [];
-    // Relaciona cada escenario con su pin para reposicionarlo cuando cambie el tamano del lienzo.
-    private readonly List<(BackendEscenarioDto Escenario, View Pin)> _pinPorEscenario = [];
+    // Relaciona cada escenario con su pin (contenedor tactil), el circulo interior (Border) y su
+    // factor de parallax por capa (derivado de PosY). El contenedor recibe el parallax; el circulo
+    // interior recibe el flotar y la sombra dinamica. Son elementos DISTINTOS: cada animacion
+    // escribe su propia propiedad, por lo que no pelean por TranslationX/Y ni por el centrado.
+    private readonly List<(BackendEscenarioDto Escenario, View Contenedor, Border Circulo, double FactorPin)> _pinPorEscenario = [];
 
     // Dimensiones REALES del archivo de imagen (medidas al cargar), no las del backend. Se usan
     // para la proporcion del lienzo: asi coincide exactamente con la imagen y los pines caen 1:1,
@@ -57,6 +75,29 @@ public partial class EventoMapaPage : ContentPage
     private bool _acelerometroActivo;
     // Lazo de animacion que interpola la inclinacion actual hacia la objetivo (suave).
     private bool _loopParallaxActivo;
+    // Generacion del lazo: cada arranque la incrementa. Un lazo viejo que siga en vuelo tras un
+    // await detecta que su generacion caduco y termina solo. Blinda contra loops DUPLICADOS si
+    // OnAppearing/CargarEventoAsync se repiten o tras un reintento.
+    private int _generacionLoop;
+    // El efecto ya se inicializo al menos una vez (hay pines dibujados). Permite distinguir
+    // "arrancar por primera vez" de "reanudar" al volver de un escenario.
+    private bool _parallaxInicializado;
+    // Controla el flotar de los circulos: al pausar la pagina se baja para detener los lazos de
+    // flotar (y no trabar la transicion); al reanudar se sube y se relanzan.
+    private bool _flotarActivo;
+    // Generacion del flotar: cada arranque/relanzamiento la incrementa. Igual que _generacionLoop
+    // del parallax, blinda contra lazos de flotar DUPLICADOS: un lazo viejo que siga en vuelo tras
+    // un await TranslateTo detecta que su generacion caduco y termina solo, aunque _flotarActivo
+    // ya se haya vuelto a subir en ReanudarParallax3D. Evita que el flote se acelere al entrar y
+    // volver de un escenario varias veces.
+    private int _generacionFlotar;
+    // El dispositivo tiene acelerometro utilizable. Si es false (emulador), el mapa queda PLANO
+    // y estable y ni siquiera se corre el lazo (ahorro en emulador).
+    private bool _sensorDisponible;
+    // La animacion de ENTRADA premium se ejecuta una sola vez por instancia de pagina.
+    private bool _entradaMostrada;
+    // Ultimos valores de inclinacion con los que se recalculo la sombra (para gatear por umbral).
+    private double _tiltSombraX = double.NaN, _tiltSombraY = double.NaN;
 
     public EventoMapaPage(EventosService eventos, NavigationState navigationState)
     {
@@ -86,9 +127,13 @@ public partial class EventoMapaPage : ContentPage
     {
         base.OnAppearing();
 
-        // Con DI Transient cada navegacion crea una instancia nueva; cargamos una vez.
+        // Con DI Transient cada navegacion crea una instancia nueva; cargamos una vez. Cuando se
+        // vuelve de un escenario (misma instancia reutilizada por el Shell), _evento ya existe:
+        // en ese caso NO recargamos, pero reanudamos el efecto SUAVE (continua desde el tilt
+        // actual, sin reiniciar a 0 ni parpadear).
         if (_evento is not null)
         {
+            ReanudarParallax3D();
             return;
         }
 
@@ -141,11 +186,23 @@ public partial class EventoMapaPage : ContentPage
 
             DibujarHotspots();
 
+            // El mapa arranca INVISIBLE: la entrada premium (AnimarEntradaMapaAsync) lo revela
+            // con fade al final. Asi, cuando hay intro de portada, al ocultarse el overlay NO se
+            // ve de golpe el mapa a opacidad plena para luego hacerle fade (evita el parpadeo).
+            if (!_entradaMostrada)
+            {
+                MapaLayout.Opacity = 0;
+            }
+
             // Efecto parallax 3D: engancha el acelerometro y arranca el lazo de suavizado.
             IniciarParallax3D();
 
             // Intro de portada: una sola vez al abrir el evento, si lo trae.
             await MostrarIntroPortadaAsync();
+
+            // Entrada premium del mapa (fade + leve asentamiento 3D), DESPUES de la intro de
+            // portada para que nunca se superpongan. Se ejecuta una sola vez.
+            await AnimarEntradaMapaAsync();
         }
         catch (Exception ex)
         {
@@ -243,36 +300,84 @@ public partial class EventoMapaPage : ContentPage
 
     // --- Parallax 3D (giroscopio/acelerometro) ---
 
-    // Engancha el acelerometro y arranca el lazo que suaviza la inclinacion. Si el dispositivo
-    // no tiene sensor (o es un emulador que no lo simula), el mapa simplemente queda plano, sin
-    // error: el efecto es decorativo, nunca bloquea la vista.
+    // Arranque por PRIMERA vez: fija el ancla, detecta el sensor y, si existe, engancha el
+    // acelerometro y lanza el lazo de suavizado. Si NO hay sensor (emulador), el mapa queda
+    // PLANO y estable y NO se corre el lazo (ahorro). El efecto es decorativo: nunca bloquea.
     private void IniciarParallax3D()
     {
         // Punto de rotacion: centro del lienzo, para que incline como una maqueta.
         MapaLayout.AnchorX = 0.5;
         MapaLayout.AnchorY = 0.5;
 
+        _parallaxInicializado = true;
+        // El flotar de los circulos ya se arranco en DibujarHotspots (ArrancarFlotar) con su
+        // generacion; aqui no se vuelve a tocar para no duplicarlo.
+
+        // Deteccion del sensor envuelta en try/catch: un emulador que lance al consultar
+        // IsSupported no debe romper la carga del mapa.
+        _sensorDisponible = false;
         try
         {
-            if (Accelerometer.Default.IsSupported && !_acelerometroActivo)
-            {
-                Accelerometer.Default.ReadingChanged += OnAcelerometroLeido;
-                Accelerometer.Default.Start(SensorSpeed.Game);
-                _acelerometroActivo = true;
-            }
+            _sensorDisponible = Accelerometer.Default.IsSupported;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Parallax] No se pudo consultar el sensor: {ex}");
+            _sensorDisponible = false;
+        }
+
+        if (!_sensorDisponible)
+        {
+            // Sin acelerometro: mapa plano y estable, fijado UNA sola vez (sin lazo).
+            FijarMapaPlano();
+            return;
+        }
+
+        SuscribirAcelerometro();
+        ArrancarLoop();
+    }
+
+    // Deja el mapa en reposo exacto (sin inclinacion, sin zoom, sombras base). Se usa cuando no
+    // hay sensor: una sola escritura, nada de lazo por frame.
+    private void FijarMapaPlano()
+    {
+        _tiltObjetivoX = _tiltObjetivoY = 0;
+        _tiltActualX = _tiltActualY = 0;
+        MapaLayout.RotationX = 0;
+        MapaLayout.RotationY = 0;
+        MapaLayout.Scale = 1;
+        foreach (var (_, _, circulo, _) in _pinPorEscenario)
+        {
+            circulo.TranslationX = 0;
+        }
+        AplicarSombraDinamica(forzar: true);
+    }
+
+    // Suscribe el acelerometro si hay sensor y no esta ya activo (evita doble suscripcion).
+    private void SuscribirAcelerometro()
+    {
+        if (!_sensorDisponible || _acelerometroActivo) return;
+        try
+        {
+            Accelerometer.Default.ReadingChanged += OnAcelerometroLeido;
+            Accelerometer.Default.Start(SensorSpeed.Game);
+            _acelerometroActivo = true;
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[Parallax] Acelerometro no disponible: {ex}");
         }
+    }
 
-        // Lazo de suavizado (corre aunque no haya sensor; sin lecturas, el objetivo es 0 y el
-        // mapa queda plano, estable).
-        if (!_loopParallaxActivo)
-        {
-            _loopParallaxActivo = true;
-            _ = LoopParallaxAsync();
-        }
+    // Lanza el lazo de suavizado con una nueva generacion. El guard _loopParallaxActivo evita
+    // relanzarlo si ya corre; la generacion garantiza que, si un lazo viejo sigue en vuelo tras
+    // un await, termine solo al detectar que caduco (nunca quedan DOS lazos activos).
+    private void ArrancarLoop()
+    {
+        if (_loopParallaxActivo) return;
+        _loopParallaxActivo = true;
+        var generacion = ++_generacionLoop;
+        _ = LoopParallaxAsync(generacion);
     }
 
     // Convierte la lectura del acelerometro (vector de gravedad) en una inclinacion objetivo.
@@ -289,37 +394,99 @@ public partial class EventoMapaPage : ContentPage
     }
 
     // Interpola suavemente la inclinacion ACTUAL hacia la OBJETIVO y la aplica al mapa (rotacion
-    // 3D) y a los pines (parallax: se mueven un poco mas, parecen flotar sobre el plano).
-    private async Task LoopParallaxAsync()
+    // 3D + zoom sutil = maqueta) y a los pines (parallax POR CAPAS sobre el CONTENEDOR tactil).
+    // El flotar vertical vive en el CIRCULO interior (elemento distinto), por lo que no pelea
+    // con el parallax por TranslationX/Y. Incluye una guarda de frame: cuando el movimiento es
+    // despreciable y ya se alcanzo el reposo, no reasigna propiedades (evita trabajo redundante).
+    private async Task LoopParallaxAsync(int generacion)
     {
-        while (_loopParallaxActivo)
+        while (_loopParallaxActivo && generacion == _generacionLoop)
         {
-            _tiltActualX += (_tiltObjetivoX - _tiltActualX) * Suavizado;
-            _tiltActualY += (_tiltObjetivoY - _tiltActualY) * Suavizado;
+            var deltaX = (_tiltObjetivoX - _tiltActualX) * Suavizado;
+            var deltaY = (_tiltObjetivoY - _tiltActualY) * Suavizado;
+
+            // Si el movimiento por frame es despreciable en ambos ejes, saltamos el trabajo: no
+            // reasignamos rotacion/escala/offset (ya estamos en reposo o casi).
+            if (Math.Abs(deltaX) < UmbralFrame && Math.Abs(deltaY) < UmbralFrame)
+            {
+                await Task.Delay(16);
+                continue;
+            }
+
+            _tiltActualX += deltaX;
+            _tiltActualY += deltaY;
 
             // Rotacion 3D del lienzo (mapa + pines rotan juntos como una maqueta).
             MapaLayout.RotationX = _tiltActualX;
             MapaLayout.RotationY = _tiltActualY;
 
-            // Parallax de los pines: desplazamiento extra proporcional a la inclinacion, para que
-            // floten a una profundidad distinta del mapa (efecto 3D por capas).
-            var offsetX = (-_tiltActualY / TiltMaxGrados) * PinParallaxFactor;
-            var offsetY = (_tiltActualX / TiltMaxGrados) * PinParallaxFactor;
-            foreach (var pin in _pines)
+            // Zoom sutil (<=EscalaMaxExtra) proporcional a cuanto se inclina: refuerza "maqueta"
+            // sin deformar (escala uniforme). A tilt 0 -> Scale=1 exacto.
+            var inclinacionNorm = (Math.Abs(_tiltActualX) + Math.Abs(_tiltActualY)) / (2 * TiltMaxGrados);
+            MapaLayout.Scale = 1 + (EscalaMaxExtra * inclinacionNorm);
+
+            // Parallax POR CAPAS: cada pin se desplaza segun su factor de profundidad cacheado.
+            // Se escribe SOLO sobre el CONTENEDOR (area tactil, posicionado por bounds absolutos);
+            // el centrado base no se toca -> en reposo (tilt 0) el offset es 0 y el pin queda
+            // EXACTAMENTE en su punto.
+            foreach (var (_, contenedor, _, factorPin) in _pinPorEscenario)
             {
-                pin.TranslationX = offsetX;
-                // Conserva el "flotar" vertical propio del pin sumandole el parallax.
-                // (el flotar usa TranslationY animado; aqui solo agregamos el parallax leve)
-                pin.TranslationY = offsetY;
+                contenedor.TranslationX = (-_tiltActualY / TiltMaxGrados) * factorPin;
+                contenedor.TranslationY = (_tiltActualX / TiltMaxGrados) * factorPin;
             }
+
+            // Luz/sombra dinamica: barata (solo cuando el tilt cambia de forma apreciable).
+            AplicarSombraDinamica(forzar: false);
 
             await Task.Delay(16); // ~60 fps
         }
     }
 
-    private void DetenerParallax3D()
+    // Recalcula el offset de la sombra de cada circulo en funcion de la inclinacion, de forma
+    // que la "luz" parezca venir desde un lado al inclinar. Gated: solo recalcula si el tilt
+    // cambio mas que UmbralFrame respecto a la ultima vez (o si se fuerza), para no escribir a
+    // 60 fps. A tilt 0 vuelve al offset base (0, SombraBaseY).
+    private void AplicarSombraDinamica(bool forzar)
     {
-        _loopParallaxActivo = false;
+        if (!forzar
+            && !double.IsNaN(_tiltSombraX)
+            && Math.Abs(_tiltActualX - _tiltSombraX) < UmbralFrame
+            && Math.Abs(_tiltActualY - _tiltSombraY) < UmbralFrame)
+        {
+            return;
+        }
+
+        _tiltSombraX = _tiltActualX;
+        _tiltSombraY = _tiltActualY;
+
+        var offsetX = (-_tiltActualY / TiltMaxGrados) * SombraOffsetMax;
+        var inclinacionNorm = (Math.Abs(_tiltActualX) + Math.Abs(_tiltActualY)) / (2 * TiltMaxGrados);
+        var offsetY = SombraBaseY + (inclinacionNorm * (SombraOffsetMax / 2.0));
+
+        foreach (var (_, _, circulo, _) in _pinPorEscenario)
+        {
+            if (circulo.Shadow is not null)
+            {
+                circulo.Shadow.Offset = new Point(offsetX, offsetY);
+            }
+        }
+    }
+
+    // Pausa SUAVE (al ocultar la pagina): detiene el lazo, el flotar y el acelerometro, pero
+    // CONSERVA _tiltActual*, la rotacion, la escala y las sombras tal como estan (no las pone a
+    // 0). Asi, al volver, la reanudacion es continua: sin salto a 0 ni flash al reaparecer.
+    private void PausarParallax3D()
+    {
+        _loopParallaxActivo = false; // el lazo en vuelo termina al ver el flag/generacion
+        _generacionLoop++;           // invalida cualquier lazo viejo que siga tras un await
+
+        _flotarActivo = false;       // detiene los lazos de flotar (no traban la transicion)
+        _generacionFlotar++;         // invalida cualquier lazo de flotar viejo que siga tras un await
+        foreach (var (_, _, circulo, _) in _pinPorEscenario)
+        {
+            circulo.CancelAnimations(); // corta un TranslateTo en vuelo del flotar
+        }
+
         if (_acelerometroActivo)
         {
             try
@@ -330,6 +497,54 @@ public partial class EventoMapaPage : ContentPage
             catch { /* best-effort */ }
             _acelerometroActivo = false;
         }
+    }
+
+    // Reanuda al volver de un escenario, partiendo del estado ACTUAL (sin reiniciar a 0). Solo
+    // actua si el efecto ya se inicializo (hay pines). Si no hay sensor, deja el mapa plano.
+    private void ReanudarParallax3D()
+    {
+        if (!_parallaxInicializado) return;
+
+        // Relanza el flotar con una generacion NUEVA: cualquier lazo viejo aun en vuelo caduca y
+        // termina solo, de modo que no se acumulan lazos al entrar y volver varias veces.
+        ArrancarFlotar();
+
+        if (!_sensorDisponible)
+        {
+            FijarMapaPlano();
+            return;
+        }
+
+        SuscribirAcelerometro();
+        ArrancarLoop(); // continua desde _tiltActual* -> transicion fluida, sin tiron
+    }
+
+    // Detiene por completo el efecto (al cerrar la pagina). Igual que la pausa pero sin intencion
+    // de reanudar; conserva igualmente el estado para no provocar un salto visible.
+    private void DetenerParallax3D()
+    {
+        PausarParallax3D();
+    }
+
+    // Entrada premium del mapa: UNA sola vez por instancia. Fade de 0->1 con un leve asentamiento
+    // de maqueta (zoom sutil 1.04->1.0). No toca el IntroOverlay ni su logica; se dispara DESPUES
+    // de ocultar la intro de portada (cuando la hubo) o justo tras dibujar los pines (sin portada),
+    // por lo que nunca se superpone con la intro. Gated por _entradaMostrada para que NO se repita
+    // al volver de un escenario (evita el re-fade que causaba el parpadeo percibido).
+    private async Task AnimarEntradaMapaAsync()
+    {
+        if (_entradaMostrada) return;
+        _entradaMostrada = true;
+
+        // Estado inicial: ligeramente ampliado e invisible. OJO: no fijamos Scale a 1.04 de forma
+        // permanente; el lazo de parallax recalcula Scale cada frame, asi que al terminar la
+        // entrada el control vuelve al valor derivado del tilt (1 en reposo).
+        MapaLayout.Opacity = 0;
+        MapaLayout.Scale = 1.04;
+
+        await Task.WhenAll(
+            MapaLayout.FadeTo(1, 400, Easing.CubicOut),
+            MapaLayout.ScaleTo(1.0, 450, Easing.CubicOut));
     }
 
     // --- Intro de portada (una sola vez al abrir el evento) ---
@@ -359,6 +574,9 @@ public partial class EventoMapaPage : ContentPage
         _introCts = new CancellationTokenSource();
 
         // Estado inicial de la animacion: invisible y ligeramente ampliada (zoom-in al entrar).
+        // El fondo negro SOLO durante la intro (letterbox del AspectFill); fuera de la intro el
+        // overlay queda transparente para que nunca quede un cuadro negro residual en pantalla.
+        IntroOverlay.BackgroundColor = Colors.Black;
         IntroOverlay.Opacity = 0;
         IntroOverlay.Scale = 1.08;
         IntroOverlay.IsVisible = true;
@@ -395,6 +613,7 @@ public partial class EventoMapaPage : ContentPage
 
         await IntroOverlay.FadeTo(0, 300, Easing.CubicIn);
         IntroOverlay.IsVisible = false;
+        IntroOverlay.BackgroundColor = Colors.Transparent; // sin residuo negro al terminar
         PortadaImagen.Source = null; // libera la imagen
     }
 
@@ -421,13 +640,18 @@ public partial class EventoMapaPage : ContentPage
 
         foreach (var escenario in _evento.Escenarios)
         {
-            var pin = CrearHotspot(escenario);
-            MapaLayout.Children.Add(pin);
-            _pines.Add(pin);
-            _pinPorEscenario.Add((escenario, pin));
+            var (contenedor, circulo) = CrearHotspot(escenario);
+            MapaLayout.Children.Add(contenedor);
+            _pines.Add(contenedor);
+            // Factor de parallax por capa segun la profundidad aparente (PosY): el pin del fondo
+            // (arriba) se mueve menos; el del frente (abajo) se mueve mas.
+            _pinPorEscenario.Add((escenario, contenedor, circulo, CalcularFactorPin(escenario.PosY)));
         }
 
         PosicionarHotspots();
+
+        // Arranca el flotar de todos los circulos con una sola generacion (anti duplicacion).
+        ArrancarFlotar();
     }
 
     // Coloca cada pin con coordenadas ABSOLUTAS sobre el MapaLayout: el CENTRO del pin cae
@@ -441,7 +665,7 @@ public partial class EventoMapaPage : ContentPage
         var h = MapaLayout.Height;
         if (w <= 0 || h <= 0) return;
 
-        foreach (var (escenario, pin) in _pinPorEscenario)
+        foreach (var (escenario, contenedor, _, _) in _pinPorEscenario)
         {
             // Clamp defensivo: datos del admin fuera de 0-100 no sacan el pin del mapa.
             var fx = Math.Clamp(escenario.PosX, 0, 100) / 100.0;
@@ -450,14 +674,25 @@ public partial class EventoMapaPage : ContentPage
             var cx = fx * w;
             var cy = fy * h;
 
-            AbsoluteLayout.SetLayoutFlags(pin, AbsoluteLayoutFlags.None);
-            AbsoluteLayout.SetLayoutBounds(pin,
+            AbsoluteLayout.SetLayoutFlags(contenedor, AbsoluteLayoutFlags.None);
+            AbsoluteLayout.SetLayoutBounds(contenedor,
                 new Rect(cx - (AreaTactil / 2), cy - (AreaTactil / 2), AreaTactil, AreaTactil));
         }
     }
 
+    // Factor de parallax por capa a partir de la profundidad aparente (PosY, 0-100):
+    //   depth 0 = fondo (arriba) -> se mueve menos; depth 1 = frente (abajo) -> se mueve mas.
+    // Rango resultante: [0.4 .. 1.0] * PinParallaxFactor. Se calcula UNA vez al dibujar y se cachea.
+    private static double CalcularFactorPin(double posY)
+    {
+        var depth = Math.Clamp(posY, 0, 100) / 100.0;
+        return PinParallaxFactor * (0.4 + (0.6 * depth));
+    }
+
     // Area tactil de 44px (accesibilidad) con el pin visual de 36px centrado dentro.
-    private View CrearHotspot(BackendEscenarioDto escenario)
+    // Devuelve el CONTENEDOR (area tactil, recibe el parallax) y el CIRCULO interior (Border,
+    // recibe el flotar y la sombra dinamica). Son elementos distintos a proposito.
+    private (View Contenedor, Border Circulo) CrearHotspot(BackendEscenarioDto escenario)
     {
         var numero = new Label
         {
@@ -511,22 +746,37 @@ public partial class EventoMapaPage : ContentPage
         };
         contenedor.GestureRecognizers.Add(tap);
 
-        // Flotar sutil continuo sobre el circulo (no el contenedor, para no mover el area tactil
-        // ni el posicionamiento). Da sensacion de que el pin flota sobre el plano (3D).
-        IniciarFlotar(pinVisual);
-
-        return contenedor;
+        // El flotar sutil del circulo se arranca de forma centralizada en DibujarHotspots (via
+        // ArrancarFlotar) una vez que _pinPorEscenario esta completo, para que todos los lazos
+        // compartan la misma generacion y no se dupliquen al reanudar.
+        return (contenedor, pinVisual);
     }
 
-    // Lazo suave e infinito: el circulo del pin sube y baja unos pocos px. Se detiene solo
-    // cuando el pin deja de estar en pantalla (pagina cerrada -> Parent nulo).
-    private static async void IniciarFlotar(View pinVisual)
+    // Relanza el flotar de todos los circulos con una generacion NUEVA. Incrementar la generacion
+    // invalida cualquier lazo de flotar viejo que siga en vuelo tras un await (termina solo al ver
+    // que su generacion caduco), por lo que nunca quedan DOS lazos sobre el mismo circulo aunque
+    // _flotarActivo ya se haya vuelto a subir. Centraliza el arranque del flotar.
+    private void ArrancarFlotar()
+    {
+        _flotarActivo = true;
+        var generacion = ++_generacionFlotar;
+        foreach (var (_, _, circulo, _) in _pinPorEscenario)
+        {
+            IniciarFlotar(circulo, generacion);
+        }
+    }
+
+    // Lazo suave e infinito: el circulo del pin sube y baja unos pocos px. Se detiene cuando el
+    // pin deja de estar en pantalla (pagina cerrada -> Parent nulo), cuando _flotarActivo es false
+    // (pagina pausada) o cuando su generacion caduca (relanzado tras volver de un escenario), para
+    // no trabar la transicion ni duplicar el movimiento.
+    private async void IniciarFlotar(View pinVisual, int generacion)
     {
         try
         {
             // Pequeño desfase aleatorio para que los pines no floten todos al unisono.
             await Task.Delay(Random.Shared.Next(0, 600));
-            while (pinVisual.Parent is not null)
+            while (_flotarActivo && generacion == _generacionFlotar && pinVisual.Parent is not null)
             {
                 await pinVisual.TranslateTo(0, -4, 1200, Easing.SinInOut);
                 await pinVisual.TranslateTo(0, 0, 1200, Easing.SinInOut);

@@ -71,15 +71,16 @@
                     BackgroundColor="#5B2A86" TextColor="White" Clicked="OnHoyClicked" />
         </Grid>
 
-        <!-- Contenido: programacion (izquierda, con scroll) + ilustracion de la sede (derecha).
-             La imagen vive DENTRO de esta fila, por debajo del encabezado y la barra del dia,
-             asi "no llega hasta el calendario" y respeta el fondo blanco. Si el escenario no
-             tiene imagen, el panel se oculta y la programacion ocupa todo el ancho. -->
-        <Grid Grid.Row="2" ColumnDefinitions="*,Auto">
+        <!-- Contenido: la programacion ocupa toda la fila; la ilustracion de la sede va ANCLADA
+             abajo-derecha, alargada, como capa decorativa que FLOTA en 3D (flotacion + parallax
+             por giroscopio, aplicado en el code-behind). El contenido es un IsClippedToBounds para
+             que la imagen pueda rebasar y recortarse limpio, sin romper el layout ni tapar textos
+             (la lista reserva espacio a la derecha via Margin cuando hay imagen). -->
+        <Grid Grid.Row="2" x:Name="ContenidoGrid" IsClippedToBounds="True">
 
             <!-- Programacion del dia -->
-            <ScrollView Grid.Column="0">
-                <VerticalStackLayout Padding="16" Spacing="12">
+            <ScrollView Grid.Row="0">
+                <VerticalStackLayout x:Name="ProgramaStack" Padding="16" Spacing="12">
                     <CollectionView x:Name="ActividadesView" SelectionMode="None">
                         <CollectionView.ItemTemplate>
                             <DataTemplate>
@@ -109,14 +110,15 @@
                 </VerticalStackLayout>
             </ScrollView>
 
-            <!-- Ilustracion lateral de la sede (opcional). Ancho acotado para no tapar la
-                 programacion; alineada arriba y con un suave degradado inferior para que se
-                 funda con el fondo blanco sin perder contraste del texto de la izquierda. -->
-            <Grid Grid.Column="1" x:Name="ImagenEscenarioPanel" IsVisible="False"
-                  WidthRequest="120" Padding="0,16,12,16" VerticalOptions="Fill">
-                <Image x:Name="ImagenEscenario" Aspect="AspectFit"
-                       VerticalOptions="Start" HorizontalOptions="End" />
-            </Grid>
+            <!-- Ilustracion de la sede (opcional): anclada abajo-derecha, alargada, decorativa.
+                 Flota en 3D (flotacion continua + parallax por giroscopio) desde el code-behind.
+                 InputTransparent para que no robe toques a la programacion. El degradado inferior
+                 que la funde con el fondo se logra en el code-behind. -->
+            <Image Grid.Row="0" x:Name="ImagenEscenario" IsVisible="False"
+                   Aspect="AspectFit" InputTransparent="True"
+                   WidthRequest="168" HeightRequest="300"
+                   HorizontalOptions="End" VerticalOptions="End"
+                   TranslationX="14" Margin="0,0,-6,0" />
         </Grid>
     </Grid>
 </ContentPage>
