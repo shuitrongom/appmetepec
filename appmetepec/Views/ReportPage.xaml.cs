@@ -593,6 +593,7 @@ public partial class ReportPage : ContentPage
 
         var submission = new PendingTicketSubmission
         {
+            IdCiudadano = _preferences.CiudadanoId,
             Title = _report.Title,
             IdServicio = _report.IdServicio,
             Dependencia = _report.Dependencia,

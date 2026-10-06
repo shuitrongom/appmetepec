@@ -18,6 +18,7 @@ public partial class HomePage : ContentPage
     private readonly PushRegistrationService _pushRegistration;
     private readonly EventosService _eventos;
     private bool _bannerTimerStarted;
+    private bool _paginaVisible;
     private bool _isDrawerOpen;
     private bool _newsLoaded;
     private bool _categoriesLoaded;
@@ -51,9 +52,16 @@ public partial class HomePage : ContentPage
 #endif
     }
 
+    protected override void OnDisappearing()
+    {
+        base.OnDisappearing();
+        _paginaVisible = false;
+    }
+
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        _paginaVisible = true;
         // Se reintenta en cada OnAppearing mientras no se haya podido traer el catalogo del API
         // (sin conexion al abrir la app, por ejemplo).
         if (!_categoriesLoaded)
@@ -186,6 +194,14 @@ public partial class HomePage : ContentPage
         _bannerTimerStarted = true;
         Dispatcher.StartTimer(TimeSpan.FromSeconds(4), () =>
         {
+            // HomePage sigue viva en la pila de Shell al navegar a otras pantallas: sin esto el
+            // carrusel seguia animandose cada 4 s en segundo plano (layout + GC en el hilo de UI)
+            // y causaba tirones en Mis reportes / detalle del ticket.
+            if (!_paginaVisible)
+            {
+                return true;
+            }
+
             if (BannerCarousel.ItemsSource is not IReadOnlyList<object> banners || banners.Count == 0)
             {
                 return true;

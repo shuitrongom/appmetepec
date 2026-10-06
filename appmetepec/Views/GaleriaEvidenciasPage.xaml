@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:controls="clr-namespace:appmetepec.Controls"
+             x:Class="appmetepec.Views.GaleriaEvidenciasPage"
+             BackgroundColor="Black"
+             Shell.NavBarIsVisible="False">
+    <Grid>
+        <!-- Fotos: deslizar entre ellas, pellizcar / doble toque para zoom -->
+        <CarouselView x:Name="Carrusel"
+                      Loop="False"
+                      IndicatorView="Indicadores"
+                      PeekAreaInsets="0"
+                      Opacity="0"
+                      PositionChanged="OnPositionChanged">
+            <CarouselView.ItemsLayout>
+                <LinearItemsLayout Orientation="Horizontal" SnapPointsType="MandatorySingle" SnapPointsAlignment="Center" ItemSpacing="0" />
+            </CarouselView.ItemsLayout>
+            <CarouselView.ItemTemplate>
+                <DataTemplate>
+                    <Grid BackgroundColor="Black">
+                        <controls:ZoomContainer ZoomChanged="OnZoomChanged">
+                            <Image x:Name="Foto" Source="{Binding RutaArchivo}" Aspect="AspectFit" />
+                        </controls:ZoomContainer>
+                        <ActivityIndicator Color="White" WidthRequest="36" HeightRequest="36"
+                                           HorizontalOptions="Center" VerticalOptions="Center"
+                                           IsRunning="{Binding IsLoading, Source={x:Reference Foto}}"
+                                           IsVisible="{Binding IsLoading, Source={x:Reference Foto}}" />
+                    </Grid>
+                </DataTemplate>
+            </CarouselView.ItemTemplate>
+        </CarouselView>
+
+        <!-- Barra superior: cerrar + contador -->
+        <Grid x:Name="BarraSuperior" VerticalOptions="Start" Padding="16,14,16,28" ColumnDefinitions="44,*,44">
+            <Grid.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                    <GradientStop Color="#B3000000" Offset="0" />
+                    <GradientStop Color="#00000000" Offset="1" />
+                </LinearGradientBrush>
+            </Grid.Background>
+            <Border WidthRequest="40" HeightRequest="40" StrokeThickness="0" BackgroundColor="#40FFFFFF" HorizontalOptions="Start">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="20" />
+                </Border.StrokeShape>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnCerrarTapped" />
+                </Border.GestureRecognizers>
+                <Label Text="✕" TextColor="White" FontSize="18" HorizontalOptions="Center" VerticalOptions="Center" />
+            </Border>
+            <Label x:Name="ContadorLabel" Grid.Column="1" TextColor="White" FontSize="15" FontAttributes="Bold"
+                   HorizontalOptions="Center" VerticalOptions="Center" />
+        </Grid>
+
+        <!-- Pie: descripcion de la foto + indicadores -->
+        <VerticalStackLayout x:Name="Pie" VerticalOptions="End" Padding="20,36,20,22" Spacing="12">
+            <VerticalStackLayout.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                    <GradientStop Color="#00000000" Offset="0" />
+                    <GradientStop Color="#CC000000" Offset="1" />
+                </LinearGradientBrush>
+            </VerticalStackLayout.Background>
+            <Label x:Name="DescripcionLabel" TextColor="White" FontSize="14" HorizontalTextAlignment="Center"
+                   LineBreakMode="WordWrap" MaxLines="4" />
+            <IndicatorView x:Name="Indicadores" IndicatorColor="#66FFFFFF" SelectedIndicatorColor="White"
+                           IndicatorSize="8" HorizontalOptions="Center" />
+        </VerticalStackLayout>
+    </Grid>
+</ContentPage>
