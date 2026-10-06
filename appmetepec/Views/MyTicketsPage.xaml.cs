@@ -25,11 +25,11 @@ public partial class MyTicketsPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        // La peticion de tickets (red) arranca de inmediato, sin esperar a leer el archivo local
+        // de pendientes.
+        var cargaTickets = TicketsView.ItemsSource is null ? LoadTicketsAsync() : Task.CompletedTask;
         await LoadPendingAsync();
-        if (TicketsView.ItemsSource is null)
-        {
-            await LoadTicketsAsync();
-        }
+        await cargaTickets;
     }
 
     // mostrarIndicador = false en el "jalar para refrescar": el RefreshView ya muestra su propio
