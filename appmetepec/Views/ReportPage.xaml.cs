@@ -103,6 +103,8 @@ public partial class ReportPage : ContentPage
         NameEntry.Text = user.Name;
         PhoneEntry.Text = user.Phone;
         EmailEntry.Text = user.Email;
+        AjustarCamposEditables(tieneTelefono: !string.IsNullOrWhiteSpace(user.Phone), tieneCorreo: !string.IsNullOrWhiteSpace(user.Email));
+        _ = CargarDatosCiudadanoAsync();
 
         _evidenciaObligatoria = false;
         EvidenciaLabel.Text = "Agrega una o más evidencias:";
@@ -321,6 +323,52 @@ public partial class ReportPage : ContentPage
         {
             System.Diagnostics.Debug.WriteLine($"[VialidadEstatal] No se pudo validar la ubicacion: {ex}");
         }
+    }
+
+    // Nombre/telefono/correo son de solo lectura y se editan en "Mi perfil" (PerfilPage, que
+    // guarda en el Ciudadano). Los datos guardados al iniciar sesion (CurrentUser) salen de la
+    // cuenta y no se actualizan al editar el perfil, asi que se refrescan desde /ciudadanos/me;
+    // si falla la consulta se quedan los guardados.
+    private async Task CargarDatosCiudadanoAsync()
+    {
+        try
+        {
+            var ciudadano = await _api.GetMyCiudadanoDetailsAsync();
+            if (ciudadano is null)
+            {
+                return;
+            }
+
+            var nombre = string.Join(" ", new[] { ciudadano.Nombre, ciudadano.Apaterno, ciudadano.Amaterno }
+                .Where(p => !string.IsNullOrWhiteSpace(p))
+                .Select(p => p!.Trim()));
+            var tieneTelefono = !string.IsNullOrWhiteSpace(ciudadano.Telefonomovil);
+            var tieneCorreo = !string.IsNullOrWhiteSpace(ciudadano.Correoelectronico);
+
+            if (!string.IsNullOrWhiteSpace(nombre))
+            {
+                NameEntry.Text = nombre;
+            }
+            // Si el perfil no trae el dato se respeta lo que haya (guardado o ya capturado).
+            if (tieneTelefono) PhoneEntry.Text = ciudadano.Telefonomovil!.Trim();
+            if (tieneCorreo) EmailEntry.Text = ciudadano.Correoelectronico!.Trim();
+            AjustarCamposEditables(tieneTelefono, tieneCorreo);
+        }
+        catch
+        {
+            // Sin conexion: se usan los datos guardados al iniciar sesion.
+        }
+    }
+
+    // El nombre nunca se edita al levantar un reporte (NameEntry es IsReadOnly en el XAML).
+    // Telefono y correo solo se pueden capturar si el ciudadano no los tiene registrados; si ya
+    // vienen con valor quedan de solo lectura (se cambian en "Mi perfil").
+    // Se decide por lo que trae el perfil, no por el texto del campo, para no bloquear un dato
+    // que el ciudadano ya estaba capturando mientras terminaba de cargar /ciudadanos/me.
+    private void AjustarCamposEditables(bool tieneTelefono, bool tieneCorreo)
+    {
+        PhoneEntry.IsReadOnly = tieneTelefono;
+        EmailEntry.IsReadOnly = tieneCorreo;
     }
 
     private async void OnPickImageTapped(object sender, TappedEventArgs e)
