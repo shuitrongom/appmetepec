@@ -33,7 +33,7 @@
                     <Border.StrokeShape>
                         <RoundRectangle CornerRadius="8" />
                     </Border.StrokeShape>
-                    <Entry x:Name="NameEntry" Placeholder="Nombre" FontSize="12" BackgroundColor="Transparent" TextColor="{AppThemeBinding Light=#333, Dark=White}" HorizontalTextAlignment="Center" HeightRequest="44" />
+                    <Entry x:Name="NameEntry" IsReadOnly="True" Placeholder="Nombre" FontSize="12" BackgroundColor="Transparent" TextColor="{AppThemeBinding Light=#333, Dark=White}" HorizontalTextAlignment="Center" HeightRequest="44" />
                 </Border>
                 <Border Stroke="{AppThemeBinding Light=#DDD, Dark=#3A3A3A}" StrokeThickness="1" BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" Padding="0">
                     <Border.StrokeShape>

@@ -10,4 +10,17 @@
 	<uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
 	<!-- Requerido desde Android 13 (API 33) para poder mostrar las notificaciones push de Firebase. -->
 	<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+	<!-- Android 11+ (visibilidad de paquetes): sin declarar estos intents, Android oculta la app de
+	     camara y MediaPicker.CapturePhotoAsync/CaptureVideoAsync lanzan FeatureNotSupportedException
+	     ("Tu dispositivo no es compatible con esta función"). Depende del fabricante, por eso a
+	     unos usuarios les fallaba y a otros no. -->
+	<queries>
+		<intent>
+			<action android:name="android.media.action.IMAGE_CAPTURE" />
+		</intent>
+		<intent>
+			<action android:name="android.media.action.VIDEO_CAPTURE" />
+		</intent>
+	</queries>
 </manifest>

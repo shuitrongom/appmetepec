@@ -11,6 +11,7 @@
                 <ResourceDictionary Source="Resources/Styles/Styles.xaml" />
             </ResourceDictionary.MergedDictionaries>
             <converters:HexToColorConverter x:Key="HexToColorConverter" />
+            <converters:SegmentosAFormattedStringConverter x:Key="SegmentosAFormattedStringConverter" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>
