@@ -65,15 +65,22 @@
             </VerticalStackLayout>
         </Grid>
 
-        <!-- Pista -->
-        <!-- Mismo tamano de fuente, colores, padding y posicion de siempre; solo cambia el
-             texto para que describa la accion que existe en el mapa (tocar un numero). Se
-             permiten hasta 2 lineas (MaxLines) sin subir el FontSize para que nunca se corte. -->
-        <Label Grid.Row="1" Text="Pica un número para ver las actividades del escenario"
-               VerticalOptions="End" HorizontalOptions="Center" Margin="16,0,16,16"
-               FontSize="12" TextColor="#5B2A86" BackgroundColor="#F2E9FA" Padding="12,6"
-               MaxLines="2" LineBreakMode="WordWrap"
-               HorizontalTextAlignment="Center" />
+        <!-- Pista superior (en el HUECO que deja el mapa cuadrado al entrar con "fit").
+             Va ANCLADA ARRIBA del area del mapa, centrada, con AIRE: ocupa esa franja vacia
+             entre el encabezado y la imagen del plano sin tapar el mapa ni los pines. Dos
+             micro-lineas con jerarquia (la segunda mas tenue) para que respire y se vea premium.
+             InputTransparent para no robar toques a los pines que quedaran por debajo. -->
+        <VerticalStackLayout Grid.Row="1" x:Name="PistaSuperior" Spacing="4"
+                             VerticalOptions="Start" HorizontalOptions="Center"
+                             Margin="24,18,24,0" InputTransparent="True">
+            <Label Text="Pica un número para ver las actividades del escenario"
+                   FontSize="13" TextColor="#5B2A86" HorizontalTextAlignment="Center"
+                   MaxLines="2" LineBreakMode="WordWrap" />
+            <Label Text="Inclina el teléfono para ver el plano en 3D"
+                   FontSize="11" TextColor="#9A8AAE" Opacity="0.9"
+                   HorizontalTextAlignment="Center"
+                   MaxLines="1" LineBreakMode="TailTruncation" />
+        </VerticalStackLayout>
 
         <!-- ══ INTRO DE PORTADA (overlay) ══
              Cubre toda la pantalla (las 2 filas) y se muestra UNA sola vez al abrir el

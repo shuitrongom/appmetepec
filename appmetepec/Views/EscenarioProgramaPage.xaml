@@ -72,20 +72,23 @@
         </Grid>
 
         <!-- Barra del dia seleccionado + boton "hoy" cuando se ve otro dia.
-             Se agrega una segunda fila con una micro-ayuda tenue (PistaAcciones) que menciona
-             las acciones que existen aqui: tocar una actividad, el calendario 📅 y, cuando
-             aplica, 📍 como llegar. Al ir dentro de la propia barra no empuja la lista. -->
-        <Grid Grid.Row="1" x:Name="DiaBar" RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto" Padding="16,12,16,8" BackgroundColor="#F2E9FA">
+             En una segunda fila va una micro-ayuda tenue (PistaAcciones) con las acciones que
+             existen aqui: tocar una actividad, el calendario 📅 y, cuando aplica, 📍 como llegar.
+             Antes se veia AMONTONADA bajo el dia; ahora RESPIRA: mas separacion sobre el dia
+             (RowSpacing + Margin superior), interlineado comodo (LineHeight) y espacio inferior.
+             Al ir dentro de la propia barra no empuja la lista. -->
+        <Grid Grid.Row="1" x:Name="DiaBar" RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto"
+              RowSpacing="8" Padding="16,14,16,12" BackgroundColor="#F2E9FA">
             <Label Grid.Row="0" Grid.Column="0" x:Name="DiaLabel" Text="" FontSize="16" FontAttributes="Bold"
                    TextColor="#5B2A86" VerticalOptions="Center" />
             <Button Grid.Row="0" Grid.Column="1" x:Name="HoyButton" Text="Hoy" IsVisible="False"
                     FontSize="13" Padding="14,4" CornerRadius="16"
                     BackgroundColor="#5B2A86" TextColor="White" Clicked="OnHoyClicked" />
             <!-- Micro-ayuda discreta: fuente pequena y color tenue, en segunda linea para no
-                 tapar la lista. El code-behind ajusta el texto segun exista o no "como llegar". -->
+                 tapar la lista. LineHeight para que, si envuelve, los renglones no queden pegados.
+                 El code-behind ajusta el texto segun exista o no "como llegar". -->
             <Label Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" x:Name="PistaAcciones" Text=""
-                   FontSize="11" TextColor="#9A8AAE" LineBreakMode="WordWrap"
-                   Margin="0,4,0,0" />
+                   FontSize="11" TextColor="#9A8AAE" LineBreakMode="WordWrap" LineHeight="1.35" />
         </Grid>
 
         <!-- Contenido: la programacion ocupa toda la fila; la ilustracion de la sede va ANCLADA
@@ -131,11 +134,21 @@
                         </CollectionView.ItemTemplate>
                     </CollectionView>
 
-                    <!-- Estado vacio -->
-                    <Label x:Name="VacioLabel"
-                           Text="No hay eventos este día en esta sede. Toca el calendario 📅 para ver otros días."
-                           FontSize="14" TextColor="#888" HorizontalTextAlignment="Center"
-                           Margin="0,30" IsVisible="False" />
+                    <!-- Estado vacio: antes se veia MUY JUNTO. Ahora RESPIRA — dos renglones con
+                         jerarquia (mensaje principal + ayuda tenue), interlineado comodo
+                         (LineHeight), padding generoso y el icono 📅 SEPARADO del texto (en su
+                         propia linea, no pegado a la palabra). Centrado y legible, premium. -->
+                    <VerticalStackLayout x:Name="VacioLabel" Spacing="10" IsVisible="False"
+                                         HorizontalOptions="Center" VerticalOptions="Center"
+                                         Padding="24,40">
+                        <Label Text="📅" FontSize="34" HorizontalTextAlignment="Center" Opacity="0.65" />
+                        <Label Text="No hay eventos este día en esta sede."
+                               FontSize="15" TextColor="#666" HorizontalTextAlignment="Center"
+                               LineHeight="1.35" MaxLines="2" LineBreakMode="WordWrap" />
+                        <Label Text="Toca el calendario para ver otros días."
+                               FontSize="13" TextColor="#9A8AAE" HorizontalTextAlignment="Center"
+                               LineHeight="1.35" MaxLines="2" LineBreakMode="WordWrap" />
+                    </VerticalStackLayout>
                 </VerticalStackLayout>
             </ScrollView>
 
