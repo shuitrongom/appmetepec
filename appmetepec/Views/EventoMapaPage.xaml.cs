@@ -63,6 +63,8 @@ public partial class EventoMapaPage : ContentPage
     private static readonly TimeSpan DuracionIntro = TimeSpan.FromMilliseconds(2200);
     // La intro se muestra una sola vez por instancia de pagina (al cargar el evento).
     private bool _introMostrada;
+    // true si el evento trae portada y por tanto se mostro el overlay (hay que esperarlo/ocultarlo).
+    private bool _introConPortada;
     private CancellationTokenSource? _introCts;
 
     // Evita suscribir el SizeChanged del Viewport mas de una vez.
@@ -145,6 +147,13 @@ public partial class EventoMapaPage : ContentPage
         }
 
         TitleLabel.Text = seleccionado.Nombre;
+
+        // PRIMERO la portada (si el evento la trae): se muestra de inmediato, a pantalla completa,
+        // mientras el mapa carga por DETRAS. Asi el orden que ve el ciudadano es siempre
+        // Portada -> Mapa, nunca Mapa(cargando) -> Portada -> Mapa. La portada la conocemos ya
+        // desde el listado (SelectedEvento), sin esperar el detalle.
+        MostrarIntroPortadaInmediata(seleccionado.ImagenPortadaUrl);
+
         await CargarEventoAsync(seleccionado.Id);
     }
 
@@ -152,7 +161,9 @@ public partial class EventoMapaPage : ContentPage
     {
         try
         {
-            BusyIndicator.IsVisible = BusyIndicator.IsRunning = true;
+            // El mapa arranca invisible: no mostramos spinner sobre la portada; mientras la
+            // portada luce, el mapa carga detras y se revela con la entrada premium.
+            BusyIndicator.IsVisible = BusyIndicator.IsRunning = !IntroOverlay.IsVisible;
             ErrorPanel.IsVisible = false;
 
             _evento = await _eventos.GetEventoDetalleAsync(idEvento);
@@ -194,15 +205,25 @@ public partial class EventoMapaPage : ContentPage
                 MapaLayout.Opacity = 0;
             }
 
-            // Efecto parallax 3D: engancha el acelerometro y arranca el lazo de suavizado.
-            IniciarParallax3D();
+            // Prepara el ancla de rotacion y arranca el FLOTAR de los pines, pero NO el lazo de
+            // parallax todavia: primero corre el barrido 3D de entrada sin que el lazo le pelee
+            // las rotaciones. El lazo (y el acelerometro) se enganchan despues de la entrada.
+            MapaLayout.AnchorX = 0.5;
+            MapaLayout.AnchorY = 0.5;
+            _parallaxInicializado = true;
 
-            // Intro de portada: una sola vez al abrir el evento, si lo trae.
-            await MostrarIntroPortadaAsync();
+            // La portada ya se mostro al entrar (MostrarIntroPortadaInmediata). Esperamos a que
+            // termine su lucimiento y se oculte ANTES de revelar el mapa, para que el orden sea
+            // Portada -> Mapa, sin que el mapa asome por detras antes de tiempo.
+            await EsperarYOcultarIntroAsync();
 
-            // Entrada premium del mapa (fade + leve asentamiento 3D), DESPUES de la intro de
-            // portada para que nunca se superpongan. Se ejecuta una sola vez.
+            // Entrada premium del mapa (fade + leve asentamiento 3D + barrido 3D automatico que
+            // hace VISIBLE el efecto aunque el telefono este quieto). Una sola vez.
             await AnimarEntradaMapaAsync();
+
+            // Ahora SI: engancha el acelerometro y arranca el lazo de parallax (continua desde el
+            // reposo que dejo el barrido). Si no hay sensor, deja el mapa plano y estable.
+            IniciarParallax3D();
         }
         catch (Exception ex)
         {
@@ -536,64 +557,86 @@ public partial class EventoMapaPage : ContentPage
         if (_entradaMostrada) return;
         _entradaMostrada = true;
 
-        // Estado inicial: ligeramente ampliado e invisible. OJO: no fijamos Scale a 1.04 de forma
-        // permanente; el lazo de parallax recalcula Scale cada frame, asi que al terminar la
-        // entrada el control vuelve al valor derivado del tilt (1 en reposo).
+        // Estado inicial: ligeramente ampliado e invisible, y con una leve inclinacion 3D de
+        // partida (como una maqueta ladeada) para que la entrada ya "entre" en 3D.
         MapaLayout.Opacity = 0;
         MapaLayout.Scale = 1.04;
+        MapaLayout.RotationY = -TiltMaxGrados;
+        MapaLayout.RotationX = TiltMaxGrados * 0.5;
 
+        // Fade-in + asentamiento de escala.
         await Task.WhenAll(
             MapaLayout.FadeTo(1, 400, Easing.CubicOut),
             MapaLayout.ScaleTo(1.0, 450, Easing.CubicOut));
+
+        // BARRIDO 3D AUTOMATICO: inclina la maqueta de un lado al otro y la asienta en plano.
+        // Hace el efecto 3D VISIBLE de inmediato aunque el telefono este quieto (en el emulador
+        // o si el usuario no lo mueve), que era justo lo que no se notaba. Si hay sensor, al
+        // terminar el lazo de parallax retoma el control segun la inclinacion real.
+        await MapaLayout.RotateYTo(TiltMaxGrados, 500, Easing.SinInOut);
+        await MapaLayout.RotateYTo(-TiltMaxGrados * 0.6, 450, Easing.SinInOut);
+        await Task.WhenAll(
+            MapaLayout.RotateYTo(0, 450, Easing.SinInOut),
+            MapaLayout.RotateXTo(0, 450, Easing.SinInOut));
+
+        // Sincroniza el estado del parallax con el reposo tras el barrido, para que el lazo
+        // continue suave desde 0 (sin salto) cuando llegue la primera lectura del sensor.
+        _tiltActualX = 0;
+        _tiltActualY = 0;
     }
 
     // --- Intro de portada (una sola vez al abrir el evento) ---
 
-    // Si el evento trae imagenPortadaUrl, muestra una intro a pantalla completa con fade +
-    // zoom suave y la oculta sola tras DuracionIntro (o cuando el usuario toca). Si no hay
-    // portada, no hace nada y el usuario ve el mapa directamente.
-    private async Task MostrarIntroPortadaAsync()
+    // Muestra la portada DE INMEDIATO al entrar (antes de cargar el mapa), a pantalla completa,
+    // con fade + zoom suave. No espera: solo la pone en pantalla y arranca su animacion de
+    // entrada. La espera y el ocultado los hace EsperarYOcultarIntroAsync una vez el mapa ya
+    // cargo por detras. Si no hay portada, no hace nada (flujo directo al mapa).
+    private void MostrarIntroPortadaInmediata(string? portadaUrl)
     {
-        if (_introMostrada || _evento is null) return;
+        if (_introMostrada) return;
         _introMostrada = true;
 
-        var portada = _evento.ImagenPortadaUrl;
-        if (string.IsNullOrWhiteSpace(portada))
+        if (string.IsNullOrWhiteSpace(portadaUrl))
         {
             return; // sin portada -> directo al mapa
         }
 
-        // Igual que el mapa: URL absoluta -> red; cualquier otro valor -> recurso local.
-        PortadaImagen.Source = Uri.TryCreate(portada, UriKind.Absolute, out var uri)
+        _introConPortada = true;
+
+        // URL absoluta -> red; cualquier otro valor -> recurso local.
+        PortadaImagen.Source = Uri.TryCreate(portadaUrl, UriKind.Absolute, out var uri)
                                && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
             ? ImageSource.FromUri(uri)
-            : ImageSource.FromFile(portada);
+            : ImageSource.FromFile(portadaUrl);
 
-        // Token para que un toque pueda saltar la intro en cualquier momento (incluso durante
-        // la animacion de entrada).
         _introCts = new CancellationTokenSource();
 
-        // Estado inicial de la animacion: invisible y ligeramente ampliada (zoom-in al entrar).
-        // El fondo negro SOLO durante la intro (letterbox del AspectFill); fuera de la intro el
-        // overlay queda transparente para que nunca quede un cuadro negro residual en pantalla.
+        // Fondo negro SOLO durante la intro (letterbox del AspectFill); al ocultarse vuelve a
+        // transparente para que no quede ningun cuadro negro residual.
         IntroOverlay.BackgroundColor = Colors.Black;
         IntroOverlay.Opacity = 0;
         IntroOverlay.Scale = 1.08;
         IntroOverlay.IsVisible = true;
 
-        await Task.WhenAll(
+        // Animacion de entrada de la portada (no se await: luce mientras el mapa carga detras).
+        _ = Task.WhenAll(
             IntroOverlay.FadeTo(1, 450, Easing.CubicOut),
             IntroOverlay.ScaleTo(1.0, 2200, Easing.CubicOut));
+    }
 
-        // Espera el resto del tiempo de lucimiento; si el usuario toca, se cancela y sale ya.
-        // El token puede estar ya cancelado si el toque llegó durante la animación de entrada.
+    // Espera el tiempo de lucimiento de la portada (o a que el usuario toque) y la oculta. Si no
+    // hubo portada, retorna de inmediato. Se llama cuando el mapa YA cargo por detras.
+    private async Task EsperarYOcultarIntroAsync()
+    {
+        if (!_introConPortada) return;
+
         try
         {
-            await Task.Delay(DuracionIntro, _introCts.Token);
+            await Task.Delay(DuracionIntro, _introCts!.Token);
         }
         catch (TaskCanceledException)
         {
-            // El usuario saltó la intro con un toque: salimos sin esperar.
+            // El usuario salto la intro con un toque: salimos sin esperar.
         }
 
         await OcultarIntroAsync();

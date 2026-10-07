@@ -18,8 +18,10 @@
             <Label Grid.Column="1" x:Name="TitleLabel" Text="Eventos" FontSize="18" FontAttributes="Bold"
                    VerticalOptions="Center" HorizontalOptions="Center" TextColor="#5B2A86"
                    LineBreakMode="TailTruncation" />
-            <!-- Columna derecha reservada para equilibrar el titulo centrado (sin boton de zoom). -->
-            <BoxView Grid.Column="2" WidthRequest="34" Color="Transparent" />
+            <!-- Columna derecha reservada para equilibrar el titulo centrado (sin boton de zoom).
+                 Es un ContentView vacio (NO un BoxView con Color="Transparent", que en iOS a
+                 veces se renderiza como un cuadro NEGRO). Solo reserva ancho, no pinta nada. -->
+            <ContentView Grid.Column="2" WidthRequest="34" />
         </Grid>
 
         <!-- Area del mapa: un contenedor fijo (clip) donde se mueve/escala el contenido. -->
