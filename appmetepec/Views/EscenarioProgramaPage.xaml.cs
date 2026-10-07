@@ -248,17 +248,24 @@ public partial class EscenarioProgramaPage : ContentPage
         var info = DeviceDisplay.Current.MainDisplayInfo;
         var altoPantallaDip = info.Density > 0 ? info.Height / info.Density : 640;
 
-        // Alto objetivo: 48% de la pantalla, acotado entre 240 y 460 DIP (ni minusculo ni enorme).
-        var alto = Math.Clamp(altoPantallaDip * 0.48, 240, 460);
+        // Alto objetivo MAS GENEROSO: 62% de la pantalla, acotado entre 300 y 560 DIP, para que
+        // la ilustracion se vea GRANDE (es una capa de fondo, ya no compite con el texto).
+        var alto = Math.Clamp(altoPantallaDip * 0.62, 300, 560);
         var ancho = alto * 0.62;
 
         ImagenEscenario.HeightRequest = alto;
         ImagenEscenario.WidthRequest = ancho;
 
-        // La programacion reserva a la derecha un poco menos que el ancho de la imagen (parte de
-        // la imagen puede quedar sobre el fondo blanco inferior sin texto), con un minimo prudente.
-        var reservaDerecha = Math.Max(110, ancho * 0.78);
-        ProgramaStack.Padding = new Thickness(16, 16, reservaDerecha, 16);
+        // La imagen REBASA el borde derecho: se empuja hacia afuera ~1/4 de su ancho (TranslationX
+        // positivo), de modo que se vea ~3/4 y el otro 1/4 quede recortado fuera de pantalla
+        // (efecto premium pedido). ContenidoGrid tiene IsClippedToBounds para que el recorte sea
+        // limpio. Se guarda la base para que el parallax del giroscopio la use como punto de partida.
+        _imgTranslationXBase = ancho * 0.25;
+        ImagenEscenario.TranslationX = _imgTranslationXBase;
+
+        // La programacion ya NO reserva franja a la derecha: ocupa TODO el ancho para que los
+        // titulos se lean en lineas normales. La imagen va DEBAJO (capa de fondo), no la tapa.
+        ProgramaStack.Padding = new Thickness(16);
     }
 
     // --- Efecto 3D de la ilustracion de la sede (flotacion continua + parallax por giroscopio) ---
@@ -286,6 +293,10 @@ public partial class EscenarioProgramaPage : ContentPage
     private int _imgGeneracionFlotar;
     // Fase del balanceo automatico (avanza cada frame del lazo de parallax).
     private double _imgFaseBalanceo;
+    // Base de TranslationX (empuje fuera de pantalla ~1/4 del ancho). La calcula
+    // DimensionarImagenEscenario segun el ancho real; el parallax del giroscopio suma su delta
+    // sobre esta base para no "regresar" la imagen al borde.
+    private double _imgTranslationXBase = 34;
 
     private void IniciarImagen3D()
     {
@@ -354,9 +365,9 @@ public partial class EscenarioProgramaPage : ContentPage
             // Respiro de escala muy sutil (±2%) acompasado al balanceo: da sensacion de volumen.
             ImagenEscenario.Scale = 1 + (Math.Sin(_imgFaseBalanceo) * 0.02);
 
-            // Parallax horizontal (base: la imagen esta trasladada 34px a la derecha por el XAML,
-            // se suma el delta del parallax).
-            ImagenEscenario.TranslationX = 34 + ((-_imgTiltActualY / ImgTiltMaxGrados) * ImgParallaxFactor);
+            // Parallax horizontal: parte de la base (empuje fuera de pantalla ~1/4 del ancho,
+            // calculada en DimensionarImagenEscenario) y se suma el delta del parallax.
+            ImagenEscenario.TranslationX = _imgTranslationXBase + ((-_imgTiltActualY / ImgTiltMaxGrados) * ImgParallaxFactor);
 
             await Task.Delay(16); // ~60 fps
         }

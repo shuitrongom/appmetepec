@@ -21,6 +21,8 @@ namespace appmetepec
             builder
                 .UseMauiApp<App>()
                 .UseMauiCommunityToolkit()
+                // Habilita <toolkit:MediaElement> para el reproductor de video de las noticias.
+                .UseMauiCommunityToolkitMediaElement()
                 .ConfigureFonts(fonts =>
                 {
                     fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
