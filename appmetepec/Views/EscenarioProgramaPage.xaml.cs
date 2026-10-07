@@ -347,8 +347,9 @@ public partial class EscenarioProgramaPage : ContentPage
             // Respiro de escala muy sutil (±2%) acompasado al balanceo: da sensacion de volumen.
             ImagenEscenario.Scale = 1 + (Math.Sin(_imgFaseBalanceo) * 0.02);
 
-            // Parallax horizontal (base: la imagen esta trasladada 14px por el XAML, se suma el delta).
-            ImagenEscenario.TranslationX = 14 + ((-_imgTiltActualY / ImgTiltMaxGrados) * ImgParallaxFactor);
+            // Parallax horizontal (base: la imagen esta trasladada 34px a la derecha por el XAML,
+            // se suma el delta del parallax).
+            ImagenEscenario.TranslationX = 34 + ((-_imgTiltActualY / ImgTiltMaxGrados) * ImgParallaxFactor);
 
             await Task.Delay(16); // ~60 fps
         }
