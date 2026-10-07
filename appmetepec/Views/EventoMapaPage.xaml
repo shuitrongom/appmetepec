@@ -5,6 +5,13 @@
              Shell.NavBarIsVisible="False"
              BackgroundColor="White">
 
+    <!-- Fuente institucional del modulo de Eventos: "Como" en todos los Label de esta pagina. -->
+    <ContentPage.Resources>
+        <Style TargetType="Label">
+            <Setter Property="FontFamily" Value="Como" />
+        </Style>
+    </ContentPage.Resources>
+
     <Grid RowDefinitions="Auto,*">
 
         <!-- Encabezado -->
@@ -59,9 +66,13 @@
         </Grid>
 
         <!-- Pista -->
-        <Label Grid.Row="1" Text="Toca un número para ver su programación"
+        <!-- Mismo tamano de fuente, colores, padding y posicion de siempre; solo cambia el
+             texto para que describa la accion que existe en el mapa (tocar un numero). Se
+             permiten hasta 2 lineas (MaxLines) sin subir el FontSize para que nunca se corte. -->
+        <Label Grid.Row="1" Text="Pica un número para ver las actividades del escenario"
                VerticalOptions="End" HorizontalOptions="Center" Margin="16,0,16,16"
                FontSize="12" TextColor="#5B2A86" BackgroundColor="#F2E9FA" Padding="12,6"
+               MaxLines="2" LineBreakMode="WordWrap"
                HorizontalTextAlignment="Center" />
 
         <!-- ══ INTRO DE PORTADA (overlay) ══

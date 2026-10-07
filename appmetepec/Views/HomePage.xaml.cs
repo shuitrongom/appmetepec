@@ -23,7 +23,9 @@ public partial class HomePage : ContentPage
     private bool _categoriesLoaded;
     private bool _loadingCategories;
     private bool _eventosLoaded;
-    private BackendEventoDto? _eventoActivo;
+    // Lista COMPLETA de eventos activos (antes se guardaba solo el primero -> con 2+ activos
+    // solo se veia uno; ahora se conservan todos para poder ofrecer el selector).
+    private List<BackendEventoDto> _eventosActivos = [];
 
     public HomePage(ReportCatalogService catalog, MetepecApiService api, NavigationState navigationState, PreferencesService preferences, PushRegistrationService pushRegistration, EventosService eventos)
     {
@@ -637,13 +639,17 @@ public partial class HomePage : ContentPage
         try
         {
             var activos = await _eventos.GetEventosActivosAsync();
-            _eventoActivo = activos.FirstOrDefault();
+            _eventosActivos = activos;
 
-            if (_eventoActivo is not null)
+            if (_eventosActivos.Count > 0)
             {
-                // Si el evento tiene nombre propio, se usa como etiqueta ("Quimera 2026");
-                // si no, queda el generico "Eventos".
-                var etiqueta = string.IsNullOrWhiteSpace(_eventoActivo.Nombre) ? "Eventos" : _eventoActivo.Nombre;
+                // Con un solo evento activo, se usa su nombre propio como etiqueta
+                // ("Quimera 2026"); con 2 o mas se usa el generico "Eventos" (el ciudadano
+                // elegira cual en el selector). Si el unico evento no trae nombre, tambien
+                // queda el generico.
+                var etiqueta = _eventosActivos.Count == 1 && !string.IsNullOrWhiteSpace(_eventosActivos[0].Nombre)
+                    ? _eventosActivos[0].Nombre
+                    : "Eventos";
                 DrawerEventosLabel.Text = etiqueta;
                 DrawerEventosItem.IsVisible = true;
 
@@ -661,6 +667,7 @@ public partial class HomePage : ContentPage
         }
         catch
         {
+            _eventosActivos = [];
             DrawerEventosItem.IsVisible = false;
             MostrarTabEventos(false);
             // _eventosLoaded se queda en false: se reintenta en el proximo OnAppearing.
@@ -698,14 +705,30 @@ public partial class HomePage : ContentPage
         await AbrirEventoActivoAsync();
     }
 
+    // Abre el evento activo. Con 1 solo activo navega directo a su mapa (igual que antes).
+    // Con 2 o mas, muestra el selector premium para que el ciudadano elija a cual entrar;
+    // si cierra el selector sin elegir, no navega.
     private async Task AbrirEventoActivoAsync()
     {
-        if (_eventoActivo is null)
+        if (_eventosActivos.Count == 0)
         {
             return;
         }
 
-        _navigationState.SelectedEvento = _eventoActivo;
+        if (_eventosActivos.Count == 1)
+        {
+            _navigationState.SelectedEvento = _eventosActivos[0];
+            await Shell.Current.GoToAsync(nameof(EventoMapaPage));
+            return;
+        }
+
+        var elegido = await EventoSelectorPage.PickAsync(Navigation, _eventosActivos);
+        if (elegido is null)
+        {
+            return;
+        }
+
+        _navigationState.SelectedEvento = elegido;
         await Shell.Current.GoToAsync(nameof(EventoMapaPage));
     }
 

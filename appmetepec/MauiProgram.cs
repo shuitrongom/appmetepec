@@ -25,6 +25,14 @@ namespace appmetepec
                 {
                     fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
                     fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
+                    // Fuente "Como" (la del modulo de Eventos). Alias por peso para usarlos como
+                    // FontFamily en el XAML/code-behind (p.ej. FontFamily="ComoSemiBold").
+                    fonts.AddFont("Como.ttf", "Como");
+                    fonts.AddFont("Como-Light.ttf", "ComoLight");
+                    fonts.AddFont("Como-Medium.ttf", "ComoMedium");
+                    fonts.AddFont("Como-SemiBold.ttf", "ComoSemiBold");
+                    fonts.AddFont("Como-Bold.ttf", "ComoBold");
+                    fonts.AddFont("Como-ExtraBold.ttf", "ComoExtraBold");
                 })
                 .ConfigureLifecycleEvents(events =>
                 {

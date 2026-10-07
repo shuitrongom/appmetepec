@@ -5,6 +5,15 @@
              Shell.NavBarIsVisible="False"
              BackgroundColor="White">
 
+    <!-- Fuente institucional del modulo de Eventos: estilo implicito que aplica "Como" a TODOS
+         los Label de esta pagina (sin tocar cada uno). Los Label que necesiten un peso distinto
+         (negrita) lo logran con FontAttributes como ya lo hacen. -->
+    <ContentPage.Resources>
+        <Style TargetType="Label">
+            <Setter Property="FontFamily" Value="Como" />
+        </Style>
+    </ContentPage.Resources>
+
     <Grid RowDefinitions="Auto,Auto,*">
 
         <!-- Encabezado: volver al mapa + nombre del escenario + icono calendario.
@@ -62,13 +71,21 @@
             </HorizontalStackLayout>
         </Grid>
 
-        <!-- Barra del dia seleccionado + boton "hoy" cuando se ve otro dia -->
-        <Grid Grid.Row="1" x:Name="DiaBar" ColumnDefinitions="*,Auto" Padding="16,12,16,8" BackgroundColor="#F2E9FA">
-            <Label Grid.Column="0" x:Name="DiaLabel" Text="" FontSize="16" FontAttributes="Bold"
+        <!-- Barra del dia seleccionado + boton "hoy" cuando se ve otro dia.
+             Se agrega una segunda fila con una micro-ayuda tenue (PistaAcciones) que menciona
+             las acciones que existen aqui: tocar una actividad, el calendario 📅 y, cuando
+             aplica, 📍 como llegar. Al ir dentro de la propia barra no empuja la lista. -->
+        <Grid Grid.Row="1" x:Name="DiaBar" RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto" Padding="16,12,16,8" BackgroundColor="#F2E9FA">
+            <Label Grid.Row="0" Grid.Column="0" x:Name="DiaLabel" Text="" FontSize="16" FontAttributes="Bold"
                    TextColor="#5B2A86" VerticalOptions="Center" />
-            <Button Grid.Column="1" x:Name="HoyButton" Text="Hoy" IsVisible="False"
+            <Button Grid.Row="0" Grid.Column="1" x:Name="HoyButton" Text="Hoy" IsVisible="False"
                     FontSize="13" Padding="14,4" CornerRadius="16"
                     BackgroundColor="#5B2A86" TextColor="White" Clicked="OnHoyClicked" />
+            <!-- Micro-ayuda discreta: fuente pequena y color tenue, en segunda linea para no
+                 tapar la lista. El code-behind ajusta el texto segun exista o no "como llegar". -->
+            <Label Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" x:Name="PistaAcciones" Text=""
+                   FontSize="11" TextColor="#9A8AAE" LineBreakMode="WordWrap"
+                   Margin="0,4,0,0" />
         </Grid>
 
         <!-- Contenido: la programacion ocupa toda la fila; la ilustracion de la sede va ANCLADA
@@ -81,10 +98,15 @@
             <!-- Programacion del dia -->
             <ScrollView Grid.Row="0">
                 <VerticalStackLayout x:Name="ProgramaStack" Padding="16" Spacing="12">
-                    <CollectionView x:Name="ActividadesView" SelectionMode="None">
+                    <!-- SelectionMode Single + SelectionChanged: al tocar una fila el code-behind
+                         decide si abre el modal de detalle (solo si la actividad tiene descripcion
+                         con texto; si no, no-op). La seleccion se limpia al instante para no dejar
+                         la fila marcada. -->
+                    <CollectionView x:Name="ActividadesView" SelectionMode="Single"
+                                    SelectionChanged="OnActividadSeleccionada">
                         <CollectionView.ItemTemplate>
                             <DataTemplate>
-                                <Grid ColumnDefinitions="Auto,Auto,*" Padding="0,8" ColumnSpacing="12">
+                                <Grid ColumnDefinitions="Auto,Auto,*,Auto" Padding="0,8" ColumnSpacing="12">
                                     <!-- Hora -->
                                     <Label Grid.Column="0" Text="{Binding HoraTexto}" FontSize="15"
                                            FontAttributes="Bold" TextColor="{Binding Color}" WidthRequest="60"
@@ -97,6 +119,13 @@
                                          el code-behind a partir de las lineas de la actividad. -->
                                     <Label Grid.Column="2" FormattedText="{Binding Contenido}"
                                            LineBreakMode="WordWrap" VerticalOptions="Center" />
+                                    <!-- Indicador sutil "ver mas": solo visible en filas con descripcion
+                                         (TieneDescripcion), sugiere que esa actividad abre el detalle.
+                                         No altera el Label de FormattedText. -->
+                                    <Label Grid.Column="3" Text="&#8250;" FontSize="22"
+                                           TextColor="{Binding Color}" Opacity="0.55"
+                                           IsVisible="{Binding TieneDescripcion}"
+                                           VerticalOptions="Center" />
                                 </Grid>
                             </DataTemplate>
                         </CollectionView.ItemTemplate>

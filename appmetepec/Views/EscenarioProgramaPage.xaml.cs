@@ -53,6 +53,13 @@ public partial class EscenarioProgramaPage : ContentPage
         // en su defecto, una direccion en texto para que el mapa la geolocalice.
         ComoLlegarBtn.IsVisible = TieneCoordenadas() || !string.IsNullOrWhiteSpace(_escenario.Direccion);
 
+        // Micro-ayuda tenue: solo menciona acciones que REALMENTE existen en esta pantalla.
+        // Tocar una actividad y el calendario 📅 siempre estan; el fragmento 📍 "como llegar"
+        // se omite cuando el escenario no tiene coordenadas ni direccion (boton oculto).
+        PistaAcciones.Text = ComoLlegarBtn.IsVisible
+            ? "Toca una actividad para ver su detalle · 📅 otros días · 📍 cómo llegar"
+            : "Toca una actividad para ver su detalle · 📅 otros días";
+
         // Imagen propia de la sede (opcional, la sube el admin): si viene, se muestra a la
         // derecha de la programacion como ilustracion premium de la sede.
         MostrarImagenEscenario(_escenario.ImagenUrl);
@@ -81,7 +88,7 @@ public partial class EscenarioProgramaPage : ContentPage
         var items = _escenario.Actividades
             .Where(a => a.Fecha.Date == _diaSeleccionado)
             .OrderBy(a => MinutosDesdeMedianoche(a.HoraInicio))
-            .Select(a => new ActividadItem(a, _colorEscenario))
+            .Select(a => new ActividadItem(a, _colorEscenario, _escenario!.Nombre))
             .ToList();
 
         ActividadesView.ItemsSource = items;
@@ -425,6 +432,26 @@ public partial class EscenarioProgramaPage : ContentPage
         await Shell.Current.GoToAsync("..");
     }
 
+    // Toque sobre una fila de la programacion. REGLA DEL USUARIO: el modal de detalle abre
+    // SOLO si la actividad tiene descripcion con texto (no null, no solo espacios). Si no
+    // tiene descripcion, tocar la fila NO abre nada (no-op). En ambos casos se limpia la
+    // seleccion para no dejar la fila marcada (la lista es de solo lectura).
+    private async void OnActividadSeleccionada(object sender, SelectionChangedEventArgs e)
+    {
+        if (e.CurrentSelection.FirstOrDefault() is ActividadItem item)
+        {
+            // Siempre desmarca la fila (no queremos resaltado persistente).
+            ActividadesView.SelectedItem = null;
+
+            // Solo abre el modal si la actividad trae descripcion con texto.
+            if (item.TieneDescripcion)
+            {
+                await ActividadDetallePage.PickAsync(
+                    Navigation, item.SedeNombre, item.HoraRango, item.Actividad, _colorEscenario);
+            }
+        }
+    }
+
     // Al salir de la pagina: detiene el efecto 3D de la imagen (libera el acelerometro y para
     // los lazos) para no gastar bateria ni dejar animaciones corriendo.
     protected override void OnDisappearing()
@@ -457,25 +484,79 @@ public partial class EscenarioProgramaPage : ContentPage
     // Item de presentacion para el CollectionView.
     private sealed class ActividadItem
     {
+        public ActividadItem(BackendActividadDto a, Color colorEscenario, string sedeNombre)
+        {
+            Actividad = a;
+            SedeNombre = sedeNombre;
+            HoraTexto = ConstruirHora(a.HoraInicio, a.HoraFin);
+            HoraRango = ConstruirHoraRango(a.HoraInicio, a.HoraFin);
+            Color = colorEscenario;
+            Contenido = ActividadFormato.Construir(a);
+            Descripcion = a.Descripcion;
+            TieneDescripcion = !string.IsNullOrWhiteSpace(a.Descripcion);
+        }
+
+        // Actividad original: la conserva para reconstruir el contenido con formato en el
+        // modal (un mismo FormattedString no puede tener dos Labels padre, por eso el modal
+        // construye su propia instancia a partir de este DTO) y para leer la descripcion.
+        public BackendActividadDto Actividad { get; }
+
+        // Nombre de la sede (escenario): encabezado del modal.
+        public string SedeNombre { get; }
+
+        public string HoraTexto { get; }
+
+        // Rango de hora en UNA sola linea con guion ("HH:mm - HH:mm"), para el encabezado del
+        // modal (en la lista se usa HoraTexto, que va en dos renglones).
+        public string HoraRango { get; }
+
+        public Color Color { get; }
+
+        // Descripcion opcional (= Actividad.Descripcion) y bandera derivada que la lista usa
+        // para el gesto (abrir modal) y para el indicador sutil de "ver mas".
+        public string? Descripcion { get; }
+        public bool TieneDescripcion { get; }
+
+        // Contenido con formato para la LISTA: su propia instancia de FormattedString (el modal
+        // construye otra aparte con ActividadFormato.Construir).
+        public FormattedString Contenido { get; }
+
+        // Rango horario para la LISTA: inicio y fin en dos renglones (como el programa impreso);
+        // si solo hay inicio, muestra solo ese; si no hay hora, cadena vacia.
+        private static string ConstruirHora(string? inicio, string? fin)
+        {
+            var ini = ActividadFormato.NormalizarHora(inicio);
+            var f = ActividadFormato.NormalizarHora(fin);
+            if (ini is not null && f is not null) return $"{ini}\n{f}";
+            if (ini is not null) return ini;
+            if (f is not null) return f;
+            return "";
+        }
+
+        // Rango horario en UNA sola linea con guion para el encabezado del modal.
+        private static string ConstruirHoraRango(string? inicio, string? fin)
+        {
+            var ini = ActividadFormato.NormalizarHora(inicio);
+            var f = ActividadFormato.NormalizarHora(fin);
+            if (ini is not null && f is not null) return $"{ini} - {f}";
+            if (ini is not null) return ini;
+            if (f is not null) return f;
+            return "";
+        }
+    }
+
+    // Helper estatico reutilizable para armar las lineas con formato de una actividad. Tanto la
+    // lista como el modal lo llaman para construir su PROPIA instancia de FormattedString (un
+    // mismo FormattedString no puede estar asignado a dos Labels a la vez -> error de "parent").
+    internal static class ActividadFormato
+    {
         // Color por defecto de una linea cuando el backend no define uno.
         private static readonly Color TextoPorDefecto = Color.FromArgb("#222222");
 
-        public ActividadItem(BackendActividadDto a, Color colorEscenario)
-        {
-            HoraTexto = ConstruirHora(a.HoraInicio, a.HoraFin);
-            Color = colorEscenario;
-            Contenido = ConstruirContenido(a);
-        }
-
-        public string HoraTexto { get; }
-        public Color Color { get; }
-
-        // Contenido con formato: cada linea de la actividad se vuelve un Span con su propio
-        // estilo (negrita, cursiva, color, fuente, tamano). Las lineas se separan con salto
-        // de linea. Si la actividad no trae lineas, muestra un texto discreto por defecto.
-        public FormattedString Contenido { get; }
-
-        private static FormattedString ConstruirContenido(BackendActividadDto a)
+        // Construye el FormattedString: cada linea de la actividad se vuelve un Span con su
+        // propio estilo (negrita, cursiva, color, fuente, tamano), separados por salto de linea.
+        // Si la actividad no trae lineas, muestra un texto discreto por defecto.
+        public static FormattedString Construir(BackendActividadDto a)
         {
             var fs = new FormattedString();
 
@@ -533,22 +614,9 @@ public partial class EscenarioProgramaPage : ContentPage
             catch { return TextoPorDefecto; }
         }
 
-        // Rango horario a partir de las horas ya formateadas "HH:mm" del backend.
-        // Inicio y fin van en dos renglones (como el programa impreso); si solo hay inicio,
-        // muestra solo ese; si no hay hora, cadena vacia.
-        private static string ConstruirHora(string? inicio, string? fin)
-        {
-            var ini = Normalizar(inicio);
-            var f = Normalizar(fin);
-            if (ini is not null && f is not null) return $"{ini}\n{f}";
-            if (ini is not null) return ini;
-            if (f is not null) return f;
-            return "";
-        }
-
         // Deja la hora "HH:mm" tal cual (ya viene formateada del backend). Si viniera con
         // segundos "HH:mm:ss", recorta a "HH:mm". null/vacio -> null.
-        private static string? Normalizar(string? hhmm)
+        public static string? NormalizarHora(string? hhmm)
         {
             if (string.IsNullOrWhiteSpace(hhmm)) return null;
             var partes = hhmm.Split(':');
