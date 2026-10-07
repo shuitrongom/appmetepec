@@ -101,15 +101,18 @@
             <!-- Programacion del dia -->
             <ScrollView Grid.Row="0">
                 <VerticalStackLayout x:Name="ProgramaStack" Padding="16" Spacing="12">
-                    <!-- SelectionMode Single + SelectionChanged: al tocar una fila el code-behind
-                         decide si abre el modal de detalle (solo si la actividad tiene descripcion
-                         con texto; si no, no-op). La seleccion se limpia al instante para no dejar
-                         la fila marcada. -->
-                    <CollectionView x:Name="ActividadesView" SelectionMode="Single"
-                                    SelectionChanged="OnActividadSeleccionada">
+                    <!-- Sin SelectionMode: la seleccion nativa pintaba un fondo gris feo al tocar.
+                         En su lugar, cada fila lleva un TapGestureRecognizer; el code-behind
+                         (OnActividadTocada) abre el modal SOLO si la actividad tiene descripcion.
+                         Asi no hay resaltado gris: el toque es limpio y premium. -->
+                    <CollectionView x:Name="ActividadesView" SelectionMode="None">
                         <CollectionView.ItemTemplate>
                             <DataTemplate>
-                                <Grid ColumnDefinitions="Auto,Auto,*,Auto" Padding="0,8" ColumnSpacing="12">
+                                <Grid ColumnDefinitions="Auto,Auto,*,Auto" Padding="0,8" ColumnSpacing="12"
+                                      BackgroundColor="Transparent">
+                                    <Grid.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="OnActividadTocada" />
+                                    </Grid.GestureRecognizers>
                                     <!-- Hora -->
                                     <Label Grid.Column="0" Text="{Binding HoraTexto}" FontSize="15"
                                            FontAttributes="Bold" TextColor="{Binding Color}" WidthRequest="60"
