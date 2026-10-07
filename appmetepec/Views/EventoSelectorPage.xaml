@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:ios="clr-namespace:Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific;assembly=Microsoft.Maui.Controls"
+             x:Class="appmetepec.Views.EventoSelectorPage"
+             Shell.NavBarIsVisible="False"
+             ios:Page.UseSafeArea="True"
+             BackgroundColor="#80000000">
+
+    <!-- Fuente institucional del modulo de Eventos: "Como" en todos los Label del selector. -->
+    <ContentPage.Resources>
+        <Style TargetType="Label">
+            <Setter Property="FontFamily" Value="Como" />
+        </Style>
+    </ContentPage.Resources>
+
+    <!-- Selector premium de evento: mismo lenguaje visual que ActividadDetallePage (scrim
+         semitransparente + tarjeta blanca con esquinas redondeadas y sombra + animacion de
+         entrada/salida). Aparece solo cuando hay 2 o mas eventos activos, para que el ciudadano
+         elija a cual mapa entrar. El tamano (ancho/alto maximos) lo fija el code-behind de forma
+         responsive segun la pantalla, para que no se corte ni desborde en ningun dispositivo. -->
+    <Grid Padding="22" VerticalOptions="Center">
+        <Border x:Name="Tarjeta" BackgroundColor="White" StrokeThickness="0"
+                StrokeShape="RoundRectangle 22" HorizontalOptions="Center">
+            <Border.Shadow>
+                <Shadow Brush="#000000" Opacity="0.35" Radius="30" Offset="0,10" />
+            </Border.Shadow>
+
+            <Grid RowDefinitions="Auto,*">
+
+                <!-- Barra/acento superior institucional (morado Metepec). -->
+                <BoxView Grid.Row="0" HeightRequest="6" Color="#5B2A86" />
+
+                <Grid Grid.Row="1" RowDefinitions="Auto,*,Auto" Padding="22,18,22,20" RowSpacing="12">
+
+                    <!-- Titulo del selector. -->
+                    <Label Grid.Row="0" Text="Elige un evento" FontSize="19" FontAttributes="Bold"
+                           TextColor="#5B2A86" LineBreakMode="WordWrap" />
+
+                    <!-- Lista de eventos activos. SelectionMode Single: al elegir uno se navega a
+                         su mapa. El propio CollectionView hace scroll si hay muchos eventos. -->
+                    <CollectionView x:Name="EventosView" Grid.Row="1"
+                                    SelectionMode="Single" SelectionChanged="OnEventoSeleccionado">
+                        <CollectionView.ItemsLayout>
+                            <LinearItemsLayout Orientation="Vertical" ItemSpacing="10" />
+                        </CollectionView.ItemsLayout>
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <!-- Cada evento: miniatura (portada/mapa/placeholder) + nombre y
+                                     fechas. Fondo tenue con esquinas redondeadas (tarjeta de item). -->
+                                <Border BackgroundColor="#F6F3FB" StrokeThickness="0"
+                                        StrokeShape="RoundRectangle 14" Padding="10">
+                                    <Grid ColumnDefinitions="64,*" ColumnSpacing="12"
+                                          VerticalOptions="Center">
+                                        <Border Grid.Column="0" WidthRequest="64" HeightRequest="64"
+                                                StrokeThickness="0" StrokeShape="RoundRectangle 10"
+                                                BackgroundColor="#E7E0F2">
+                                            <Image Source="{Binding ImagenFuente}" Aspect="AspectFill"
+                                                   WidthRequest="64" HeightRequest="64" />
+                                        </Border>
+                                        <VerticalStackLayout Grid.Column="1" Spacing="2"
+                                                             VerticalOptions="Center">
+                                            <Label Text="{Binding Nombre}" FontSize="16"
+                                                   FontAttributes="Bold" TextColor="#333"
+                                                   LineBreakMode="WordWrap" />
+                                            <Label Text="{Binding Fechas}" FontSize="13"
+                                                   TextColor="#888" LineBreakMode="WordWrap" />
+                                        </VerticalStackLayout>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+
+                    <!-- Boton Cerrar claro, con el color de acento institucional. -->
+                    <Button x:Name="CerrarBtn" Grid.Row="2" Text="Cerrar" Clicked="OnCerrarClicked"
+                            BackgroundColor="Transparent" TextColor="#5B2A86"
+                            FontAttributes="Bold" />
+                </Grid>
+            </Grid>
+        </Border>
+    </Grid>
+</ContentPage>
