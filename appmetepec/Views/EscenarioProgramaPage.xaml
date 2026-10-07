@@ -106,7 +106,7 @@
                  fuera de pantalla los calcula el code-behind PROPORCIONAL al dispositivo.
                  Flota en 3D (flotacion + giroscopio) desde el code-behind. -->
             <Image Grid.Row="0" x:Name="ImagenEscenario" IsVisible="False"
-                   Aspect="AspectFit" InputTransparent="True" Opacity="0.9"
+                   Aspect="AspectFit" InputTransparent="True" Opacity="0.95"
                    HorizontalOptions="End" VerticalOptions="End" />
 
             <!-- Programacion del dia: va ENCIMA de la imagen y ocupa TODO el ancho de la pagina
