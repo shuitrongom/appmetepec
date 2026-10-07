@@ -44,7 +44,7 @@
                 <Border x:Name="ComoLlegarBtn" WidthRequest="40" HeightRequest="40" BackgroundColor="#33FFFFFF"
                         StrokeThickness="0" VerticalOptions="Center"
                         StrokeShape="RoundRectangle 20">
-                    <Label Text="🧭" FontSize="20" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+                    <Label Text="📍" FontSize="20" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
                     <Border.GestureRecognizers>
                         <TapGestureRecognizer Tapped="OnComoLlegarTapped" />
                     </Border.GestureRecognizers>
