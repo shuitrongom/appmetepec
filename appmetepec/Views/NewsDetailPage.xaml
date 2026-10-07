@@ -47,8 +47,16 @@
                         <toolkit:MediaElement x:Name="VideoInline" HeightRequest="210"
                                               ShouldAutoPlay="False" ShouldShowPlaybackControls="True"
                                               Aspect="AspectFit" BackgroundColor="Black" />
-                        <!-- Boton flotante "pantalla completa" arriba a la derecha del video -->
-                        <Border HorizontalOptions="End" VerticalOptions="Start" Margin="10"
+                        <!-- Reproductor de YouTube embebido (iframe dentro de un WebView). Se usa en
+                             runtime SOLO cuando videoUrl es un enlace de YouTube; para .mp4 se usa el
+                             MediaElement de arriba. Mismo alto (~16:9) para que la noticia se vea
+                             consistente. Oculto por defecto; OnAppearing decide cual mostrar. -->
+                        <WebView x:Name="VideoYoutube" HeightRequest="210" IsVisible="False"
+                                 BackgroundColor="Black" />
+                        <!-- Boton flotante "pantalla completa" arriba a la derecha del video. Solo
+                             aplica al camino .mp4 (MediaElement); para YouTube el iframe trae su
+                             propio boton de pantalla completa, por eso este se oculta en runtime. -->
+                        <Border x:Name="VideoFullscreenButton" HorizontalOptions="End" VerticalOptions="Start" Margin="10"
                                 BackgroundColor="#99000000" StrokeThickness="0" Padding="8,6">
                             <Border.StrokeShape>
                                 <RoundRectangle CornerRadius="16" />
