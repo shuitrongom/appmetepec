@@ -432,23 +432,18 @@ public partial class EscenarioProgramaPage : ContentPage
         await Shell.Current.GoToAsync("..");
     }
 
-    // Toque sobre una fila de la programacion. REGLA DEL USUARIO: el modal de detalle abre
-    // SOLO si la actividad tiene descripcion con texto (no null, no solo espacios). Si no
-    // tiene descripcion, tocar la fila NO abre nada (no-op). En ambos casos se limpia la
-    // seleccion para no dejar la fila marcada (la lista es de solo lectura).
-    private async void OnActividadSeleccionada(object sender, SelectionChangedEventArgs e)
+    // Toque sobre una fila de la programacion (via TapGestureRecognizer, NO seleccion nativa:
+    // asi no aparece el resaltado gris que se veia feo). REGLA DEL USUARIO: el modal de detalle
+    // abre SOLO si la actividad tiene descripcion con texto (no null, no solo espacios). Si no
+    // tiene descripcion, tocar la fila NO abre nada (no-op).
+    private async void OnActividadTocada(object sender, TappedEventArgs e)
     {
-        if (e.CurrentSelection.FirstOrDefault() is ActividadItem item)
+        // El sender es el elemento visual (Grid de la fila); su BindingContext es el ActividadItem.
+        if (sender is BindableObject vista && vista.BindingContext is ActividadItem item
+            && item.TieneDescripcion)
         {
-            // Siempre desmarca la fila (no queremos resaltado persistente).
-            ActividadesView.SelectedItem = null;
-
-            // Solo abre el modal si la actividad trae descripcion con texto.
-            if (item.TieneDescripcion)
-            {
-                await ActividadDetallePage.PickAsync(
-                    Navigation, item.SedeNombre, item.HoraRango, item.Actividad, _colorEscenario);
-            }
+            await ActividadDetallePage.PickAsync(
+                Navigation, item.SedeNombre, item.HoraRango, item.Actividad, _colorEscenario);
         }
     }
 
