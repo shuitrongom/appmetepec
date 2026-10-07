@@ -67,6 +67,19 @@ public partial class NewsDetailPage : ContentPage
             NewsImage.IsVisible = true;
         }
 
+        // Video de la noticia (opcional): si la publicacion trae videoUrl, se muestra el
+        // reproductor inline; si no, el bloque queda oculto. La fuente se asigna una vez.
+        if (!string.IsNullOrWhiteSpace(_news.videoUrl)
+            && Uri.TryCreate(_news.videoUrl, UriKind.Absolute, out var videoUri))
+        {
+            VideoInline.Source = CommunityToolkit.Maui.Views.MediaSource.FromUri(videoUri);
+            VideoBlock.IsVisible = true;
+        }
+        else
+        {
+            VideoBlock.IsVisible = false;
+        }
+
         var idCiudadano = _preferences.CiudadanoId;
         ReactionRow.IsVisible = idCiudadano > 0;
         // Ademas de tener sesion, la publicacion debe permitir comentarios (ver
@@ -386,5 +399,58 @@ public partial class NewsDetailPage : ContentPage
     private async void OnBackTapped(object sender, TappedEventArgs e)
     {
         await Shell.Current.GoToAsync("..");
+    }
+
+    // --- Video: expandir a pantalla completa y volver ---
+
+    // "Pantalla completa": pausa el reproductor inline, carga la misma fuente en el overlay a
+    // pantalla completa y lo reproduce. Suscribe MediaEnded para que, al terminar, el overlay se
+    // cierre solo y el usuario regrese a la misma noticia (no al Home).
+    private void OnExpandirVideoTapped(object sender, TappedEventArgs e)
+    {
+        if (_news is null || string.IsNullOrWhiteSpace(_news.videoUrl)
+            || !Uri.TryCreate(_news.videoUrl, UriKind.Absolute, out var videoUri))
+        {
+            return;
+        }
+
+        try { VideoInline.Pause(); } catch { /* best-effort */ }
+
+        VideoFull.Source = CommunityToolkit.Maui.Views.MediaSource.FromUri(videoUri);
+        VideoFull.MediaEnded += OnVideoFullEnded;
+        VideoFullscreenOverlay.IsVisible = true;
+        try { VideoFull.Play(); } catch { /* el control autoreproduce igual (ShouldAutoPlay) */ }
+    }
+
+    // Al terminar el video en pantalla completa: cerrar el overlay y volver a la noticia.
+    private void OnVideoFullEnded(object? sender, EventArgs e)
+    {
+        CerrarVideoFull();
+    }
+
+    private void OnCerrarVideoFullTapped(object sender, TappedEventArgs e)
+    {
+        CerrarVideoFull();
+    }
+
+    // Cierra el overlay de pantalla completa, detiene y libera el video grande, y deja la noticia
+    // tal cual (el reproductor inline sigue disponible para volver a ver).
+    private void CerrarVideoFull()
+    {
+        VideoFull.MediaEnded -= OnVideoFullEnded;
+        try { VideoFull.Stop(); } catch { /* best-effort */ }
+        VideoFull.Source = null;
+        VideoFullscreenOverlay.IsVisible = false;
+    }
+
+    // Al salir de la pagina: detener y liberar ambos reproductores (bateria y memoria).
+    protected override void OnDisappearing()
+    {
+        base.OnDisappearing();
+        try { VideoInline.Stop(); } catch { /* best-effort */ }
+        if (VideoFullscreenOverlay.IsVisible)
+        {
+            CerrarVideoFull();
+        }
     }
 }

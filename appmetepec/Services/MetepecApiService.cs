@@ -399,6 +399,7 @@ public sealed class MetepecApiService
                 shortContent = item.Resumen,
                 content = item.Contenido,
                 image = item.ImagenPrincipal,
+                videoUrl = item.VideoUrl,
                 destacada = item.Destacada,
                 fechaInicioEvento = item.FechaInicioEvento,
                 fechaFinEvento = item.FechaFinEvento,

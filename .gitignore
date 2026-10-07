@@ -468,6 +468,10 @@ publicaciones/
 # Carpeta temporal de pruebas locales (no forma parte de la app)
 _coordtest/
 
+# Carpetas de trabajo del agente (logs/artefactos, no parte de la app)
+_v2tmp/
+.agents/
+
 # PDFs de referencia de eventos (material de trabajo, no parte de la app)
 *.pdf
 

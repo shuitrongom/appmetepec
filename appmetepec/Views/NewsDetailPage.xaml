@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
              x:Class="appmetepec.Views.NewsDetailPage"
              Title="Noticia"
              Shell.NavBarIsVisible="False">
@@ -33,6 +34,32 @@
         <ScrollView>
             <VerticalStackLayout Padding="20" Spacing="10">
                 <Image x:Name="NewsImage" HeightRequest="220" Aspect="AspectFill" IsVisible="False" />
+
+                <!-- Video de la noticia (si la publicacion trae videoUrl). Reproductor inline con
+                     controles; el boton "Pantalla completa" abre el overlay de abajo. Oculto si no
+                     hay video. -->
+                <Border x:Name="VideoBlock" IsVisible="False" StrokeThickness="0" Padding="0" Margin="0,4,0,0"
+                        BackgroundColor="Black">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="12" />
+                    </Border.StrokeShape>
+                    <Grid>
+                        <toolkit:MediaElement x:Name="VideoInline" HeightRequest="210"
+                                              ShouldAutoPlay="False" ShouldShowPlaybackControls="True"
+                                              Aspect="AspectFit" BackgroundColor="Black" />
+                        <!-- Boton flotante "pantalla completa" arriba a la derecha del video -->
+                        <Border HorizontalOptions="End" VerticalOptions="Start" Margin="10"
+                                BackgroundColor="#99000000" StrokeThickness="0" Padding="8,6">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="16" />
+                            </Border.StrokeShape>
+                            <Label Text="⛶ Pantalla completa" TextColor="White" FontSize="12" FontAttributes="Bold" />
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="OnExpandirVideoTapped" />
+                            </Border.GestureRecognizers>
+                        </Border>
+                    </Grid>
+                </Border>
 
                 <HorizontalStackLayout x:Name="EventDateRow" Spacing="6" IsVisible="False" Margin="0,4,0,0">
                     <Label Text="&#128197;" FontSize="13" VerticalOptions="Center" />
@@ -152,5 +179,26 @@
             </VerticalStackLayout>
         </ScrollView>
         </RefreshView>
+
+        <!-- ══ VIDEO A PANTALLA COMPLETA (overlay) ══
+             Cubre toda la pagina (2 filas). Fondo negro, video centrado con controles y un boton
+             de cerrar/contraer. Al terminar el video (MediaEnded) o al tocar cerrar, se oculta y
+             regresa a la misma noticia (no al Home). Solo visible mientras se usa. -->
+        <Grid x:Name="VideoFullscreenOverlay" Grid.Row="0" Grid.RowSpan="2" IsVisible="False"
+              BackgroundColor="Black">
+            <toolkit:MediaElement x:Name="VideoFull" HorizontalOptions="Fill" VerticalOptions="Fill"
+                                  ShouldAutoPlay="True" ShouldShowPlaybackControls="True"
+                                  Aspect="AspectFit" BackgroundColor="Black" />
+            <Border HorizontalOptions="End" VerticalOptions="Start" Margin="16,48,16,0"
+                    BackgroundColor="#99000000" StrokeThickness="0" Padding="10,8">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="20" />
+                </Border.StrokeShape>
+                <Label Text="✕ Cerrar" TextColor="White" FontSize="14" FontAttributes="Bold" />
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnCerrarVideoFullTapped" />
+                </Border.GestureRecognizers>
+            </Border>
+        </Grid>
     </Grid>
 </ContentPage>

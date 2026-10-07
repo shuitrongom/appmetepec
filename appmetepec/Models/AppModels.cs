@@ -166,6 +166,8 @@ public sealed class NewsLetter
     public string? shortContent { get; set; }
     public string? content { get; set; }
     public string? image { get; set; }
+    // Video opcional de la noticia (URL del .mp4). Si tiene valor, el detalle muestra el reproductor.
+    public string? videoUrl { get; set; }
     public string? url { get; set; }
     public bool destacada { get; set; }
     public DateTime? fechaInicioEvento { get; set; }
@@ -767,6 +769,11 @@ public sealed class BackendPublicacionDto
 
     [JsonPropertyName("imagenPrincipal")]
     public string? ImagenPrincipal { get; set; }
+
+    // Video opcional de la noticia (.mp4 subido desde el admin). Si viene, el detalle de la
+    // noticia muestra un reproductor embebido (inline + pantalla completa).
+    [JsonPropertyName("videoUrl")]
+    public string? VideoUrl { get; set; }
 
     [JsonPropertyName("publicada")]
     public bool Publicada { get; set; }

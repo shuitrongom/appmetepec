@@ -91,14 +91,27 @@
                    FontSize="11" TextColor="#9A8AAE" LineBreakMode="WordWrap" LineHeight="1.35" />
         </Grid>
 
-        <!-- Contenido: la programacion ocupa toda la fila; la ilustracion de la sede va ANCLADA
-             abajo-derecha, alargada, como capa decorativa que FLOTA en 3D (flotacion + parallax
-             por giroscopio, aplicado en el code-behind). El contenido es un IsClippedToBounds para
-             que la imagen pueda rebasar y recortarse limpio, sin romper el layout ni tapar textos
-             (la lista reserva espacio a la derecha via Margin cuando hay imagen). -->
+        <!-- Contenido: la ilustracion de la sede es una CAPA DE FONDO (abajo-derecha, grande,
+             rebasa el borde derecho ~1/4 de su ancho) y la programacion va ENCIMA ocupando TODO
+             el ancho (asi los textos ya no se comprimen ni se parten letra por letra). La imagen
+             FLOTA en 3D (flotacion + parallax por giroscopio, aplicado en el code-behind). El
+             IsClippedToBounds hace que la imagen rebase y se recorte limpio sin romper el layout. -->
         <Grid Grid.Row="2" x:Name="ContenidoGrid" IsClippedToBounds="True">
 
-            <!-- Programacion del dia -->
+            <!-- Ilustracion de la sede (opcional): CAPA DE FONDO. Va declarada ANTES del
+                 ScrollView para quedar DEBAJO del contenido (en MAUI el orden de declaracion
+                 define el z-order: lo ultimo queda arriba). Anclada abajo-derecha, GRANDE y
+                 rebasando el borde derecho (~1/4 queda fuera de pantalla) para un efecto premium.
+                 InputTransparent para que no robe toques a la programacion. El tamaño y el empuje
+                 fuera de pantalla los calcula el code-behind PROPORCIONAL al dispositivo.
+                 Flota en 3D (flotacion + giroscopio) desde el code-behind. -->
+            <Image Grid.Row="0" x:Name="ImagenEscenario" IsVisible="False"
+                   Aspect="AspectFit" InputTransparent="True" Opacity="0.9"
+                   HorizontalOptions="End" VerticalOptions="End" />
+
+            <!-- Programacion del dia: va ENCIMA de la imagen y ocupa TODO el ancho de la pagina
+                 para que los titulos de las actividades se lean en lineas normales (ya no en
+                 columnas angostas que partian las palabras letra por letra). -->
             <ScrollView Grid.Row="0">
                 <VerticalStackLayout x:Name="ProgramaStack" Padding="16" Spacing="12">
                     <!-- Sin SelectionMode: la seleccion nativa pintaba un fondo gris feo al tocar.
@@ -154,18 +167,6 @@
                     </VerticalStackLayout>
                 </VerticalStackLayout>
             </ScrollView>
-
-            <!-- Ilustracion de la sede (opcional): anclada abajo-derecha, alargada, decorativa.
-                 Flota en 3D (flotacion continua + parallax por giroscopio) desde el code-behind.
-                 InputTransparent para que no robe toques a la programacion. El degradado inferior
-                 que la funde con el fondo se logra en el code-behind. -->
-            <!-- El tamaño (Width/Height) lo calcula el code-behind PROPORCIONAL al alto de la
-                 pantalla (DimensionarImagenEscenario), para que se vea igual de grande en
-                 cualquier dispositivo, no fijo. -->
-            <Image Grid.Row="0" x:Name="ImagenEscenario" IsVisible="False"
-                   Aspect="AspectFit" InputTransparent="True"
-                   HorizontalOptions="End" VerticalOptions="End"
-                   TranslationX="34" Margin="0,0,-18,0" />
         </Grid>
     </Grid>
 </ContentPage>

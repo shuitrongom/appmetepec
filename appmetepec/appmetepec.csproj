@@ -65,6 +65,9 @@
 		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="9.0.0" />
 		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
 		<PackageReference Include="CommunityToolkit.Maui" Version="11.2.0" />
+		<!-- MediaElement se versiona aparte del toolkit base; habilita el reproductor de video
+		     embebido (detalle de noticia). 6.0.0 es la linea compatible con toolkit 11.x / net9. -->
+		<PackageReference Include="CommunityToolkit.Maui.MediaElement" Version="6.0.0" />
 		<!-- 4.0.x: reempaqueta los frameworks nativos de Firebase iOS de forma
 		     consistente (Core y Messaging alineados). La 3.1.1 causaba crash al
 		     arranque: "Symbol not found: _OBJC_CLASS_$_FIRDependency". Core y
