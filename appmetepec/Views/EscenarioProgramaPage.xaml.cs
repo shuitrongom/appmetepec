@@ -2,6 +2,7 @@ using System.Globalization;
 using appmetepec.Models;
 using appmetepec.Services;
 using Microsoft.Maui.ApplicationModel;
+using Microsoft.Maui.Devices;
 using Microsoft.Maui.Devices.Sensors;
 
 namespace appmetepec.Views;
@@ -219,8 +220,7 @@ public partial class EscenarioProgramaPage : ContentPage
         if (hay)
         {
             ImagenEscenario.Source = imagenUrl;
-            // Reserva espacio a la derecha para la ilustracion (que ocupa ~168px + rebase).
-            ProgramaStack.Padding = new Thickness(16, 16, 150, 16);
+            DimensionarImagenEscenario();
             IniciarImagen3D();
         }
         else
@@ -229,18 +229,46 @@ public partial class EscenarioProgramaPage : ContentPage
         }
     }
 
+    // Tamano de la ilustracion PROPORCIONAL al dispositivo: se calcula a partir del alto de la
+    // pantalla para que luzca igual de grande en cualquier telefono (no un tamano fijo que se
+    // ve chico en pantallas grandes). Alto ~48% de la pantalla (acotado), ancho ~62% de ese
+    // alto (proporcion vertical tipica de las ilustraciones). Tambien ajusta el espacio que
+    // reserva la programacion a la derecha segun ese ancho, para que nunca tape el texto.
+    private void DimensionarImagenEscenario()
+    {
+        // Alto en px independientes del dispositivo (DIP). DeviceDisplay da pixeles fisicos, se
+        // divide por la densidad para trabajar en DIP (las unidades de MAUI).
+        var info = DeviceDisplay.Current.MainDisplayInfo;
+        var altoPantallaDip = info.Density > 0 ? info.Height / info.Density : 640;
+
+        // Alto objetivo: 48% de la pantalla, acotado entre 240 y 460 DIP (ni minusculo ni enorme).
+        var alto = Math.Clamp(altoPantallaDip * 0.48, 240, 460);
+        var ancho = alto * 0.62;
+
+        ImagenEscenario.HeightRequest = alto;
+        ImagenEscenario.WidthRequest = ancho;
+
+        // La programacion reserva a la derecha un poco menos que el ancho de la imagen (parte de
+        // la imagen puede quedar sobre el fondo blanco inferior sin texto), con un minimo prudente.
+        var reservaDerecha = Math.Max(110, ancho * 0.78);
+        ProgramaStack.Padding = new Thickness(16, 16, reservaDerecha, 16);
+    }
+
     // --- Efecto 3D de la ilustracion de la sede (flotacion continua + parallax por giroscopio) ---
     // Igual que el mapa: la imagen "levita" suave (sube/baja + leve balanceo 3D) y, al inclinar
     // el telefono, se inclina y desplaza un poco (parallax), dando sensacion de que flota sobre
     // la pantalla. Es decorativo: si no hay acelerometro (emulador), solo queda la flotacion y,
     // si tampoco, la imagen queda estatica, sin errores.
 
-    // Inclinacion maxima en grados (suave, para no deformar la ilustracion).
-    private const double ImgTiltMaxGrados = 8;
-    // Desplazamiento (px) del parallax al inclinar.
-    private const double ImgParallaxFactor = 10;
+    // Inclinacion maxima en grados (un poco mas marcada para que el 3D se note mas).
+    private const double ImgTiltMaxGrados = 12;
+    // Desplazamiento (px) del parallax al inclinar (mayor = flota mas sobre la pantalla).
+    private const double ImgParallaxFactor = 16;
     // Suavizado del seguimiento del sensor (0-1): mas bajo = mas suave.
     private const double ImgSuavizado = 0.14;
+    // Balanceo 3D AUTOMATICO continuo (grados) para que el efecto se vea aunque el telefono este
+    // quieto. Se suma a la inclinacion del sensor; muy sutil para no marear.
+    private const double ImgBalanceoAuto = 4;
 
     private double _imgTiltObjetivoX, _imgTiltObjetivoY;
     private double _imgTiltActualX, _imgTiltActualY;
@@ -249,6 +277,8 @@ public partial class EscenarioProgramaPage : ContentPage
     private int _imgGeneracionLoop;
     private bool _imgFlotarActivo;
     private int _imgGeneracionFlotar;
+    // Fase del balanceo automatico (avanza cada frame del lazo de parallax).
+    private double _imgFaseBalanceo;
 
     private void IniciarImagen3D()
     {
@@ -305,8 +335,18 @@ public partial class EscenarioProgramaPage : ContentPage
             _imgTiltActualX += (_imgTiltObjetivoX - _imgTiltActualX) * ImgSuavizado;
             _imgTiltActualY += (_imgTiltObjetivoY - _imgTiltActualY) * ImgSuavizado;
 
-            ImagenEscenario.RotationX = _imgTiltActualX;
-            ImagenEscenario.RotationY = _imgTiltActualY;
+            // Balanceo 3D automatico continuo (seno): la imagen se mece sola suave, asi el efecto
+            // 3D se ve aunque el telefono este quieto. Se suma a la inclinacion del sensor.
+            _imgFaseBalanceo += 0.03;
+            var balanceoY = Math.Sin(_imgFaseBalanceo) * ImgBalanceoAuto;
+            var balanceoX = Math.Cos(_imgFaseBalanceo * 0.8) * (ImgBalanceoAuto * 0.4);
+
+            ImagenEscenario.RotationY = _imgTiltActualY + balanceoY;
+            ImagenEscenario.RotationX = _imgTiltActualX + balanceoX;
+
+            // Respiro de escala muy sutil (±2%) acompasado al balanceo: da sensacion de volumen.
+            ImagenEscenario.Scale = 1 + (Math.Sin(_imgFaseBalanceo) * 0.02);
+
             // Parallax horizontal (base: la imagen esta trasladada 14px por el XAML, se suma el delta).
             ImagenEscenario.TranslationX = 14 + ((-_imgTiltActualY / ImgTiltMaxGrados) * ImgParallaxFactor);
 
@@ -322,8 +362,8 @@ public partial class EscenarioProgramaPage : ContentPage
         {
             while (_imgFlotarActivo && generacion == _imgGeneracionFlotar && ImagenEscenario.IsVisible)
             {
-                await ImagenEscenario.TranslateTo(ImagenEscenario.TranslationX, -8, 1600, Easing.SinInOut);
-                await ImagenEscenario.TranslateTo(ImagenEscenario.TranslationX, 0, 1600, Easing.SinInOut);
+                await ImagenEscenario.TranslateTo(ImagenEscenario.TranslationX, -12, 1500, Easing.SinInOut);
+                await ImagenEscenario.TranslateTo(ImagenEscenario.TranslationX, 0, 1500, Easing.SinInOut);
             }
         }
         catch

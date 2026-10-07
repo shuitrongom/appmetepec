@@ -114,9 +114,11 @@
                  Flota en 3D (flotacion continua + parallax por giroscopio) desde el code-behind.
                  InputTransparent para que no robe toques a la programacion. El degradado inferior
                  que la funde con el fondo se logra en el code-behind. -->
+            <!-- El tamaño (Width/Height) lo calcula el code-behind PROPORCIONAL al alto de la
+                 pantalla (DimensionarImagenEscenario), para que se vea igual de grande en
+                 cualquier dispositivo, no fijo. -->
             <Image Grid.Row="0" x:Name="ImagenEscenario" IsVisible="False"
                    Aspect="AspectFit" InputTransparent="True"
-                   WidthRequest="168" HeightRequest="300"
                    HorizontalOptions="End" VerticalOptions="End"
                    TranslationX="14" Margin="0,0,-6,0" />
         </Grid>
