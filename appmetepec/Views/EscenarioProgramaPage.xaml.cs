@@ -274,18 +274,19 @@ public partial class EscenarioProgramaPage : ContentPage
         // la derecha (efecto pedido: "que se corte un poco a la derecha"), de forma CONSISTENTE en
         // cualquier tamano de telefono porque el empuje es PROPORCIONAL al ancho (no un valor fijo).
         //
-        // Factor 0.52 (antes 0.38, y 0.25 original): el empuje base es ancho*0.52. En las capturas
-        // de TestFlight la cabeza/cuerpo del ave AUN invadia la columna de texto y pisaba los
-        // titulos de las actividades ("Grupo de danza Icualocatl", "Ballet folclorico Team Dande").
-        // Como la imagen es AspectFit dentro de su caja de ancho 'ancho', el PNG renderizado queda
-        // CENTRADO con margen transparente a cada lado; empujar poco solo recortaba ese margen
-        // transparente y la silueta visible seguia encimada. Subimos a 0.52*ancho para que la parte
-        // que hoy invade el texto quede FUERA de pantalla por la derecha (es aceptable y deseado que
-        // una buena porcion del ave se recorte: el usuario prioriza que el texto NO quede tapado).
-        // El empuje es PROPORCIONAL al ancho real -> consistente en todos los tamanos de telefono.
+        // Factor 0.60 (antes 0.52, 0.38, 0.25 original): el empuje base es ancho*0.60. En las ultimas
+        // 5 capturas de TestFlight de distintos escenarios la silueta del ave AUN invadia ~1 columna
+        // de texto y se encimaba con el final de lineas de los titulos ("anochecio", "Rivero",
+        // "Torres", "Nava", "Dande"), haciendo que esas palabras se "perdieran". Como la imagen es
+        // AspectFit dentro de su caja de ancho 'ancho', el PNG renderizado queda CENTRADO con margen
+        // transparente a cada lado; con 0.52 el borde visible del ave todavia alcanzaba la columna
+        // de texto. Subimos un escalon a 0.60*ancho para que esa porcion que invade el texto quede
+        // FUERA de pantalla por la derecha; es aceptable y deseado que una porcion MAYOR del ave se
+        // recorte, porque el usuario prioriza que el TEXTO NUNCA se pierda. El empuje sigue siendo
+        // PROPORCIONAL al ancho real -> consistente en todos los tamanos de telefono.
         // ContenidoGrid tiene IsClippedToBounds para un recorte limpio. Se guarda la base para que
         // el parallax del giroscopio oscile ALREDEDOR de ella y no "regrese" la imagen al centro.
-        _imgTranslationXBase = ancho * 0.52;
+        _imgTranslationXBase = ancho * 0.60;
         ImagenEscenario.TranslationX = _imgTranslationXBase;
 
         // La programacion ya NO reserva franja a la derecha: ocupa TODO el ancho para que los
