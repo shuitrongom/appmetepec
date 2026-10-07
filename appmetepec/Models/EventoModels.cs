@@ -118,6 +118,13 @@ public sealed class BackendActividadDto
     [JsonPropertyName("horaFin")]
     public string? HoraFin { get; set; }
 
+    // Descripcion OPCIONAL de la actividad (texto libre). Puede venir null/vacia. En la app
+    // movil gobierna el modal de detalle: solo las actividades con descripcion con texto
+    // (no null, no solo espacios) abren el popup premium; si es null/vacia, tocar la fila
+    // no abre nada. El modal, cuando abre, muestra esta descripcion como seccion propia.
+    [JsonPropertyName("descripcion")]
+    public string? Descripcion { get; set; }
+
     // Contenido de la actividad: lista de lineas con formato (titulo, subtitulo, etc.),
     // en orden. Reemplaza al antiguo titulo/descripcion/pais de texto plano.
     [JsonPropertyName("lineas")]

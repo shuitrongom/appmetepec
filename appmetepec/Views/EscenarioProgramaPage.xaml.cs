@@ -2,6 +2,7 @@ using System.Globalization;
 using appmetepec.Models;
 using appmetepec.Services;
 using Microsoft.Maui.ApplicationModel;
+using Microsoft.Maui.Devices;
 using Microsoft.Maui.Devices.Sensors;
 
 namespace appmetepec.Views;
@@ -52,6 +53,13 @@ public partial class EscenarioProgramaPage : ContentPage
         // en su defecto, una direccion en texto para que el mapa la geolocalice.
         ComoLlegarBtn.IsVisible = TieneCoordenadas() || !string.IsNullOrWhiteSpace(_escenario.Direccion);
 
+        // Micro-ayuda tenue: solo menciona acciones que REALMENTE existen en esta pantalla.
+        // Tocar una actividad y el calendario 📅 siempre estan; el fragmento 📍 "como llegar"
+        // se omite cuando el escenario no tiene coordenadas ni direccion (boton oculto).
+        PistaAcciones.Text = ComoLlegarBtn.IsVisible
+            ? "Toca una actividad para ver su detalle · 📅 otros días · 📍 cómo llegar"
+            : "Toca una actividad para ver su detalle · 📅 otros días";
+
         // Imagen propia de la sede (opcional, la sube el admin): si viene, se muestra a la
         // derecha de la programacion como ilustracion premium de la sede.
         MostrarImagenEscenario(_escenario.ImagenUrl);
@@ -80,7 +88,7 @@ public partial class EscenarioProgramaPage : ContentPage
         var items = _escenario.Actividades
             .Where(a => a.Fecha.Date == _diaSeleccionado)
             .OrderBy(a => MinutosDesdeMedianoche(a.HoraInicio))
-            .Select(a => new ActividadItem(a, _colorEscenario))
+            .Select(a => new ActividadItem(a, _colorEscenario, _escenario!.Nombre))
             .ToList();
 
         ActividadesView.ItemsSource = items;
@@ -219,8 +227,7 @@ public partial class EscenarioProgramaPage : ContentPage
         if (hay)
         {
             ImagenEscenario.Source = imagenUrl;
-            // Reserva espacio a la derecha para la ilustracion (que ocupa ~168px + rebase).
-            ProgramaStack.Padding = new Thickness(16, 16, 150, 16);
+            DimensionarImagenEscenario();
             IniciarImagen3D();
         }
         else
@@ -229,18 +236,46 @@ public partial class EscenarioProgramaPage : ContentPage
         }
     }
 
+    // Tamano de la ilustracion PROPORCIONAL al dispositivo: se calcula a partir del alto de la
+    // pantalla para que luzca igual de grande en cualquier telefono (no un tamano fijo que se
+    // ve chico en pantallas grandes). Alto ~48% de la pantalla (acotado), ancho ~62% de ese
+    // alto (proporcion vertical tipica de las ilustraciones). Tambien ajusta el espacio que
+    // reserva la programacion a la derecha segun ese ancho, para que nunca tape el texto.
+    private void DimensionarImagenEscenario()
+    {
+        // Alto en px independientes del dispositivo (DIP). DeviceDisplay da pixeles fisicos, se
+        // divide por la densidad para trabajar en DIP (las unidades de MAUI).
+        var info = DeviceDisplay.Current.MainDisplayInfo;
+        var altoPantallaDip = info.Density > 0 ? info.Height / info.Density : 640;
+
+        // Alto objetivo: 48% de la pantalla, acotado entre 240 y 460 DIP (ni minusculo ni enorme).
+        var alto = Math.Clamp(altoPantallaDip * 0.48, 240, 460);
+        var ancho = alto * 0.62;
+
+        ImagenEscenario.HeightRequest = alto;
+        ImagenEscenario.WidthRequest = ancho;
+
+        // La programacion reserva a la derecha un poco menos que el ancho de la imagen (parte de
+        // la imagen puede quedar sobre el fondo blanco inferior sin texto), con un minimo prudente.
+        var reservaDerecha = Math.Max(110, ancho * 0.78);
+        ProgramaStack.Padding = new Thickness(16, 16, reservaDerecha, 16);
+    }
+
     // --- Efecto 3D de la ilustracion de la sede (flotacion continua + parallax por giroscopio) ---
     // Igual que el mapa: la imagen "levita" suave (sube/baja + leve balanceo 3D) y, al inclinar
     // el telefono, se inclina y desplaza un poco (parallax), dando sensacion de que flota sobre
     // la pantalla. Es decorativo: si no hay acelerometro (emulador), solo queda la flotacion y,
     // si tampoco, la imagen queda estatica, sin errores.
 
-    // Inclinacion maxima en grados (suave, para no deformar la ilustracion).
-    private const double ImgTiltMaxGrados = 8;
-    // Desplazamiento (px) del parallax al inclinar.
-    private const double ImgParallaxFactor = 10;
+    // Inclinacion maxima en grados (un poco mas marcada para que el 3D se note mas).
+    private const double ImgTiltMaxGrados = 12;
+    // Desplazamiento (px) del parallax al inclinar (mayor = flota mas sobre la pantalla).
+    private const double ImgParallaxFactor = 16;
     // Suavizado del seguimiento del sensor (0-1): mas bajo = mas suave.
     private const double ImgSuavizado = 0.14;
+    // Balanceo 3D AUTOMATICO continuo (grados) para que el efecto se vea aunque el telefono este
+    // quieto. Se suma a la inclinacion del sensor; muy sutil para no marear.
+    private const double ImgBalanceoAuto = 4;
 
     private double _imgTiltObjetivoX, _imgTiltObjetivoY;
     private double _imgTiltActualX, _imgTiltActualY;
@@ -249,6 +284,8 @@ public partial class EscenarioProgramaPage : ContentPage
     private int _imgGeneracionLoop;
     private bool _imgFlotarActivo;
     private int _imgGeneracionFlotar;
+    // Fase del balanceo automatico (avanza cada frame del lazo de parallax).
+    private double _imgFaseBalanceo;
 
     private void IniciarImagen3D()
     {
@@ -305,10 +342,21 @@ public partial class EscenarioProgramaPage : ContentPage
             _imgTiltActualX += (_imgTiltObjetivoX - _imgTiltActualX) * ImgSuavizado;
             _imgTiltActualY += (_imgTiltObjetivoY - _imgTiltActualY) * ImgSuavizado;
 
-            ImagenEscenario.RotationX = _imgTiltActualX;
-            ImagenEscenario.RotationY = _imgTiltActualY;
-            // Parallax horizontal (base: la imagen esta trasladada 14px por el XAML, se suma el delta).
-            ImagenEscenario.TranslationX = 14 + ((-_imgTiltActualY / ImgTiltMaxGrados) * ImgParallaxFactor);
+            // Balanceo 3D automatico continuo (seno): la imagen se mece sola suave, asi el efecto
+            // 3D se ve aunque el telefono este quieto. Se suma a la inclinacion del sensor.
+            _imgFaseBalanceo += 0.03;
+            var balanceoY = Math.Sin(_imgFaseBalanceo) * ImgBalanceoAuto;
+            var balanceoX = Math.Cos(_imgFaseBalanceo * 0.8) * (ImgBalanceoAuto * 0.4);
+
+            ImagenEscenario.RotationY = _imgTiltActualY + balanceoY;
+            ImagenEscenario.RotationX = _imgTiltActualX + balanceoX;
+
+            // Respiro de escala muy sutil (±2%) acompasado al balanceo: da sensacion de volumen.
+            ImagenEscenario.Scale = 1 + (Math.Sin(_imgFaseBalanceo) * 0.02);
+
+            // Parallax horizontal (base: la imagen esta trasladada 34px a la derecha por el XAML,
+            // se suma el delta del parallax).
+            ImagenEscenario.TranslationX = 34 + ((-_imgTiltActualY / ImgTiltMaxGrados) * ImgParallaxFactor);
 
             await Task.Delay(16); // ~60 fps
         }
@@ -322,8 +370,8 @@ public partial class EscenarioProgramaPage : ContentPage
         {
             while (_imgFlotarActivo && generacion == _imgGeneracionFlotar && ImagenEscenario.IsVisible)
             {
-                await ImagenEscenario.TranslateTo(ImagenEscenario.TranslationX, -8, 1600, Easing.SinInOut);
-                await ImagenEscenario.TranslateTo(ImagenEscenario.TranslationX, 0, 1600, Easing.SinInOut);
+                await ImagenEscenario.TranslateTo(ImagenEscenario.TranslationX, -12, 1500, Easing.SinInOut);
+                await ImagenEscenario.TranslateTo(ImagenEscenario.TranslationX, 0, 1500, Easing.SinInOut);
             }
         }
         catch
@@ -384,6 +432,26 @@ public partial class EscenarioProgramaPage : ContentPage
         await Shell.Current.GoToAsync("..");
     }
 
+    // Toque sobre una fila de la programacion. REGLA DEL USUARIO: el modal de detalle abre
+    // SOLO si la actividad tiene descripcion con texto (no null, no solo espacios). Si no
+    // tiene descripcion, tocar la fila NO abre nada (no-op). En ambos casos se limpia la
+    // seleccion para no dejar la fila marcada (la lista es de solo lectura).
+    private async void OnActividadSeleccionada(object sender, SelectionChangedEventArgs e)
+    {
+        if (e.CurrentSelection.FirstOrDefault() is ActividadItem item)
+        {
+            // Siempre desmarca la fila (no queremos resaltado persistente).
+            ActividadesView.SelectedItem = null;
+
+            // Solo abre el modal si la actividad trae descripcion con texto.
+            if (item.TieneDescripcion)
+            {
+                await ActividadDetallePage.PickAsync(
+                    Navigation, item.SedeNombre, item.HoraRango, item.Actividad, _colorEscenario);
+            }
+        }
+    }
+
     // Al salir de la pagina: detiene el efecto 3D de la imagen (libera el acelerometro y para
     // los lazos) para no gastar bateria ni dejar animaciones corriendo.
     protected override void OnDisappearing()
@@ -416,25 +484,79 @@ public partial class EscenarioProgramaPage : ContentPage
     // Item de presentacion para el CollectionView.
     private sealed class ActividadItem
     {
+        public ActividadItem(BackendActividadDto a, Color colorEscenario, string sedeNombre)
+        {
+            Actividad = a;
+            SedeNombre = sedeNombre;
+            HoraTexto = ConstruirHora(a.HoraInicio, a.HoraFin);
+            HoraRango = ConstruirHoraRango(a.HoraInicio, a.HoraFin);
+            Color = colorEscenario;
+            Contenido = ActividadFormato.Construir(a);
+            Descripcion = a.Descripcion;
+            TieneDescripcion = !string.IsNullOrWhiteSpace(a.Descripcion);
+        }
+
+        // Actividad original: la conserva para reconstruir el contenido con formato en el
+        // modal (un mismo FormattedString no puede tener dos Labels padre, por eso el modal
+        // construye su propia instancia a partir de este DTO) y para leer la descripcion.
+        public BackendActividadDto Actividad { get; }
+
+        // Nombre de la sede (escenario): encabezado del modal.
+        public string SedeNombre { get; }
+
+        public string HoraTexto { get; }
+
+        // Rango de hora en UNA sola linea con guion ("HH:mm - HH:mm"), para el encabezado del
+        // modal (en la lista se usa HoraTexto, que va en dos renglones).
+        public string HoraRango { get; }
+
+        public Color Color { get; }
+
+        // Descripcion opcional (= Actividad.Descripcion) y bandera derivada que la lista usa
+        // para el gesto (abrir modal) y para el indicador sutil de "ver mas".
+        public string? Descripcion { get; }
+        public bool TieneDescripcion { get; }
+
+        // Contenido con formato para la LISTA: su propia instancia de FormattedString (el modal
+        // construye otra aparte con ActividadFormato.Construir).
+        public FormattedString Contenido { get; }
+
+        // Rango horario para la LISTA: inicio y fin en dos renglones (como el programa impreso);
+        // si solo hay inicio, muestra solo ese; si no hay hora, cadena vacia.
+        private static string ConstruirHora(string? inicio, string? fin)
+        {
+            var ini = ActividadFormato.NormalizarHora(inicio);
+            var f = ActividadFormato.NormalizarHora(fin);
+            if (ini is not null && f is not null) return $"{ini}\n{f}";
+            if (ini is not null) return ini;
+            if (f is not null) return f;
+            return "";
+        }
+
+        // Rango horario en UNA sola linea con guion para el encabezado del modal.
+        private static string ConstruirHoraRango(string? inicio, string? fin)
+        {
+            var ini = ActividadFormato.NormalizarHora(inicio);
+            var f = ActividadFormato.NormalizarHora(fin);
+            if (ini is not null && f is not null) return $"{ini} - {f}";
+            if (ini is not null) return ini;
+            if (f is not null) return f;
+            return "";
+        }
+    }
+
+    // Helper estatico reutilizable para armar las lineas con formato de una actividad. Tanto la
+    // lista como el modal lo llaman para construir su PROPIA instancia de FormattedString (un
+    // mismo FormattedString no puede estar asignado a dos Labels a la vez -> error de "parent").
+    internal static class ActividadFormato
+    {
         // Color por defecto de una linea cuando el backend no define uno.
         private static readonly Color TextoPorDefecto = Color.FromArgb("#222222");
 
-        public ActividadItem(BackendActividadDto a, Color colorEscenario)
-        {
-            HoraTexto = ConstruirHora(a.HoraInicio, a.HoraFin);
-            Color = colorEscenario;
-            Contenido = ConstruirContenido(a);
-        }
-
-        public string HoraTexto { get; }
-        public Color Color { get; }
-
-        // Contenido con formato: cada linea de la actividad se vuelve un Span con su propio
-        // estilo (negrita, cursiva, color, fuente, tamano). Las lineas se separan con salto
-        // de linea. Si la actividad no trae lineas, muestra un texto discreto por defecto.
-        public FormattedString Contenido { get; }
-
-        private static FormattedString ConstruirContenido(BackendActividadDto a)
+        // Construye el FormattedString: cada linea de la actividad se vuelve un Span con su
+        // propio estilo (negrita, cursiva, color, fuente, tamano), separados por salto de linea.
+        // Si la actividad no trae lineas, muestra un texto discreto por defecto.
+        public static FormattedString Construir(BackendActividadDto a)
         {
             var fs = new FormattedString();
 
@@ -492,22 +614,9 @@ public partial class EscenarioProgramaPage : ContentPage
             catch { return TextoPorDefecto; }
         }
 
-        // Rango horario a partir de las horas ya formateadas "HH:mm" del backend.
-        // Inicio y fin van en dos renglones (como el programa impreso); si solo hay inicio,
-        // muestra solo ese; si no hay hora, cadena vacia.
-        private static string ConstruirHora(string? inicio, string? fin)
-        {
-            var ini = Normalizar(inicio);
-            var f = Normalizar(fin);
-            if (ini is not null && f is not null) return $"{ini}\n{f}";
-            if (ini is not null) return ini;
-            if (f is not null) return f;
-            return "";
-        }
-
         // Deja la hora "HH:mm" tal cual (ya viene formateada del backend). Si viniera con
         // segundos "HH:mm:ss", recorta a "HH:mm". null/vacio -> null.
-        private static string? Normalizar(string? hhmm)
+        public static string? NormalizarHora(string? hhmm)
         {
             if (string.IsNullOrWhiteSpace(hhmm)) return null;
             var partes = hhmm.Split(':');

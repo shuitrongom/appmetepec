@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:ios="clr-namespace:Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific;assembly=Microsoft.Maui.Controls"
+             x:Class="appmetepec.Views.ActividadDetallePage"
+             Shell.NavBarIsVisible="False"
+             ios:Page.UseSafeArea="True"
+             BackgroundColor="#80000000">
+
+    <!-- Fuente institucional del modulo de Eventos: "Como" en todos los Label del modal. -->
+    <ContentPage.Resources>
+        <Style TargetType="Label">
+            <Setter Property="FontFamily" Value="Como" />
+        </Style>
+    </ContentPage.Resources>
+
+    <!-- Modal premium centrado: scrim semitransparente + tarjeta blanca con esquinas
+         redondeadas y sombra. El tamano (ancho/alto maximos) lo fija el code-behind de forma
+         responsive segun la pantalla, para que no se corte ni desborde en ningun dispositivo. -->
+    <Grid Padding="22" VerticalOptions="Center">
+        <Border x:Name="Tarjeta" BackgroundColor="White" StrokeThickness="0"
+                StrokeShape="RoundRectangle 22" HorizontalOptions="Center">
+            <Border.Shadow>
+                <Shadow Brush="#000000" Opacity="0.35" Radius="30" Offset="0,10" />
+            </Border.Shadow>
+
+            <Grid RowDefinitions="Auto,*">
+
+                <!-- Barra/acento superior: se pinta con el color del escenario por codigo. -->
+                <BoxView x:Name="AcentoBar" Grid.Row="0" HeightRequest="6" Color="#5B2A86" />
+
+                <!-- Contenido desplazable (por si la descripcion es larga en pantallas chicas). -->
+                <ScrollView Grid.Row="1" Padding="22,18,22,20">
+                    <VerticalStackLayout Spacing="10">
+
+                        <!-- Nombre de la sede: negrita, en el color de acento. -->
+                        <Label x:Name="SedeLabel" Text="" FontSize="19" FontAttributes="Bold"
+                               TextColor="#5B2A86" LineBreakMode="WordWrap" />
+
+                        <!-- Rango de hora: tenue. Oculto por codigo si no hay hora. -->
+                        <Label x:Name="HoraLabel" Text="" FontSize="14" TextColor="#888" />
+
+                        <!-- Separador sutil. -->
+                        <BoxView HeightRequest="1" Color="#EEEEEE" Margin="0,4" />
+
+                        <!-- Lineas con formato de la actividad (negrita/cursiva/color/fuente/tamano):
+                             el code-behind le asigna el FormattedString reconstruido (instancia
+                             propia, independiente de la lista). -->
+                        <Label x:Name="ContenidoLabel" LineBreakMode="WordWrap" />
+
+                        <!-- Seccion Descripcion: visible solo si la actividad trae descripcion con
+                             texto (lo controla el code-behind). -->
+                        <VerticalStackLayout x:Name="DescripcionContenedor" Spacing="4" Margin="0,10,0,0"
+                                             IsVisible="False">
+                            <BoxView HeightRequest="1" Color="#EEEEEE" Margin="0,0,0,6" />
+                            <Label x:Name="DescripcionTitulo" Text="Descripción" FontSize="13"
+                                   FontAttributes="Bold" TextColor="#999" />
+                            <Label x:Name="DescripcionTexto" Text="" FontSize="15" TextColor="#333"
+                                   LineBreakMode="WordWrap" />
+                        </VerticalStackLayout>
+
+                        <!-- Boton Cerrar claro, con el color de acento. -->
+                        <Button x:Name="CerrarBtn" Text="Cerrar" Clicked="OnCerrarClicked"
+                                BackgroundColor="Transparent" TextColor="#5B2A86"
+                                FontAttributes="Bold" Margin="0,8,0,0" />
+                    </VerticalStackLayout>
+                </ScrollView>
+            </Grid>
+        </Border>
+    </Grid>
+</ContentPage>
