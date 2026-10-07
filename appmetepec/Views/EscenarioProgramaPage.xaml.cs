@@ -35,6 +35,20 @@ public partial class EscenarioProgramaPage : ContentPage
 
         if (_escenario is not null)
         {
+            // CAUSA RAIZ DEL BUG "cambio de dia y se pierde la animacion": el calendario para
+            // elegir otro dia (CalendarioEventosPage.PickAsync) hace PushModalAsync, lo que
+            // dispara OnDisappearing() de esta pagina -> DetenerImagen3D() mata la flotacion, el
+            // lazo de parallax y desuscribe el acelerometro. Al cerrar el modal, OnAppearing()
+            // vuelve a entrar PERO antes salia aqui mismo (return temprano) sin RE-ARRANCAR el
+            // efecto, por lo que la imagen quedaba estatica el resto de la sesion.
+            // FIX: cuando reaparecemos con la pagina ya inicializada y hay imagen, re-arrancamos
+            // el efecto 3D. IniciarImagen3D() es idempotente (los flags _imgLoopActivo/
+            // _imgFlotarActivo y la (re)suscripcion guardada por _imgAcelerometroActivo evitan
+            // duplicar lazos o suscripciones aunque se entre y salga del calendario varias veces).
+            if (ImagenEscenario.IsVisible)
+            {
+                IniciarImagen3D();
+            }
             return;
         }
 
@@ -260,17 +274,19 @@ public partial class EscenarioProgramaPage : ContentPage
         // la derecha (efecto pedido: "que se corte un poco a la derecha"), de forma CONSISTENTE en
         // cualquier tamano de telefono porque el empuje es PROPORCIONAL al ancho (no un valor fijo).
         //
-        // Factor 0.38 (antes 0.25): el empuje base es ancho*0.38. ?Por que 0.38 y no 0.25 para
-        // lograr ~1/4 fuera? Porque la imagen es AspectFit dentro de su caja de ancho 'ancho': el
-        // PNG renderizado puede ser mas angosto que la caja y queda CENTRADO en ella, dejando un
-        // margen transparente a cada lado. Con la caja pegada al borde (HorizontalOptions=End),
-        // empujar solo 0.25*ancho recortaria sobre todo ese margen transparente y la imagen visible
-        // apenas se cortaria. Subir a 0.38*ancho absorbe el medio-margen de la caja (hasta ~0.5 del
-        // ancho puede ser transparente en PNGs muy verticales) y deja aproximadamente 1/4 del ancho
-        // VISIBLE fuera para proporciones tipicas, sin pasarse (el usuario pidio "un poco", no media
-        // imagen). ContenidoGrid tiene IsClippedToBounds para un recorte limpio. Se guarda la base
-        // para que el parallax del giroscopio oscile ALREDEDOR de ella y no "regrese" la imagen.
-        _imgTranslationXBase = ancho * 0.38;
+        // Factor 0.60 (antes 0.52, 0.38, 0.25 original): el empuje base es ancho*0.60. En las ultimas
+        // 5 capturas de TestFlight de distintos escenarios la silueta del ave AUN invadia ~1 columna
+        // de texto y se encimaba con el final de lineas de los titulos ("anochecio", "Rivero",
+        // "Torres", "Nava", "Dande"), haciendo que esas palabras se "perdieran". Como la imagen es
+        // AspectFit dentro de su caja de ancho 'ancho', el PNG renderizado queda CENTRADO con margen
+        // transparente a cada lado; con 0.52 el borde visible del ave todavia alcanzaba la columna
+        // de texto. Subimos un escalon a 0.60*ancho para que esa porcion que invade el texto quede
+        // FUERA de pantalla por la derecha; es aceptable y deseado que una porcion MAYOR del ave se
+        // recorte, porque el usuario prioriza que el TEXTO NUNCA se pierda. El empuje sigue siendo
+        // PROPORCIONAL al ancho real -> consistente en todos los tamanos de telefono.
+        // ContenidoGrid tiene IsClippedToBounds para un recorte limpio. Se guarda la base para que
+        // el parallax del giroscopio oscile ALREDEDOR de ella y no "regrese" la imagen al centro.
+        _imgTranslationXBase = ancho * 0.60;
         ImagenEscenario.TranslationX = _imgTranslationXBase;
 
         // La programacion ya NO reserva franja a la derecha: ocupa TODO el ancho para que los

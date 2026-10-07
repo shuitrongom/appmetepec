@@ -68,17 +68,10 @@ public partial class NewsDetailPage : ContentPage
         }
 
         // Video de la noticia (opcional): si la publicacion trae videoUrl, se muestra el
-        // reproductor inline; si no, el bloque queda oculto. La fuente se asigna una vez.
-        if (!string.IsNullOrWhiteSpace(_news.videoUrl)
-            && Uri.TryCreate(_news.videoUrl, UriKind.Absolute, out var videoUri))
-        {
-            VideoInline.Source = CommunityToolkit.Maui.Views.MediaSource.FromUri(videoUri);
-            VideoBlock.IsVisible = true;
-        }
-        else
-        {
-            VideoBlock.IsVisible = false;
-        }
+        // reproductor; si no, el bloque queda oculto. En runtime se elige el reproductor segun el
+        // tipo de URL: YouTube embebido (WebView con iframe) o .mp4 (MediaElement). La fuente se
+        // asigna una vez.
+        ConfigurarVideo();
 
         var idCiudadano = _preferences.CiudadanoId;
         ReactionRow.IsVisible = idCiudadano > 0;
@@ -401,14 +394,94 @@ public partial class NewsDetailPage : ContentPage
         await Shell.Current.GoToAsync("..");
     }
 
-    // --- Video: expandir a pantalla completa y volver ---
+    // --- Video: eleccion de reproductor en runtime (YouTube embebido vs .mp4) ---
+
+    // Casa los formatos de URL de YouTube de los que se puede sacar el VIDEO_ID (11 chars):
+    // youtube.com/watch?v=ID, youtu.be/ID, youtube.com/shorts/ID, youtube.com/embed/ID.
+    private static readonly Regex YoutubeIdRegex = new(
+        "(?:youtube\\.com/(?:watch\\?(?:[^&]*&)*v=|shorts/|embed/|v/)|youtu\\.be/)([A-Za-z0-9_-]{11})",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    private static bool EsYoutube(string? url) =>
+        !string.IsNullOrWhiteSpace(url) && ExtraerVideoId(url) is not null;
+
+    // Devuelve el VIDEO_ID (11 chars) si la URL es de YouTube, o null si no lo es / no se pudo
+    // extraer. Robusto frente a parametros extra (?t=, &list=, etc.).
+    private static string? ExtraerVideoId(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return null;
+        var match = YoutubeIdRegex.Match(url);
+        return match.Success ? match.Groups[1].Value : null;
+    }
+
+    // Decide en runtime que reproductor mostrar en el detalle de la noticia:
+    //  - Sin videoUrl        -> no se muestra nada (bloque oculto).
+    //  - videoUrl de YouTube -> WebView con iframe embebido (NO abre navegador externo); el
+    //                           MediaElement inline queda oculto y SIN Source. El boton de
+    //                           pantalla completa propio de la app se oculta porque el iframe de
+    //                           YouTube ya trae el suyo (reutilizar el overlay con WebView es
+    //                           fragil, por eso para YouTube solo se ofrece el inline embebido).
+    //  - cualquier otra URL  -> camino actual .mp4 con MediaElement (inline + pantalla completa).
+    private void ConfigurarVideo()
+    {
+        if (_news is null || string.IsNullOrWhiteSpace(_news.videoUrl))
+        {
+            VideoBlock.IsVisible = false;
+            return;
+        }
+
+        var videoId = ExtraerVideoId(_news.videoUrl);
+        if (videoId is not null)
+        {
+            // YouTube embebido: ocultar el MediaElement (sin asignarle Source) y mostrar el WebView.
+            VideoInline.IsVisible = false;
+            VideoFullscreenButton.IsVisible = false;
+            VideoYoutube.IsVisible = true;
+            VideoYoutube.Source = ConstruirHtmlYoutube(videoId);
+            VideoBlock.IsVisible = true;
+        }
+        else if (Uri.TryCreate(_news.videoUrl, UriKind.Absolute, out var videoUri))
+        {
+            // .mp4 u otra URL de video directa: camino actual con MediaElement.
+            VideoYoutube.IsVisible = false;
+            VideoInline.IsVisible = true;
+            VideoFullscreenButton.IsVisible = true;
+            VideoInline.Source = CommunityToolkit.Maui.Views.MediaSource.FromUri(videoUri);
+            VideoBlock.IsVisible = true;
+        }
+        else
+        {
+            VideoBlock.IsVisible = false;
+        }
+    }
+
+    // HTML minimo con un iframe responsivo 16:9 que ocupa el ancho del contenedor. playsinline=1
+    // evita que iOS/Android fuerce pantalla completa al dar play; rel=0 y modestbranding=1
+    // reducen sugerencias/branding.
+    private static HtmlWebViewSource ConstruirHtmlYoutube(string videoId)
+    {
+        var html =
+            "<html><head><meta name='viewport' content='width=device-width, initial-scale=1'>" +
+            "<style>html,body{margin:0;padding:0;background:#000;height:100%;}" +
+            ".wrap{position:relative;width:100%;height:100%;overflow:hidden;}" +
+            ".wrap iframe{position:absolute;top:0;left:0;width:100%;height:100%;border:0;}</style></head>" +
+            "<body><div class='wrap'>" +
+            $"<iframe src='https://www.youtube.com/embed/{videoId}?playsinline=1&rel=0&modestbranding=1' " +
+            "allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture' " +
+            "allowfullscreen></iframe></div></body></html>";
+        return new HtmlWebViewSource { Html = html };
+    }
+
+    // --- Video: expandir a pantalla completa y volver (solo camino .mp4 / MediaElement) ---
 
     // "Pantalla completa": pausa el reproductor inline, carga la misma fuente en el overlay a
     // pantalla completa y lo reproduce. Suscribe MediaEnded para que, al terminar, el overlay se
-    // cierre solo y el usuario regrese a la misma noticia (no al Home).
+    // cierre solo y el usuario regrese a la misma noticia (no al Home). No aplica a YouTube: ese
+    // boton se oculta en ConfigurarVideo cuando el video es de YouTube.
     private void OnExpandirVideoTapped(object sender, TappedEventArgs e)
     {
         if (_news is null || string.IsNullOrWhiteSpace(_news.videoUrl)
+            || EsYoutube(_news.videoUrl)
             || !Uri.TryCreate(_news.videoUrl, UriKind.Absolute, out var videoUri))
         {
             return;
@@ -448,6 +521,9 @@ public partial class NewsDetailPage : ContentPage
     {
         base.OnDisappearing();
         try { VideoInline.Stop(); } catch { /* best-effort */ }
+        // YouTube: vaciar el WebView para que el iframe deje de reproducir/sonar al volver (de lo
+        // contrario el audio de YouTube seguiria aun fuera de la pantalla).
+        try { VideoYoutube.Source = new HtmlWebViewSource { Html = "<html></html>" }; } catch { /* best-effort */ }
         if (VideoFullscreenOverlay.IsVisible)
         {
             CerrarVideoFull();

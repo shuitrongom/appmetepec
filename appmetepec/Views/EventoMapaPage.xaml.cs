@@ -59,6 +59,17 @@ public partial class EventoMapaPage : ContentPage
     private double _imgRealW;
     private double _imgRealH;
 
+    // Tamano REAL del lienzo (MapaLayout) ya calculado por DimensionarLienzo: imgW*escala x
+    // imgH*escala. Es la FUENTE DE VERDAD para posicionar los pines. En iOS leer MapaLayout.Width
+    // dentro de SizeChanged devuelve el tamano final, pero en Android ese valor puede llegar en
+    // 0/provisional o en otro orden (ver dotnet/maui #10747: en Android SizeChanged se levanta
+    // tras OnLoaded, no antes). Posicionar leyendo el tamano arreglado llevaba a colocar los pines
+    // con w=h=0 -> todos apilados en (0,0) y, al estar apilados y fuera de su area real, el toque
+    // en reposo no caia sobre ellos. Guardando aqui el tamano calculado posicionamos SIEMPRE con
+    // el valor correcto, sin depender del readback de layout de la plataforma.
+    private double _lienzoW;
+    private double _lienzoH;
+
     // Duracion de la intro de portada antes de pasar sola al mapa.
     private static readonly TimeSpan DuracionIntro = TimeSpan.FromMilliseconds(2200);
     // La intro se muestra una sola vez por instancia de pagina (al cargar el evento).
@@ -125,6 +136,17 @@ public partial class EventoMapaPage : ContentPage
         PosicionarHotspots();
     }
 
+    // En Android el arbol nativo puede quedar montado (Loaded) antes de que el tamano del lienzo
+    // se refleje via SizeChanged. Al dispararse Loaded recalculamos el lienzo (que a su vez
+    // reposiciona los pines con el tamano real) y, por si acaso, reposicionamos explicitamente.
+    // Garantiza que el PRIMER render en Android ya tenga los pines en su sitio.
+    private void OnMapaLayoutLoaded(object? sender, EventArgs e)
+    {
+        if (_evento is null) return;
+        DimensionarLienzo();
+        PosicionarHotspots();
+    }
+
     protected override async void OnAppearing()
     {
         base.OnAppearing();
@@ -178,6 +200,11 @@ public partial class EventoMapaPage : ContentPage
             {
                 Viewport.SizeChanged += OnViewportSizeChanged;
                 MapaLayout.SizeChanged += OnMapaLayoutSizeChanged;
+                // En Android el SizeChanged se levanta DESPUES de Loaded (no antes como en otras
+                // plataformas, ver dotnet/maui #10747). Nos enganchamos tambien a Loaded del
+                // lienzo para recalcular tamano y reposicionar los pines en cuanto el arbol nativo
+                // esta montado, cerrando el hueco de orden que dejaba los pines en (0,0) en Android.
+                MapaLayout.Loaded += OnMapaLayoutLoaded;
                 _viewportSuscrito = true;
             }
 
@@ -267,8 +294,26 @@ public partial class EventoMapaPage : ContentPage
         // mas restrictivo (igual que object-fit: contain / Leaflet fitBounds).
         var escala = Math.Min(dispW / imgW, dispH / imgH);
 
-        MapaLayout.WidthRequest = imgW * escala;
-        MapaLayout.HeightRequest = imgH * escala;
+        var lienzoW = imgW * escala;
+        var lienzoH = imgH * escala;
+
+        MapaLayout.WidthRequest = lienzoW;
+        MapaLayout.HeightRequest = lienzoH;
+
+        // Guarda el tamano REAL del lienzo como fuente de verdad para PosicionarHotspots. Si ya
+        // hay pines dibujados, los reposiciona de inmediato con este tamano recien calculado
+        // (sin esperar al SizeChanged del layout, que en Android puede no re-dispararse o llegar
+        // con un valor provisional). Asi el primer render en Android ya cae en su sitio.
+        if (lienzoW > 0 && lienzoH > 0)
+        {
+            var cambio = Math.Abs(lienzoW - _lienzoW) > 0.5 || Math.Abs(lienzoH - _lienzoH) > 0.5;
+            _lienzoW = lienzoW;
+            _lienzoH = lienzoH;
+            if (cambio && _pinPorEscenario.Count > 0)
+            {
+                PosicionarHotspots();
+            }
+        }
     }
 
     // Descarga/lee el archivo de imagen y obtiene su tamano REAL (ancho/alto en px) decodificando
@@ -664,6 +709,9 @@ public partial class EventoMapaPage : ContentPage
     {
         var id = _navigationState.SelectedEvento?.Id ?? 0;
         _evento = null;
+        // Reinicia el tamano cacheado del lienzo para que el reintento vuelva a medir y
+        // posicionar desde cero (no reaprovechar un tamano de un intento fallido anterior).
+        _lienzoW = _lienzoH = 0;
         if (id > 0)
         {
             await CargarEventoAsync(id);
@@ -704,8 +752,13 @@ public partial class EventoMapaPage : ContentPage
     // descuadra el punto. Se recalcula cuando cambia el tamano del lienzo (ver SizeChanged).
     private void PosicionarHotspots()
     {
-        var w = MapaLayout.Width;
-        var h = MapaLayout.Height;
+        // Tamano del lienzo: usamos el CALCULADO por DimensionarLienzo (_lienzoW/_lienzoH) como
+        // fuente de verdad, no MapaLayout.Width/Height. En Android el tamano arreglado puede
+        // leerse en 0/provisional cuando se posiciona (ver dotnet/maui #10747), lo que apilaba
+        // todos los pines en (0,0). Como respaldo, si aun no hay tamano calculado, caemos al
+        // tamano arreglado del layout (comportamiento previo).
+        var w = _lienzoW > 0 ? _lienzoW : MapaLayout.Width;
+        var h = _lienzoH > 0 ? _lienzoH : MapaLayout.Height;
         if (w <= 0 || h <= 0) return;
 
         foreach (var (escenario, contenedor, _, _) in _pinPorEscenario)
@@ -858,6 +911,7 @@ public partial class EventoMapaPage : ContentPage
         {
             Viewport.SizeChanged -= OnViewportSizeChanged;
             MapaLayout.SizeChanged -= OnMapaLayoutSizeChanged;
+            MapaLayout.Loaded -= OnMapaLayoutLoaded;
             _viewportSuscrito = false;
         }
     }
