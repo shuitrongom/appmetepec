@@ -105,8 +105,15 @@
                  InputTransparent para que no robe toques a la programacion. El tamaño y el empuje
                  fuera de pantalla los calcula el code-behind PROPORCIONAL al dispositivo.
                  Flota en 3D (flotacion + giroscopio) desde el code-behind. -->
+            <!-- Opacidad 0.82 (antes 0.95): "aclarar" para el usuario significa que el texto NO se
+                 pierda donde se cruza con la imagen, no necesariamente subir opacidad. El arreglo
+                 principal es el empuje a la derecha (code-behind: ~0.52 del ancho) que saca de
+                 pantalla la parte del ave que invadia la columna. Para blindar la legibilidad si
+                 queda algun cruce menor, bajamos un poco la opacidad: una capa de fondo mas tenue
+                 estorba menos al texto y este siempre se lee. Sigue bien visible para el efecto
+                 premium (flotacion + parallax). InputTransparent e IsClippedToBounds intactos. -->
             <Image Grid.Row="0" x:Name="ImagenEscenario" IsVisible="False"
-                   Aspect="AspectFit" InputTransparent="True" Opacity="0.95"
+                   Aspect="AspectFit" InputTransparent="True" Opacity="0.82"
                    HorizontalOptions="End" VerticalOptions="End" />
 
             <!-- Programacion del dia: va ENCIMA de la imagen y ocupa TODO el ancho de la pagina
