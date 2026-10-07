@@ -256,11 +256,21 @@ public partial class EscenarioProgramaPage : ContentPage
         ImagenEscenario.HeightRequest = alto;
         ImagenEscenario.WidthRequest = ancho;
 
-        // La imagen REBASA el borde derecho: se empuja hacia afuera ~1/4 de su ancho (TranslationX
-        // positivo), de modo que se vea ~3/4 y el otro 1/4 quede recortado fuera de pantalla
-        // (efecto premium pedido). ContenidoGrid tiene IsClippedToBounds para que el recorte sea
-        // limpio. Se guarda la base para que el parallax del giroscopio la use como punto de partida.
-        _imgTranslationXBase = ancho * 0.25;
+        // La imagen REBASA el borde derecho para que ~1/4 de su ANCHO quede FUERA de pantalla por
+        // la derecha (efecto pedido: "que se corte un poco a la derecha"), de forma CONSISTENTE en
+        // cualquier tamano de telefono porque el empuje es PROPORCIONAL al ancho (no un valor fijo).
+        //
+        // Factor 0.38 (antes 0.25): el empuje base es ancho*0.38. ?Por que 0.38 y no 0.25 para
+        // lograr ~1/4 fuera? Porque la imagen es AspectFit dentro de su caja de ancho 'ancho': el
+        // PNG renderizado puede ser mas angosto que la caja y queda CENTRADO en ella, dejando un
+        // margen transparente a cada lado. Con la caja pegada al borde (HorizontalOptions=End),
+        // empujar solo 0.25*ancho recortaria sobre todo ese margen transparente y la imagen visible
+        // apenas se cortaria. Subir a 0.38*ancho absorbe el medio-margen de la caja (hasta ~0.5 del
+        // ancho puede ser transparente en PNGs muy verticales) y deja aproximadamente 1/4 del ancho
+        // VISIBLE fuera para proporciones tipicas, sin pasarse (el usuario pidio "un poco", no media
+        // imagen). ContenidoGrid tiene IsClippedToBounds para un recorte limpio. Se guarda la base
+        // para que el parallax del giroscopio oscile ALREDEDOR de ella y no "regrese" la imagen.
+        _imgTranslationXBase = ancho * 0.38;
         ImagenEscenario.TranslationX = _imgTranslationXBase;
 
         // La programacion ya NO reserva franja a la derecha: ocupa TODO el ancho para que los
