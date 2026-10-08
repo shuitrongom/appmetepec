@@ -23,18 +23,12 @@ namespace appmetepec
                 .UseMauiCommunityToolkit()
                 // Habilita <toolkit:MediaElement> para el reproductor de video de las noticias.
                 .UseMauiCommunityToolkitMediaElement()
-#if IOS
-                // En iOS el reproductor de YouTube embebido (WebView con iframe) necesita que el
-                // WKWebView se construya con AllowsInlineMediaPlayback=true y
-                // MediaTypesRequiringUserActionForPlayback=None; de lo contrario el video se ve
-                // pero no reproduce al dar play. Esas propiedades son de WKWebViewConfiguration y
-                // WebKit solo las respeta si se fijan ANTES de crear el WKWebView, por eso se usa
-                // un handler propio que las aplica al construir el PlatformView (no bastaria un
-                // mapping, que corre cuando el WebView ya existe). Afecta solo al <WebView>, unico
-                // de la app (el mapa usa HybridWebView, otro handler).
-                .ConfigureMauiHandlers(handlers =>
-                    handlers.AddHandler<Microsoft.Maui.Controls.WebView, appmetepec.Platforms.iOS.InlineMediaWebViewHandler>())
-#endif
+                // Nota iOS: el reproductor de YouTube se carga como URL de embed
+                // (youtube.com/embed con playsinline=1), que WKWebView reproduce inline en iOS 15+.
+                // La reproduccion inline se habilita via mapping del WebViewHandler (mas abajo),
+                // SIN reemplazar la creacion del PlatformView: un override de CreatePlatformView
+                // con frame vacio dejaba el WebView "desconectado" del cableado de MAUI y se veia
+                // NEGRO. El mapping actua sobre el WebView ya creado por MAUI, conservando su render.
                 .ConfigureFonts(fonts =>
                 {
                     fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
@@ -106,6 +100,24 @@ namespace appmetepec
                 settings.JavaScriptEnabled = true;
                 settings.DomStorageEnabled = true;
                 settings.MediaPlaybackRequiresUserGesture = false;
+            });
+#endif
+
+#if IOS
+            // iOS: el reproductor de YouTube de las noticias (el unico <WebView> de la app; el mapa
+            // usa HybridWebView, otro handler) debe permitir reproduccion inline. Se ajusta la
+            // configuracion del WKWebView ya creado por MAUI -- NO se reemplaza su creacion (un
+            // handler propio con CreatePlatformView dejaba el WebView desconectado -> negro). Esto
+            // corre sobre el PlatformView existente, conservando el render de MAUI.
+            Microsoft.Maui.Handlers.WebViewHandler.Mapper.AppendToMapping("YoutubeInlinePlaybackiOS", (handler, view) =>
+            {
+                var config = handler.PlatformView.Configuration;
+                if (config is null)
+                {
+                    return;
+                }
+                config.AllowsInlineMediaPlayback = true;
+                config.MediaTypesRequiringUserActionForPlayback = WebKit.WKAudiovisualMediaTypes.None;
             });
 #endif
 
