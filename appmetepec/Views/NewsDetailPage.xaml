@@ -49,8 +49,10 @@
                                               Aspect="AspectFit" BackgroundColor="Black" />
                         <!-- Reproductor de YouTube embebido (iframe dentro de un WebView). Se usa en
                              runtime SOLO cuando videoUrl es un enlace de YouTube; para .mp4 se usa el
-                             MediaElement de arriba. Mismo alto (~16:9) para que la noticia se vea
-                             consistente. Oculto por defecto; OnAppearing decide cual mostrar. -->
+                             MediaElement de arriba. El iframe de YouTube llena el 100% del WebView
+                             (no se usa un truco de padding-top en %, que en Android colapsaba a 0 y
+                             dejaba el recuadro negro). Oculto por defecto; OnAppearing decide cual
+                             mostrar. -->
                         <WebView x:Name="VideoYoutube" HeightRequest="210" IsVisible="False"
                                  BackgroundColor="Black" />
                         <!-- Boton flotante "pantalla completa" arriba a la derecha del video. Solo

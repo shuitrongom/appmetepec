@@ -474,19 +474,23 @@ public partial class NewsDetailPage : ContentPage
         }
     }
 
-    // HTML del reproductor de YouTube embebido, con patron "click-to-play":
+    // HTML del reproductor de YouTube embebido.
     //
-    // Por que click-to-play y no un iframe desnudo: el iframe de YouTube cargado directo dentro de
-    // un WebView de MAUI se veia como un RECUADRO COMPLETAMENTE NEGRO (sin thumbnail, sin play, sin
-    // spinner) -- el documento inline no pinta de forma fiable (el alto en % colapsa a 0 en el
-    // primer render, o el JS del embed se queda cargando). Con click-to-play el poster es un <img>
-    // con tamano explicito (relacion 16:9 por aspect-ratio/padding), asi SIEMPRE se ve la miniatura
-    // del video + un boton de play centrado; recien al tocar se inyecta el iframe y reproduce dentro
-    // de la noticia (autoplay=1 porque ya hubo gesto del usuario). Esto es mas confiable y premium
-    // que el iframe crudo.
+    // CAUSA RAIZ del "recuadro negro total" en versiones anteriores: el HTML envolvia el iframe en
+    // un contenedor con alto por "padding-top:56.25%" (truco 16:9 basado en el ANCHO). Dentro de un
+    // WebView de MAUI en Android, en el primer render el ancho de referencia del <body> no esta
+    // resuelto, el padding-top en % calcula 0 y la caja COLAPSA a altura 0 -> no se pinta nada
+    // (negro). El poster como background-image sobre esa caja colapsada tampoco se veia.
+    //
+    // FIX de raiz: el WebView ya tiene una altura real y fija en XAML (HeightRequest=210). Aqui el
+    // html/body ocupan el 100% de ESA altura (height:100%, no un % del ancho) y el iframe se ancla
+    // con position:absolute; inset:0 para llenar TODO el WebView. Asi SIEMPRE hay una caja con alto
+    // real donde pintar. Se deja que el propio reproductor de YouTube muestre su poster + boton de
+    // play grande + controles (es lo mas robusto y lo que el usuario espera ver), sin autoplay
+    // forzado: el usuario pulsa play sobre el reproductor de YouTube.
     //
     // La URL de embed es CANONICA y solo con el ID limpio de 11 chars:
-    //   https://www.youtube.com/embed/VIDEO_ID?playsinline=1&rel=0&modestbranding=1&autoplay=1
+    //   https://www.youtube.com/embed/VIDEO_ID?playsinline=1&rel=0&modestbranding=1
     // Funciona igual para videos normales y para SHORTS (el embed por ID es el mismo).
     //
     // BaseUrl = https://www.youtube.com es CLAVE: sin el, el HTML inline se carga con origen
@@ -494,39 +498,24 @@ public partial class NewsDetailPage : ContentPage
     // dominio que el embed, el documento tiene un origin valido y YouTube permite la reproduccion.
     private static HtmlWebViewSource ConstruirHtmlYoutube(string videoId)
     {
-        var embedSrc = $"https://www.youtube.com/embed/{videoId}?playsinline=1&rel=0&modestbranding=1&autoplay=1";
-        // hqdefault existe para todos los videos (incluidos shorts); maxresdefault no siempre.
-        var posterSrc = $"https://img.youtube.com/vi/{videoId}/hqdefault.jpg";
+        var embedSrc = $"https://www.youtube.com/embed/{videoId}?playsinline=1&rel=0&modestbranding=1";
 
         var html =
+            "<!DOCTYPE html>" +
             "<html><head><meta name='viewport' content='width=device-width, initial-scale=1'>" +
             "<style>" +
-            "html,body{margin:0;padding:0;background:#000;}" +
-            // Caja 16:9 con tamano explicito (no depende de un alto en % que colapse): el padding-top
-            // reserva la altura segun el ancho real del WebView, por eso siempre hay algo que pintar.
-            ".wrap{position:relative;width:100%;padding-top:56.25%;background:#000;overflow:hidden;}" +
-            ".wrap>*{position:absolute;top:0;left:0;width:100%;height:100%;border:0;}" +
-            ".poster{background-position:center;background-size:cover;cursor:pointer;}" +
-            // Boton de play centrado, estilo YouTube (rojo redondeado con triangulo blanco).
-            ".play{display:flex;align-items:center;justify-content:center;}" +
-            ".play b{width:68px;height:48px;background:#ff0000;border-radius:14px;display:flex;" +
-            "align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.4);}" +
-            ".play b:after{content:'';border-style:solid;border-width:11px 0 11px 19px;" +
-            "border-color:transparent transparent transparent #fff;margin-left:4px;}" +
+            // html/body con alto real (100% del alto del WebView, que es fijo). Sin esto, el
+            // documento no tiene altura de referencia y el embed queda sin lugar donde pintar.
+            "html,body{margin:0;padding:0;height:100%;width:100%;background:#000;overflow:hidden;}" +
+            // El iframe llena TODO el WebView con posicion absoluta (no depende de un % del ancho).
+            ".box{position:absolute;top:0;left:0;right:0;bottom:0;}" +
+            ".box iframe{width:100%;height:100%;border:0;display:block;}" +
             "</style></head>" +
-            "<body><div class='wrap' id='w'>" +
-            $"<div class='poster' id='p' style=\"background-image:url('{posterSrc}')\"></div>" +
-            "<div class='play' id='b'><b></b></div>" +
-            "</div>" +
-            "<script>" +
-            "function go(){" +
-            "var w=document.getElementById('w');" +
-            "w.innerHTML=\"<iframe src='" + embedSrc + "' " +
+            "<body><div class='box'>" +
+            $"<iframe src='{embedSrc}' " +
             "allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share' " +
-            "allowfullscreen></iframe>\";}" +
-            "document.getElementById('p').addEventListener('click',go);" +
-            "document.getElementById('b').addEventListener('click',go);" +
-            "</script></body></html>";
+            "allowfullscreen></iframe>" +
+            "</div></body></html>";
         return new HtmlWebViewSource { Html = html, BaseUrl = "https://www.youtube.com" };
     }
 
