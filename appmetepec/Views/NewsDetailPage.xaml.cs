@@ -453,7 +453,11 @@ public partial class NewsDetailPage : ContentPage
             VideoInline.IsVisible = false;
             VideoFullscreenButton.IsVisible = false;
             VideoYoutube.IsVisible = true;
-            VideoYoutube.Source = new UrlWebViewSource { Url = ConstruirUrlProxyYoutube(videoId) };
+            // Cargar el proxy CON header Referer = origin del backend. Es el paso que faltaba:
+            // YouTube valida el embed por el Referer de la peticion, y el WebView movil NO lo envia
+            // por defecto (por eso el mismo proxy reproducia en el navegador pero daba Error 153 en
+            // la app). Se inyecta el Referer a nivel nativo (Android/iOS) al cargar la URL.
+            CargarYoutubeConReferer(ConstruirUrlProxyYoutube(videoId));
             VideoBlock.IsVisible = true;
         }
         else if (EsDominioYoutube(_news.videoUrl))
@@ -483,6 +487,74 @@ public partial class NewsDetailPage : ContentPage
     // backend. El backend arma el iframe con enablejsapi=1 + origin correcto.
     private static string ConstruirUrlProxyYoutube(string videoId) =>
         $"{AppConstants.MetepecBackendUrl}/video/youtube?v={videoId}";
+
+    // Origin del backend (esquema + host + puerto, SIN la ruta /api). Se usa como header Referer
+    // al cargar el proxy en el WebView: coincide con el parametro origin del embed y es lo que
+    // YouTube valida para autorizar la reproduccion embebida.
+    private static string BackendOrigin()
+    {
+        // MetepecBackendUrl es "https://host:puerto/api" -> tomamos el origin recortando la ruta.
+        var uri = new Uri(AppConstants.MetepecBackendUrl);
+        return $"{uri.Scheme}://{uri.Authority}";
+    }
+
+    // Carga la URL del proxy en el WebView AGREGANDO el header "Referer" = origin del backend.
+    // MAUI (UrlWebViewSource) no permite enviar headers, por eso se hace a nivel del control
+    // nativo (Android.Webkit.WebView.LoadUrl con headers / WKWebView.LoadRequest con NSMutable-
+    // UrlRequest). Es el paso que destraba el Error 153 en WebView movil: el navegador manda
+    // Referer solo, pero el WebView no lo hace por defecto (por eso el mismo proxy reproducia en
+    // el navegador y fallaba en la app). Si el PlatformView aun no existe, se espera a
+    // HandlerChanged para no cargar antes de tiempo.
+    private void CargarYoutubeConReferer(string url)
+    {
+        var referer = BackendOrigin();
+
+        void Cargar()
+        {
+#if ANDROID
+            if (VideoYoutube.Handler?.PlatformView is Android.Webkit.WebView nativo)
+            {
+                var headers = new Dictionary<string, string> { ["Referer"] = referer };
+                nativo.LoadUrl(url, headers);
+                return;
+            }
+#elif IOS
+            if (VideoYoutube.Handler?.PlatformView is WebKit.WKWebView nativo)
+            {
+                using var nsUrl = new Foundation.NSUrl(url);
+                using var request = new Foundation.NSMutableUrlRequest(nsUrl);
+                // Indexer de headers: forma estable del binding iOS para fijar un header HTTP.
+                request["Referer"] = referer;
+                nativo.LoadRequest(request);
+                return;
+            }
+#endif
+            // Respaldo (otras plataformas o si el PlatformView aun no existe): carga simple por URL.
+            VideoYoutube.Source = new UrlWebViewSource { Url = url };
+        }
+
+        // Si el PlatformView nativo ya existe, cargar directo. Si todavia no (la pagina se esta
+        // construyendo y el Handler aun no se crea), esperar al evento HandlerChanged del WebView,
+        // que dispara JUSTO cuando el PlatformView nativo queda disponible -- asi la carga con
+        // Referer nunca corre antes de tiempo (no depende de un timing de dispatcher).
+        if (VideoYoutube.Handler?.PlatformView is not null)
+        {
+            Cargar();
+        }
+        else
+        {
+            void OnHandlerListo(object? s, EventArgs e)
+            {
+                if (VideoYoutube.Handler?.PlatformView is null)
+                {
+                    return;
+                }
+                VideoYoutube.HandlerChanged -= OnHandlerListo;
+                Cargar();
+            }
+            VideoYoutube.HandlerChanged += OnHandlerListo;
+        }
+    }
 
     // --- Video: expandir a pantalla completa y volver (solo camino .mp4 / MediaElement) ---
 
