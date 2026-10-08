@@ -445,26 +445,26 @@ public partial class NewsDetailPage : ContentPage
         var videoId = ExtraerVideoId(_news.videoUrl);
         if (videoId is not null)
         {
-            // YouTube embebido: ocultar el MediaElement (sin asignarle Source) y mostrar el WebView.
+            // YouTube EMBEBIDO que reproduce DENTRO de la app. El WebView carga un proxy HTML
+            // servido por nuestro backend (https://.../api/video/youtube?v=ID). Al servirse desde
+            // un dominio real, el embed tiene un origin remoto valido y YouTube lo reproduce sin el
+            // "Error 153" que daba al cargar el embed desde un HTML local. El reproductor de YouTube
+            // trae su propio poster, boton de play y controles.
             VideoInline.IsVisible = false;
             VideoFullscreenButton.IsVisible = false;
             VideoYoutube.IsVisible = true;
-            // Navegamos DIRECTO a la URL del embed de YouTube (UrlWebViewSource), no a un HTML
-            // inline con BaseUrl: en iOS (WKWebView) el HtmlWebViewSource con BaseUrl no renderiza
-            // de forma fiable (salia negro). Una URL real tiene origin propio y YouTube la sirve.
-            VideoYoutube.Source = new UrlWebViewSource { Url = ConstruirUrlEmbedYoutube(videoId) };
+            VideoYoutube.Source = new UrlWebViewSource { Url = ConstruirUrlProxyYoutube(videoId) };
             VideoBlock.IsVisible = true;
         }
         else if (EsDominioYoutube(_news.videoUrl))
         {
-            // Es un enlace de YouTube pero NO se pudo sacar un VIDEO_ID valido (URL rara). Antes de
-            // mostrar un recuadro negro vacio (WebView con un embed invalido), se oculta el bloque
-            // de video por completo: mejor no mostrar nada que un cuadro negro muerto.
+            // Enlace de YouTube del que no se pudo extraer un VIDEO_ID valido (URL rara): mejor no
+            // mostrar un reproductor vacio.
             VideoBlock.IsVisible = false;
         }
         else if (Uri.TryCreate(_news.videoUrl, UriKind.Absolute, out var videoUri))
         {
-            // .mp4 u otra URL de video directa: camino actual con MediaElement.
+            // .mp4 u otra URL de video directa: camino con MediaElement (inline + pantalla completa).
             VideoYoutube.IsVisible = false;
             VideoInline.IsVisible = true;
             VideoFullscreenButton.IsVisible = true;
@@ -477,24 +477,12 @@ public partial class NewsDetailPage : ContentPage
         }
     }
 
-    // URL del reproductor de YouTube embebido, que se carga DIRECTO en el WebView con
-    // UrlWebViewSource (no HTML inline).
-    //
-    // CAUSA RAIZ del "recuadro negro total" (sobre todo en iOS): se usaba HtmlWebViewSource (HTML
-    // inline fabricado por la app) con BaseUrl. En iOS el WKWebView no renderiza de forma fiable
-    // un HtmlWebViewSource con BaseUrl -> quedaba negro aunque el video existiera. Ademas el truco
-    // de alto 16:9 por padding-top en % colapsaba la caja a 0 en Android.
-    //
-    // FIX de raiz: navegar a la URL REAL del embed de YouTube. El WebView carga una pagina de
-    // youtube.com con origin propio (no about:blank), YouTube la sirve con su reproductor nativo
-    // (poster + play + controles) y se ajusta sola al tamano del WebView (que tiene alto fijo en
-    // XAML). Esto elimina tanto el problema de BaseUrl en iOS como el de la caja colapsada.
-    //
-    // Parametros: playsinline=1 (reproduce dentro del recuadro, no en pantalla completa forzada en
-    // iOS), rel=0 (sin videos relacionados de otros canales al final), modestbranding=1. El embed
-    // por VIDEO_ID (11 chars) funciona igual para videos normales y para SHORTS.
-    private static string ConstruirUrlEmbedYoutube(string videoId) =>
-        $"https://www.youtube.com/embed/{videoId}?playsinline=1&rel=0&modestbranding=1";
+    // URL del proxy de YouTube servido por nuestro backend. Cargar el embed desde este dominio
+    // real (no desde un HTML local) es lo que evita el "Error 153" en el WebView movil: YouTube
+    // valida el embed contra el origin de la pagina que lo contiene, y aqui ese origin es el del
+    // backend. El backend arma el iframe con enablejsapi=1 + origin correcto.
+    private static string ConstruirUrlProxyYoutube(string videoId) =>
+        $"{AppConstants.MetepecBackendUrl}/video/youtube?v={videoId}";
 
     // --- Video: expandir a pantalla completa y volver (solo camino .mp4 / MediaElement) ---
 
@@ -545,8 +533,8 @@ public partial class NewsDetailPage : ContentPage
     {
         base.OnDisappearing();
         try { VideoInline.Stop(); } catch { /* best-effort */ }
-        // YouTube: navegar el WebView a una pagina en blanco para que el embed deje de
-        // reproducir/sonar al volver (si no, el audio de YouTube seguiria aun fuera de la pantalla).
+        // YouTube: navegar el WebView a blanco para que el reproductor embebido deje de
+        // reproducir/sonar al salir de la pantalla.
         try { VideoYoutube.Source = new UrlWebViewSource { Url = "about:blank" }; } catch { /* best-effort */ }
         if (VideoFullscreenOverlay.IsVisible)
         {
