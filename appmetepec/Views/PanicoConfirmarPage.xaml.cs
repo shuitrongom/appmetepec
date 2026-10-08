@@ -16,7 +16,8 @@ public partial class PanicoConfirmarPage : ContentPage
     private PanicoDatos? _datos;
 
     private const int IdServicioPanico = 42; // "Servicio de emergencia"
-    private const string NumeroLlamadaPanico = "*7311";
+    // Numero al que se marca al lanzar el servicio de emergencia (antes *7311).
+    private const string NumeroLlamadaPanico = "7222084857";
 
     public PanicoConfirmarPage(PreferencesService preferences, MetepecApiService api, NavigationState navigationState)
     {
@@ -50,7 +51,7 @@ public partial class PanicoConfirmarPage : ContentPage
             ConfirmarButton.IsEnabled = false;
             BusyIndicator.IsRunning = BusyIndicator.IsVisible = true;
 
-            int? ticketId = null;
+            string? ticketId = null;
             try
             {
                 ticketId = await CrearTicketPanicoAsync(_datos);
@@ -84,7 +85,7 @@ public partial class PanicoConfirmarPage : ContentPage
         }
     }
 
-    private async Task<int> CrearTicketPanicoAsync(PanicoDatos datos)
+    private async Task<string> CrearTicketPanicoAsync(PanicoDatos datos)
     {
         if (_preferences.CiudadanoId == 0)
         {
@@ -110,8 +111,8 @@ public partial class PanicoConfirmarPage : ContentPage
         {
             Idciudadano = _preferences.CiudadanoId,
             IdCanalIngreso = idCanalIngreso,
-            Asunto = "BOTÓN DE PÁNICO",
-            Descripcion = "Botón de pánico activado desde la app.",
+            Asunto = "SERVICIO DE EMERGENCIA",
+            Descripcion = "Servicio de emergencia activado desde la app.",
             Correoelectronico = datos.Email,
             Numerotelefonico = datos.Phone,
             Dependencia = ZendeskDependencia.C2.DisplayName(),
@@ -127,7 +128,7 @@ public partial class PanicoConfirmarPage : ContentPage
             Observacion = new BackendTicketObservacionRequest
             {
                 IdTipoMensaje = 1,
-                Observaciones = "BOTÓN DE PÁNICO",
+                Observaciones = "SERVICIO DE EMERGENCIA",
                 VisibleCiudadano = true
             }
         };

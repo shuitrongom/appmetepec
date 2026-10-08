@@ -18,6 +18,7 @@ public partial class HomePage : ContentPage
     private readonly PushRegistrationService _pushRegistration;
     private readonly EventosService _eventos;
     private bool _bannerTimerStarted;
+    private bool _paginaVisible;
     private bool _isDrawerOpen;
     private bool _newsLoaded;
     private bool _categoriesLoaded;
@@ -40,11 +41,13 @@ public partial class HomePage : ContentPage
         DarkThemeSwitch.IsToggled = _preferences.DarkThemeEnabled;
         SetActiveTab(reportsActive: true);
         BannerCarousel.ItemsSource = BuildBanners();
-        LogoImage.Behaviors.Add(new TouchBehavior
-        {
-            LongPressDuration = 3000,
-            LongPressCommand = new Command(OnLogoLongPressed)
-        });
+        // "Modo pruebas" (mantener presionado el logo 3 s abre la encuesta de experiencia sin
+        // esperar los 8 dias): desactivado para produccion. Para pruebas, descomentar.
+        // LogoImage.Behaviors.Add(new TouchBehavior
+        // {
+        //     LongPressDuration = 3000,
+        //     LongPressCommand = new Command(OnLogoLongPressed)
+        // });
 
 #if ANDROID || IOS
         // Firebase puede rotar el token del dispositivo en cualquier momento (no solo al
@@ -53,9 +56,16 @@ public partial class HomePage : ContentPage
 #endif
     }
 
+    protected override void OnDisappearing()
+    {
+        base.OnDisappearing();
+        _paginaVisible = false;
+    }
+
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        _paginaVisible = true;
         // Se reintenta en cada OnAppearing mientras no se haya podido traer el catalogo del API
         // (sin conexion al abrir la app, por ejemplo).
         if (!_categoriesLoaded)
@@ -188,6 +198,14 @@ public partial class HomePage : ContentPage
         _bannerTimerStarted = true;
         Dispatcher.StartTimer(TimeSpan.FromSeconds(4), () =>
         {
+            // HomePage sigue viva en la pila de Shell al navegar a otras pantallas: sin esto el
+            // carrusel seguia animandose cada 4 s en segundo plano (layout + GC en el hilo de UI)
+            // y causaba tirones en Mis reportes / detalle del ticket.
+            if (!_paginaVisible)
+            {
+                return true;
+            }
+
             if (BannerCarousel.ItemsSource is not IReadOnlyList<object> banners || banners.Count == 0)
             {
                 return true;
@@ -314,12 +332,12 @@ public partial class HomePage : ContentPage
             Color.FromArgb("#9B12B3"), "ic_denuncia_ciudadana.png", "DENUNCIAS", "CIUDADANAS")*/
         new(Color.FromArgb("#B8D927"), "btn_predial.png", "PREDIAL", "PAGO EN LINEA",
             Color.FromArgb("#7BCDEB"), "ic_opdapas.png", "OPDAPAS", "PAGO EN LINEA"),
+        
+        /*new(Color.FromArgb("#7BCDEB"), "ic_opdapas.png", "OPDAPAS", "PAGO EN LINEA",
+            Color.FromArgb("#9B12B3"), "ic_denuncia_ciudadana.png", "DENUNCIAS", "CIUDADANAS"),*/
 
-        new(Color.FromArgb("#7BCDEB"), "ic_opdapas.png", "OPDAPAS", "PAGO EN LINEA",
-            Color.FromArgb("#9B12B3"), "ic_denuncia_ciudadana.png", "DENUNCIAS", "CIUDADANAS"),
-
-        new(Color.FromArgb("#9B12B3"), "ic_denuncia_ciudadana.png", "DENUNCIAS", "CIUDADANAS",
-            Color.FromArgb("#B8D927"), "btn_predial.png", "PREDIAL", "PAGO EN LINEA")
+        //new(Color.FromArgb("#9B12B3"), "ic_denuncia_ciudadana.png", "DENUNCIAS", "CIUDADANAS",
+          //  Color.FromArgb("#B8D927"), "btn_predial.png", "PREDIAL", "PAGO EN LINEA")
         
     ];
 
@@ -449,6 +467,31 @@ public partial class HomePage : ContentPage
         await Shell.Current.GoToAsync(nameof(NewsDetailPage));
     }
 
+    // Mitad de un banner promocional del carrusel (PromoBannerTemplate): PREDIAL y OPDAPAS abren
+    // su pagina de pago en el navegador; los demas (p. ej. DENUNCIAS) no tienen accion.
+    private async void OnPromoBannerTapped(object sender, TappedEventArgs e)
+    {
+        var url = (e.Parameter as string) switch
+        {
+            "PREDIAL" => AppConstants.PredialUrl,
+            "OPDAPAS" => AppConstants.OpdapasUrl,
+            _ => null
+        };
+        if (url is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await Launcher.Default.OpenAsync(new Uri(url));
+        }
+        catch
+        {
+            await DisplayAlert("No se pudo abrir", "No se encontró un navegador para abrir la página.", "Aceptar");
+        }
+    }
+
     // Slide de noticia destacada dentro del BannerCarousel de arriba (ver ShowNews/NewsBannerTemplate
     // en HomePage.xaml) -- mismo destino que tocar la noticia en la lista de la pestaña Noticias.
     private async void OnBannerNewsTapped(object sender, TappedEventArgs e)
@@ -479,9 +522,7 @@ public partial class HomePage : ContentPage
     {
         if (report.Title == "Llamada")
         {
-            // telprompt: fuerza el dialogo nativo de iOS antes de marcar, evitando que
-            // WhatsApp intercepte el numero especial *7311 en iPhones con esa app instalada.
-            await Launcher.Default.OpenAsync("telprompt:*7311");
+            await MarcarNumeroEmergenciaAsync("*7311");
             return;
         }
 
@@ -540,12 +581,22 @@ public partial class HomePage : ContentPage
     {
         try
         {
-            await Launcher.Default.OpenAsync("telprompt:*7311");
+            await MarcarNumeroEmergenciaAsync("*7311");
         }
         catch (Exception ex)
         {
             await DisplayAlert("No se pudo iniciar la llamada", ErrorMessageHelper.Traducir(ex), "Aceptar");
         }
+    }
+
+    // telprompt: fuerza el dialogo nativo de iOS antes de marcar (evita que WhatsApp intercepte el
+    // numero especial *7311 en iPhones con esa app instalada), pero es un esquema EXCLUSIVO de
+    // iOS: en Android no hay ninguna app que lo maneje y el intent truena ("No Activity found to
+    // handle Intent"). En Android se usa el esquema estandar tel:.
+    private static Task MarcarNumeroEmergenciaAsync(string numero)
+    {
+        var prefijo = DeviceInfo.Current.Platform == DevicePlatform.iOS ? "telprompt:" : "tel:";
+        return Launcher.Default.OpenAsync($"{prefijo}{numero}");
     }
 
     private async void OnMenuTapped(object sender, TappedEventArgs e)

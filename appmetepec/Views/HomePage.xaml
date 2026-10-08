@@ -11,6 +11,9 @@
         <DataTemplate x:Key="PromoBannerTemplate">
             <Grid HeightRequest="64" ColumnDefinitions="*,*" ColumnSpacing="0">
                 <Grid BackgroundColor="{Binding LeftBackground}" Padding="14,0" ColumnDefinitions="42,*">
+                    <Grid.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnPromoBannerTapped" CommandParameter="{Binding LeftTitle}" />
+                    </Grid.GestureRecognizers>
                     <Image Source="{Binding LeftIcon}" HeightRequest="42" WidthRequest="42" VerticalOptions="Center" />
                     <VerticalStackLayout Grid.Column="1" Spacing="0" VerticalOptions="Center">
                         <Label Text="{Binding LeftTitle}" FontSize="19" FontAttributes="Bold" TextColor="White" />
@@ -18,6 +21,9 @@
                     </VerticalStackLayout>
                 </Grid>
                 <Grid Grid.Column="1" BackgroundColor="{Binding RightBackground}" Padding="14,0" ColumnDefinitions="42,*">
+                    <Grid.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnPromoBannerTapped" CommandParameter="{Binding RightTitle}" />
+                    </Grid.GestureRecognizers>
                     <Image Source="{Binding RightIcon}" HeightRequest="42" WidthRequest="42" VerticalOptions="Center" />
                     <VerticalStackLayout Grid.Column="1" Spacing="0" VerticalOptions="Center">
                         <Label Text="{Binding RightTitle}" FontSize="19" FontAttributes="Bold" TextColor="White" />

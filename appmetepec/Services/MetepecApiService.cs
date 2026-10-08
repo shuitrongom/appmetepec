@@ -236,6 +236,34 @@ public sealed class MetepecApiService
         return await ReadJsonAsync<BackendCiudadanoDto>(response, cancellationToken);
     }
 
+    public async Task<BackendCiudadanoDireccionDto?> GetMyDireccionPrincipalAsync(CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Get, AppConstants.MetepecBackendUrl + "/ciudadano-direcciones/me/principal");
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        response.EnsureSuccessStatusCode();
+        return await ReadJsonAsync<BackendCiudadanoDireccionDto>(response, cancellationToken);
+    }
+
+    public async Task<BackendCiudadanoDireccionDto?> UpdateMyDireccionPrincipalAsync(BackendActualizarMiDireccionRequest request, CancellationToken cancellationToken = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Put, AppConstants.MetepecBackendUrl + "/ciudadano-direcciones/me/principal")
+        {
+            Content = JsonContent(request)
+        };
+        AddBackendAuthorization(message);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        return await ReadJsonAsync<BackendCiudadanoDireccionDto>(response, cancellationToken);
+    }
+
     public async Task<BackendUploadResult?> UploadEvidenceAsync(FileResult attachment, CancellationToken cancellationToken = default)
     {
         await using var stream = await attachment.OpenReadAsync();
@@ -297,7 +325,7 @@ public sealed class MetepecApiService
         return await ReadJsonAsync<BackendUploadResult>(response, cancellationToken);
     }
 
-    public async Task<int> CreateTicketAsync(BackendCreateTicketRequest request, CancellationToken cancellationToken = default)
+    public async Task<string> CreateTicketAsync(BackendCreateTicketRequest request, CancellationToken cancellationToken = default)
     {
         using var message = new HttpRequestMessage(HttpMethod.Post, AppConstants.MetepecBackendUrl + "/tickets")
         {
@@ -314,7 +342,8 @@ public sealed class MetepecApiService
 
         response.EnsureSuccessStatusCode();
         var created = await ReadJsonAsync<BackendTicketDto>(response, cancellationToken);
-        return created?.Id ?? 0;
+        // Regresa el folio consecutivo (lo que se le muestra al ciudadano), no el Id interno.
+        return created?.FolioMostrar ?? "";
     }
 
     public async Task<BackendTicketDto?> ConfirmarResolucionTicketAsync(int idTicket, CancellationToken cancellationToken = default)

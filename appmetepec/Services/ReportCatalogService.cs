@@ -65,10 +65,11 @@ public sealed class ReportCatalogService
     private static void AgregarOpcionesFijas(List<DependenciaCategoria> categories)
     {
         var otros = new DependenciaCategoria(0, "Otros", new List<ScreenReport>());
-        otros.Reportes.Add(new ScreenReport("Llamada", "", true, true, true, false,
-            ZendeskDependencia.CallCenter.DisplayName(), IconSource: GuessIcon("Llamada")));
-        otros.Reportes.Add(new ScreenReport("Denuncia Ciudadana", "", true, true, true, false,
-            ZendeskDependencia.Otros.DisplayName(), IdSeccion: 10, IconSource: GuessIcon("Denuncia Ciudadana")));
+        // Ocultos por solicitud (solo queda "Terminos y condiciones"). Para reactivarlos, descomentar.
+        // otros.Reportes.Add(new ScreenReport("Llamada", "", true, true, true, false,
+        //     ZendeskDependencia.CallCenter.DisplayName(), IconSource: GuessIcon("Llamada")));
+        // otros.Reportes.Add(new ScreenReport("Denuncia Ciudadana", "", true, true, true, false,
+        //     ZendeskDependencia.Otros.DisplayName(), IdSeccion: 10, IconSource: GuessIcon("Denuncia Ciudadana")));
         otros.Reportes.Add(new ScreenReport("Terminos y condiciones", "", true, true, true, false,
             ZendeskDependencia.Otros.DisplayName(), IdSeccion: 11, IconSource: GuessIcon("Terminos y condiciones")));
         categories.Add(otros);

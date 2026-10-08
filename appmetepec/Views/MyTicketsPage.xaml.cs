@@ -9,6 +9,9 @@ public partial class MyTicketsPage : ContentPage
     private readonly NavigationState _navigationState;
     private readonly PendingTicketsService _pendingTickets;
     private readonly PreferencesService _preferences;
+    private bool _enviandoPendiente;
+    private bool _cargandoTickets;
+    private bool _abriendoDetalle;
 
     public MyTicketsPage(MetepecApiService api, NavigationState navigationState, PendingTicketsService pendingTickets, PreferencesService preferences)
     {
@@ -22,18 +25,27 @@ public partial class MyTicketsPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        // La peticion de tickets (red) arranca de inmediato, sin esperar a leer el archivo local
+        // de pendientes.
+        var cargaTickets = TicketsView.ItemsSource is null ? LoadTicketsAsync() : Task.CompletedTask;
         await LoadPendingAsync();
-        if (TicketsView.ItemsSource is null)
-        {
-            await LoadTicketsAsync();
-        }
+        await cargaTickets;
     }
 
-    private async Task LoadTicketsAsync()
+    // mostrarIndicador = false en el "jalar para refrescar": el RefreshView ya muestra su propio
+    // spinner (antes salian los dos a la vez). _cargandoTickets evita pedir la lista dos veces si
+    // se refresca mientras todavia carga la primera.
+    private async Task LoadTicketsAsync(bool mostrarIndicador = true)
     {
+        if (_cargandoTickets)
+        {
+            return;
+        }
+
+        _cargandoTickets = true;
         try
         {
-            BusyIndicator.IsRunning = BusyIndicator.IsVisible = true;
+            BusyIndicator.IsRunning = BusyIndicator.IsVisible = mostrarIndicador;
             var tickets = await _api.GetMyTicketsAsync();
             TicketsView.ItemsSource = tickets;
             ReportsCountLabel.Text = $"{tickets.Count} reporte{(tickets.Count == 1 ? "" : "s")}";
@@ -47,30 +59,49 @@ public partial class MyTicketsPage : ContentPage
         finally
         {
             BusyIndicator.IsRunning = BusyIndicator.IsVisible = false;
+            _cargandoTickets = false;
         }
     }
 
     private async Task LoadPendingAsync()
     {
-        var pending = await _pendingTickets.GetAllAsync();
+        // Solo los reportes pendientes de la cuenta en sesion (la cola es compartida por dispositivo).
+        var idCiudadano = _preferences.CiudadanoId;
+        var pending = (await _pendingTickets.GetAllAsync())
+            .Where(item => idCiudadano > 0 && item.IdCiudadano == idCiudadano)
+            .ToList();
         PendingSection.IsVisible = pending.Count > 0;
-        PendingView.ItemsSource = pending.OrderByDescending(item => item.SavedAt).ToList();
+        BindableLayout.SetItemsSource(PendingView, pending.OrderByDescending(item => item.SavedAt).ToList());
     }
 
     private async void OnRefreshing(object sender, EventArgs e)
     {
-        await LoadPendingAsync();
-        await LoadTicketsAsync();
-        TicketsRefreshView.IsRefreshing = false;
+        try
+        {
+            await LoadPendingAsync();
+            await LoadTicketsAsync(mostrarIndicador: false);
+        }
+        finally
+        {
+            TicketsRefreshView.IsRefreshing = false;
+        }
     }
 
     private async void OnRetryPendingClicked(object sender, EventArgs e)
     {
-        if (sender is not Button { BindingContext: PendingTicketSubmission pending })
+        if (sender is not Button { BindingContext: PendingTicketSubmission pending } boton)
         {
             return;
         }
 
+        // Evita crear el mismo ticket varias veces por toques repetidos mientras se envia.
+        if (_enviandoPendiente)
+        {
+            return;
+        }
+
+        _enviandoPendiente = true;
+        boton.IsEnabled = false;
         try
         {
             BusyIndicator.IsRunning = BusyIndicator.IsVisible = true;
@@ -83,6 +114,13 @@ public partial class MyTicketsPage : ContentPage
             if (_preferences.CiudadanoId == 0)
             {
                 await DisplayAlert("No se pudo identificar tu cuenta", "Vuelve a iniciar sesion e intenta de nuevo.", "Aceptar");
+                return;
+            }
+
+            // Nunca enviar a nombre de la cuenta actual un reporte guardado por otra.
+            if (pending.IdCiudadano != _preferences.CiudadanoId)
+            {
+                await LoadPendingAsync();
                 return;
             }
 
@@ -171,6 +209,8 @@ public partial class MyTicketsPage : ContentPage
         }
         finally
         {
+            _enviandoPendiente = false;
+            boton.IsEnabled = true;
             BusyIndicator.IsRunning = BusyIndicator.IsVisible = false;
         }
     }
@@ -213,8 +253,23 @@ public partial class MyTicketsPage : ContentPage
         }
 
         ((CollectionView)sender).SelectedItem = null;
-        _navigationState.SelectedTicket = ticket;
-        await Shell.Current.GoToAsync(nameof(TicketDetailPage));
+
+        // Evita apilar el detalle dos veces por toques rapidos.
+        if (_abriendoDetalle)
+        {
+            return;
+        }
+
+        _abriendoDetalle = true;
+        try
+        {
+            _navigationState.SelectedTicket = ticket;
+            await Shell.Current.GoToAsync(nameof(TicketDetailPage));
+        }
+        finally
+        {
+            _abriendoDetalle = false;
+        }
     }
 
     private async void OnBackTapped(object sender, TappedEventArgs e)

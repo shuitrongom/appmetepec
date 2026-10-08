@@ -133,6 +133,10 @@ public sealed record UserProfile(string Name, string Email, string Phone);
 public sealed class PendingTicketSubmission
 {
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    // Ciudadano dueño del reporte: la cola offline es por dispositivo (pending_tickets.json),
+    // asi que sin esto un reporte guardado por una cuenta se enviaba a nombre de la siguiente
+    // que iniciara sesion en el mismo telefono. 0 = guardado antes de este campo (dueño desconocido).
+    public int IdCiudadano { get; set; }
     public DateTime SavedAt { get; set; } = DateTime.Now;
     public string Title { get; set; } = "";
     public int IdServicio { get; set; }
@@ -567,7 +571,10 @@ public sealed class BackendEvidenciaItemRequest
 public sealed class BackendTicketDto
 {
     public int Id { get; set; }
+    // Folio consecutivo que se le muestra al ciudadano (el Id es interno y brinca por el IDENTITY
+    // de SQL Server). Tickets anteriores al consecutivo tienen Folio = Id.
     public string? Folio { get; set; }
+    public string FolioMostrar => string.IsNullOrWhiteSpace(Folio) ? Id.ToString() : Folio;
     public string Asunto { get; set; } = "";
     public string? Descripcion { get; set; }
     public string? Descestatus { get; set; }
@@ -645,7 +652,86 @@ public sealed class BackendTicketObservacionDto
     public List<BackendTicketObservacionEvidenciaDto>? Evidencias { get; set; }
     public bool HasEvidencias => Evidencias is { Count: > 0 };
     public string NombreMostrar => string.IsNullOrWhiteSpace(NombreUsuarioregistra) ? "Atención Metepec" : NombreUsuarioregistra;
+    // Las respuestas capturadas desde la web (editor enriquecido / macros) llegan como HTML;
+    // se convierten a texto plano dividido en segmentos para que los enlaces (<a href> y URLs
+    // sueltas) se puedan tocar. La vista los arma con SegmentosAFormattedStringConverter.
+    private IReadOnlyList<SegmentoTexto>? _observacionesSegmentos;
+    public IReadOnlyList<SegmentoTexto> ObservacionesSegmentos => _observacionesSegmentos ??= ConvertirASegmentos(Observaciones);
+
+    // Marcadores temporales (caracteres de control) para conservar los enlaces mientras se quitan las etiquetas.
+    private const char InicioLink = '\u0001', SeparadorLink = '\u0002', FinLink = '\u0003';
+    private static readonly System.Text.RegularExpressions.Regex Ancla = new(@"<a\s[^>]*?href\s*=\s*[""']([^""']+)[""'][^>]*>(.*?)</a\s*>", System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Singleline);
+    private static readonly System.Text.RegularExpressions.Regex MarcaLink = new(@"\u0001(\d+)\u0002(.*?)\u0003", System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.Singleline);
+    private static readonly System.Text.RegularExpressions.Regex UrlSuelta = new(@"https?://[^\s<>""]+", System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+    private static readonly System.Text.RegularExpressions.Regex EspaciosHtml = new(@"\s+", System.Text.RegularExpressions.RegexOptions.Compiled);
+    private static readonly System.Text.RegularExpressions.Regex SaltoLinea = new(@"<br\s*/?>", System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+    private static readonly System.Text.RegularExpressions.Regex FinBloque = new(@"</(p|div|h[1-6]|ul|ol|tr|table)\s*>", System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+    private static readonly System.Text.RegularExpressions.Regex InicioItem = new(@"<li[^>]*>", System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+    private static readonly System.Text.RegularExpressions.Regex FinItem = new(@"</li\s*>", System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+    private static readonly System.Text.RegularExpressions.Regex Etiqueta = new(@"<[^>]+>", System.Text.RegularExpressions.RegexOptions.Compiled);
+    private static readonly System.Text.RegularExpressions.Regex EspaciosEnLinea = new(@"[ \t ]+", System.Text.RegularExpressions.RegexOptions.Compiled);
+    private static readonly System.Text.RegularExpressions.Regex SaltosExtra = new(@"\n{3,}", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    private static IReadOnlyList<SegmentoTexto> ConvertirASegmentos(string? texto)
+    {
+        var urlsAncla = new List<string>();
+        var plano = HtmlATextoPlano(texto, urlsAncla);
+        var segmentos = new List<SegmentoTexto>();
+
+        var ultimo = 0;
+        foreach (System.Text.RegularExpressions.Match m in MarcaLink.Matches(plano))
+        {
+            AgregarConUrlsSueltas(segmentos, plano[ultimo..m.Index]);
+            var url = urlsAncla[int.Parse(m.Groups[1].Value)];
+            var textoLink = m.Groups[2].Value.Trim();
+            segmentos.Add(new SegmentoTexto(textoLink.Length > 0 ? textoLink : url, url));
+            ultimo = m.Index + m.Length;
+        }
+        AgregarConUrlsSueltas(segmentos, plano[ultimo..]);
+        return segmentos;
+    }
+
+    private static void AgregarConUrlsSueltas(List<SegmentoTexto> segmentos, string texto)
+    {
+        var ultimo = 0;
+        foreach (System.Text.RegularExpressions.Match m in UrlSuelta.Matches(texto))
+        {
+            if (m.Index > ultimo) segmentos.Add(new SegmentoTexto(texto[ultimo..m.Index], null));
+            segmentos.Add(new SegmentoTexto(m.Value, m.Value));
+            ultimo = m.Index + m.Length;
+        }
+        if (ultimo < texto.Length) segmentos.Add(new SegmentoTexto(texto[ultimo..], null));
+    }
+
+    private static string HtmlATextoPlano(string? texto, List<string> urlsAncla)
+    {
+        if (string.IsNullOrWhiteSpace(texto)) return "";
+
+        // Texto capturado sin formato (sin etiquetas): se respeta tal cual con sus saltos de linea.
+        if (!texto.Contains('<') && !texto.Contains('&')) return texto.Trim();
+
+        // En HTML los saltos de linea y sangrias del codigo fuente no cuentan como texto.
+        var s = EspaciosHtml.Replace(texto, " ");
+        s = Ancla.Replace(s, m =>
+        {
+            urlsAncla.Add(System.Net.WebUtility.HtmlDecode(m.Groups[1].Value.Trim()));
+            return $"{InicioLink}{urlsAncla.Count - 1}{SeparadorLink}{m.Groups[2].Value}{FinLink}";
+        });
+        s = SaltoLinea.Replace(s, "\n");
+        s = FinBloque.Replace(s, "\n\n");
+        s = InicioItem.Replace(s, "\n• ");
+        s = FinItem.Replace(s, "\n");
+        s = Etiqueta.Replace(s, "");
+        s = System.Net.WebUtility.HtmlDecode(s);
+
+        var lineas = s.Split('\n').Select(l => EspaciosEnLinea.Replace(l, " ").Trim());
+        s = string.Join("\n", lineas);
+        return SaltosExtra.Replace(s, "\n\n").Trim();
+    }
 }
+
+// Fragmento de texto de una respuesta; si Url no es null, el fragmento es un enlace tocable.
+public sealed record SegmentoTexto(string Texto, string? Url);
 
 public sealed class BackendTicketObservacionEvidenciaDto
 {
@@ -751,6 +837,24 @@ public sealed class BackendActualizarMiCiudadanoRequest
     // calce exacto con lo que espera el DateOnly? del back-end.
     [JsonPropertyName("fechanacimiento")]
     public string? Fechanacimiento { get; set; }
+}
+
+// Autoservicio (appmetepec, "Mi perfil"): solo la direccion PRINCIPAL del ciudadano (ver
+// CiudadanoDireccion.EsPrincipal en el back-end), y solo el texto -- sin catalogos
+// (Fraccionamiento/Sector/PosicionGeografica) ni coordenadas, eso lo sigue capturando un agente.
+public sealed class BackendCiudadanoDireccionDto
+{
+    [JsonPropertyName("id")]
+    public int Id { get; set; }
+
+    [JsonPropertyName("direccion")]
+    public string? Direccion { get; set; }
+}
+
+public sealed class BackendActualizarMiDireccionRequest
+{
+    [JsonPropertyName("direccion")]
+    public string? Direccion { get; set; }
 }
 
 public sealed class BackendPublicacionDto

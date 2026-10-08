@@ -12,6 +12,8 @@ public partial class TicketDetailPage : ContentPage
     private BackendTicketDto? _ticket;
     private bool _paginaVisible;
     private bool _encuestaPromptMostrado;
+    private bool _abriendoEvidencia;
+    private bool _volviendoDeGaleria;
 
     public TicketDetailPage(MetepecApiService api, NavigationState navigationState)
     {
@@ -24,6 +26,14 @@ public partial class TicketDetailPage : ContentPage
     {
         base.OnAppearing();
         _paginaVisible = true;
+
+        // Al cerrar el visor de fotos (modal) no se recarga el ticket ni se reinicia el temporizador.
+        if (_volviendoDeGaleria)
+        {
+            _volviendoDeGaleria = false;
+            return;
+        }
+
         _ticket = _navigationState.SelectedTicket;
         if (_ticket is null)
         {
@@ -36,12 +46,8 @@ public partial class TicketDetailPage : ContentPage
         EstatusChip.BackgroundColor = TryParseColor(_ticket.Colorestatus) ?? Color.FromArgb("#8A9BA8");
         ServicioLabel.Text = _ticket.Descservicio ?? "";
         DependenciaLabel.Text = _ticket.Dependencia ?? "";
-        // _ticket.Folio es un campo de texto libre que casi nunca se captura (queda vacio); el
-        // numero de ticket que el ciudadano de verdad necesita para dar seguimiento es _ticket.Id.
-        var folioTexto = string.IsNullOrWhiteSpace(_ticket.Folio)
-            ? $"Folio {_ticket.Id}"
-            : $"Folio {_ticket.Id} ({_ticket.Folio})";
-        FolioLabel.Text = $"{folioTexto}  •  {_ticket.Fechaalta:dd/MM/yyyy HH:mm}";
+        // Folio consecutivo del ticket (el Id es interno; tickets anteriores tienen Folio = Id).
+        FolioLabel.Text = $"Folio {_ticket.FolioMostrar}  •  {_ticket.Fechaalta:dd/MM/yyyy HH:mm}";
 
         await LoadObservacionesAsync(_ticket.Id);
         IniciarTemporizadorEncuestaPendiente();
@@ -133,13 +139,13 @@ public partial class TicketDetailPage : ContentPage
         {
             BusyIndicator.IsRunning = BusyIndicator.IsVisible = true;
             var observaciones = await _api.GetTicketObservacionesAsync(idTicket);
-            ObservacionesView.ItemsSource = observaciones
+            BindableLayout.SetItemsSource(ObservacionesView, observaciones
                 .Where(obs => string.Equals(obs.Clavetipomensaje, AppConstants.ClaveRespuestaPublica, StringComparison.OrdinalIgnoreCase))
-                .ToList();
+                .ToList());
         }
         catch (Exception ex)
         {
-            ObservacionesView.ItemsSource = Array.Empty<BackendTicketObservacionDto>();
+            BindableLayout.SetItemsSource(ObservacionesView, Array.Empty<BackendTicketObservacionDto>());
             await DisplayAlert("No se pudieron cargar las respuestas", ErrorMessageHelper.Traducir(ex), "Aceptar");
         }
         finally
@@ -152,6 +158,113 @@ public partial class TicketDetailPage : ContentPage
     {
         await SalirConEncuestaPendienteAsync();
     }
+
+    // Fotos: se abren en el visor de galeria de la app (GaleriaEvidenciasPage) con todas las fotos
+    // de esa respuesta. Otros archivos (video, PDF...) se abren con la app del sistema.
+    private async void OnEvidenciaTapped(object sender, TappedEventArgs e)
+    {
+        if (_abriendoEvidencia ||
+            sender is not Element elemento ||
+            elemento.BindingContext is not BackendTicketObservacionEvidenciaDto evidencia)
+        {
+            return;
+        }
+
+        _abriendoEvidencia = true;
+        try
+        {
+            if (EsImagen(evidencia))
+            {
+                // La respuesta (observacion) es el BindingContext de algun contenedor superior.
+                var observacion = BuscarObservacion(elemento);
+                var fotos = (observacion?.Evidencias ?? [evidencia]).Where(EsImagen).ToList();
+                var indice = Math.Max(fotos.IndexOf(evidencia), 0);
+                _volviendoDeGaleria = true;
+                await Navigation.PushModalAsync(new GaleriaEvidenciasPage(fotos, indice));
+                return;
+            }
+
+            if (Uri.TryCreate(evidencia.RutaArchivo, UriKind.Absolute, out var uri))
+            {
+                await Launcher.Default.OpenAsync(uri);
+            }
+        }
+        catch
+        {
+            _volviendoDeGaleria = false;
+            await DisplayAlert("No se pudo abrir", "No se encontró una aplicación para abrir el archivo.", "Aceptar");
+        }
+        finally
+        {
+            _abriendoEvidencia = false;
+        }
+    }
+
+    // Toque sobre el texto de una respuesta: abre su enlace, o deja elegir si trae varios.
+    private async void OnRespuestaTapped(object sender, TappedEventArgs e)
+    {
+        if ((sender as BindableObject)?.BindingContext is not BackendTicketObservacionDto observacion)
+        {
+            return;
+        }
+
+        var enlaces = observacion.ObservacionesSegmentos
+            .Where(s => s.Url is not null && Uri.TryCreate(s.Url, UriKind.Absolute, out _))
+            .GroupBy(s => s.Url!)
+            .Select(g => g.First())
+            .ToList();
+        if (enlaces.Count == 0)
+        {
+            return;
+        }
+
+        var elegido = enlaces[0];
+        if (enlaces.Count > 1)
+        {
+            var textos = enlaces.Select(s => s.Texto.Trim()).ToArray();
+            var opcion = await DisplayActionSheet("Abrir enlace", "Cancelar", null, textos);
+            var indice = Array.IndexOf(textos, opcion);
+            if (indice < 0)
+            {
+                return;
+            }
+            elegido = enlaces[indice];
+        }
+
+        try
+        {
+            await Launcher.Default.OpenAsync(new Uri(elegido.Url!));
+        }
+        catch
+        {
+            await DisplayAlert("No se pudo abrir", "No se encontró una aplicación para abrir el enlace.", "Aceptar");
+        }
+    }
+
+    private static BackendTicketObservacionDto? BuscarObservacion(Element? elemento)
+    {
+        while (elemento is not null)
+        {
+            if (elemento.BindingContext is BackendTicketObservacionDto observacion) return observacion;
+            elemento = elemento.Parent;
+        }
+        return null;
+    }
+
+    private static readonly string[] ExtensionesImagen = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".heic"];
+
+    // Algunas fotos se guardan con TipoMime generico ("application/octet-stream": el picker del
+    // telefono no informo el tipo, o se adjunto desde la web) y antes se abrian en el navegador
+    // (descarga) en vez del visor. Ahora basta con que el tipo sea image/* O que el archivo
+    // (ruta o nombre) tenga extension de imagen.
+    private static bool EsImagen(BackendTicketObservacionEvidenciaDto evidencia) =>
+        evidencia.TipoMime?.StartsWith("image/", StringComparison.OrdinalIgnoreCase) == true ||
+        TieneExtensionImagen(evidencia.RutaArchivo) ||
+        TieneExtensionImagen(evidencia.NombreArchivo);
+
+    private static bool TieneExtensionImagen(string? archivo) =>
+        !string.IsNullOrWhiteSpace(archivo) &&
+        ExtensionesImagen.Contains(Path.GetExtension(archivo.Split('?')[0]), StringComparer.OrdinalIgnoreCase);
 
     private static Color? TryParseColor(string? hex)
     {

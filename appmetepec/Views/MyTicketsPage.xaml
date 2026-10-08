@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8" ?>
+﻿<?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="appmetepec.Views.MyTicketsPage"
@@ -15,23 +15,25 @@
             <!--Image Grid.Column="2" Source="ic_alerta_on.png" HeightRequest="30" WidthRequest="30" /-->
         </Grid>
 
+        <!-- El CollectionView de tickets es el que hace scroll (con lo demas en su Header). Antes
+             estaba dentro de un ScrollView junto con otro CollectionView: en Android eso mide todas
+             las tarjetas con alto infinito en cada pasada de layout (frames de 10+ s y "la app no
+             responde" al entrar, refrescar o abrir el detalle). -->
         <RefreshView Grid.Row="1" x:Name="TicketsRefreshView" Refreshing="OnRefreshing">
-            <ScrollView>
-                <VerticalStackLayout Padding="20" Spacing="10">
+            <CollectionView x:Name="TicketsView" SelectionMode="Single" SelectionChanged="OnTicketSelected" Margin="20,0">
+                <CollectionView.Header>
+                    <VerticalStackLayout Spacing="10" Padding="0,20,0,0">
                     <ActivityIndicator x:Name="BusyIndicator" Color="{AppThemeBinding Light=#28113E, Dark=White}" />
 
                     <VerticalStackLayout x:Name="PendingSection" Spacing="10" IsVisible="False" Margin="0,0,0,10">
                         <Label Text="PENDIENTES POR ENVIAR" FontSize="14" FontAttributes="Bold" CharacterSpacing="0.5" TextColor="#F89A1C" />
-                        <CollectionView x:Name="PendingView">
-                            <CollectionView.ItemTemplate>
+                        <VerticalStackLayout x:Name="PendingView">
+                            <BindableLayout.ItemTemplate>
                                 <DataTemplate>
-                                    <Border BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" Padding="0" Margin="0,0,0,12">
+                                    <Border BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" Stroke="{AppThemeBinding Light=#E3E6EA, Dark=#3A3A3A}" StrokeThickness="1" Padding="0" Margin="0,0,0,12">
                                         <Border.StrokeShape>
                                             <RoundRectangle CornerRadius="12" />
                                         </Border.StrokeShape>
-                                        <Border.Shadow>
-                                            <Shadow Brush="Black" Opacity="0.12" Radius="10" Offset="0,3" />
-                                        </Border.Shadow>
                                         <Grid ColumnDefinitions="5,*">
                                             <BoxView Grid.Column="0" Color="#F89A1C" />
                                             <VerticalStackLayout Grid.Column="1" Spacing="6" Padding="16,14">
@@ -53,16 +55,16 @@
                                         </Grid>
                                     </Border>
                                 </DataTemplate>
-                            </CollectionView.ItemTemplate>
-                        </CollectionView>
+                            </BindableLayout.ItemTemplate>
+                        </VerticalStackLayout>
                     </VerticalStackLayout>
 
                     <Grid ColumnDefinitions="*,Auto" Margin="0,10,0,6">
                         <Label Text="MIS REPORTES" FontSize="18" FontAttributes="Bold" CharacterSpacing="0.5" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" />
                         <Label x:Name="ReportsCountLabel" Grid.Column="1" FontSize="13" TextColor="{AppThemeBinding Light=#8A9BA8, Dark=#D8D8D8}" VerticalOptions="Center" />
                     </Grid>
-
-                    <CollectionView x:Name="TicketsView" SelectionMode="Single" SelectionChanged="OnTicketSelected">
+                    </VerticalStackLayout>
+                </CollectionView.Header>
                         <CollectionView.EmptyView>
                             <VerticalStackLayout HorizontalOptions="Center" Padding="0,24,0,0" Spacing="4">
                                 <Label Text="Aún no has enviado ningún reporte" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" FontAttributes="Bold" FontSize="15" HorizontalTextAlignment="Center" />
@@ -71,13 +73,10 @@
                         </CollectionView.EmptyView>
                         <CollectionView.ItemTemplate>
                             <DataTemplate>
-                                <Border BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" Padding="0" Margin="0,0,0,12">
+                                <Border BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}" Stroke="{AppThemeBinding Light=#E3E6EA, Dark=#3A3A3A}" StrokeThickness="1" Padding="0" Margin="0,0,0,12">
                                     <Border.StrokeShape>
                                         <RoundRectangle CornerRadius="12" />
                                     </Border.StrokeShape>
-                                    <Border.Shadow>
-                                        <Shadow Brush="Black" Opacity="0.12" Radius="10" Offset="0,3" />
-                                    </Border.Shadow>
                                     <Grid ColumnDefinitions="5,*">
                                         <BoxView Grid.Column="0" Color="{Binding Colorestatus, Converter={StaticResource HexToColorConverter}}" />
 
@@ -97,7 +96,7 @@
                                                 <Label FontSize="11" TextColor="{AppThemeBinding Light=#8A9BA8, Dark=#B0B8C1}" VerticalOptions="Center">
                                                     <Label.FormattedText>
                                                         <FormattedString>
-                                                            <Span Text="{Binding Id, StringFormat='Folio {0}'}" FontAttributes="Bold" />
+                                                            <Span Text="{Binding FolioMostrar, StringFormat='Folio {0}'}" FontAttributes="Bold" />
                                                             <Span Text="  •  " />
                                                             <Span Text="{Binding Fechaalta, StringFormat='{0:dd MMM yyyy}'}" />
                                                         </FormattedString>
@@ -110,9 +109,7 @@
                                 </Border>
                             </DataTemplate>
                         </CollectionView.ItemTemplate>
-                    </CollectionView>
-                </VerticalStackLayout>
-            </ScrollView>
+            </CollectionView>
         </RefreshView>
     </Grid>
 </ContentPage>

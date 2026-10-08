@@ -2,12 +2,12 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="appmetepec.Views.PanicoPage"
-             Title="Botón de pánico">
+             Title="Servicio de Emergencia">
     <ScrollView>
         <VerticalStackLayout Spacing="0">
             <Image Source="placeholder.png" HeightRequest="50" WidthRequest="100" Aspect="AspectFit" Margin="25,12,25,0" />
             <Image Source="alerta_naranja.png" HeightRequest="110" WidthRequest="110" HorizontalOptions="Center" Margin="0,16,0,0" />
-            <Label Text="BOTÓN DE PÁNICO" FontSize="20" FontAttributes="Bold" TextColor="#C0392B" BackgroundColor="White" Padding="15" HorizontalTextAlignment="Center" Margin="0,16,0,16" />
+            <Label Text="SERVICIO DE EMERGENCIA" FontSize="20" FontAttributes="Bold" TextColor="#C0392B" BackgroundColor="{AppThemeBinding Light=White, Dark=#1f1f1f}" Padding="15" HorizontalTextAlignment="Center" Margin="0,16,0,16" />
             <Label Text="Úsalo solo en una emergencia real. Se enviará tu ubicación y datos a C2 y se iniciará una llamada."
                    FontSize="13" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" HorizontalTextAlignment="Center" Margin="20,0,20,16" />
 
