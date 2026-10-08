@@ -270,23 +270,23 @@ public partial class EscenarioProgramaPage : ContentPage
         ImagenEscenario.HeightRequest = alto;
         ImagenEscenario.WidthRequest = ancho;
 
-        // La imagen REBASA el borde derecho para que ~1/4 de su ANCHO quede FUERA de pantalla por
-        // la derecha (efecto pedido: "que se corte un poco a la derecha"), de forma CONSISTENTE en
-        // cualquier tamano de telefono porque el empuje es PROPORCIONAL al ancho (no un valor fijo).
+        // NUEVO CRITERIO DEL USUARIO (invierte el anterior): "hazlas mas a la izquierda, se noten
+        // mejor" y "que casi se note todo el mono o imagen". Antes empujabamos la ilustracion MUY a
+        // la derecha (hasta 0.60*ancho) para sacar del borde la parte que invadia el texto, lo que
+        // dejaba ~1/4 de la figura recortada fuera de pantalla. Ahora el usuario quiere ver la
+        // figura CASI COMPLETA, por eso REDUCIMOS fuerte el empuje hacia afuera.
         //
-        // Factor 0.60 (antes 0.52, 0.38, 0.25 original): el empuje base es ancho*0.60. En las ultimas
-        // 5 capturas de TestFlight de distintos escenarios la silueta del ave AUN invadia ~1 columna
-        // de texto y se encimaba con el final de lineas de los titulos ("anochecio", "Rivero",
-        // "Torres", "Nava", "Dande"), haciendo que esas palabras se "perdieran". Como la imagen es
-        // AspectFit dentro de su caja de ancho 'ancho', el PNG renderizado queda CENTRADO con margen
-        // transparente a cada lado; con 0.52 el borde visible del ave todavia alcanzaba la columna
-        // de texto. Subimos un escalon a 0.60*ancho para que esa porcion que invade el texto quede
-        // FUERA de pantalla por la derecha; es aceptable y deseado que una porcion MAYOR del ave se
-        // recorte, porque el usuario prioriza que el TEXTO NUNCA se pierda. El empuje sigue siendo
-        // PROPORCIONAL al ancho real -> consistente en todos los tamanos de telefono.
-        // ContenidoGrid tiene IsClippedToBounds para un recorte limpio. Se guarda la base para que
-        // el parallax del giroscopio oscile ALREDEDOR de ella y no "regrese" la imagen al centro.
-        _imgTranslationXBase = ancho * 0.60;
+        // Factor 0.15 (antes 0.60): el empuje base es ancho*0.15. Como la imagen es AspectFit dentro
+        // de su caja de ancho 'ancho' (queda centrada con margen transparente a los lados) y esta
+        // anclada abajo-derecha, un empuje pequeno de solo 0.15*ancho la deja casi entera dentro de
+        // pantalla, apenas desplazada hacia la derecha para que no quede plantada en el centro exacto
+        // sobre el texto. Asi se "nota todo el mono". El empuje sigue siendo PROPORCIONAL al ancho
+        // real -> consistente en todos los tamanos de telefono. ContenidoGrid tiene IsClippedToBounds
+        // por si en pantallas angostas el borde roza el limite. Se guarda la base para que el parallax
+        // del giroscopio oscile ALREDEDOR de la NUEVA posicion y no "regrese" la imagen a otro punto.
+        // Para que el texto NO se pierda al quedar la figura mas adentro y visible, se baja la OPACIDAD
+        // a 0.50 (ver XAML): marca de agua tenue, texto 100% legible encima.
+        _imgTranslationXBase = ancho * 0.15;
         ImagenEscenario.TranslationX = _imgTranslationXBase;
 
         // La programacion ya NO reserva franja a la derecha: ocupa TODO el ancho para que los

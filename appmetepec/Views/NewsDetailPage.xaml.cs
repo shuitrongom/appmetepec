@@ -458,6 +458,11 @@ public partial class NewsDetailPage : ContentPage
     // HTML minimo con un iframe responsivo 16:9 que ocupa el ancho del contenedor. playsinline=1
     // evita que iOS/Android fuerce pantalla completa al dar play; rel=0 y modestbranding=1
     // reducen sugerencias/branding.
+    //
+    // BaseUrl = https://www.youtube.com es CLAVE: sin el, el HTML inline se carga con origen
+    // "about:blank"/local y el reproductor de YouTube bloquea el embed (el iframe se ve pero el
+    // play no arranca). Al dar un BaseUrl del mismo dominio que el embed, el documento tiene un
+    // origin valido y YouTube permite la reproduccion.
     private static HtmlWebViewSource ConstruirHtmlYoutube(string videoId)
     {
         var html =
@@ -467,9 +472,9 @@ public partial class NewsDetailPage : ContentPage
             ".wrap iframe{position:absolute;top:0;left:0;width:100%;height:100%;border:0;}</style></head>" +
             "<body><div class='wrap'>" +
             $"<iframe src='https://www.youtube.com/embed/{videoId}?playsinline=1&rel=0&modestbranding=1' " +
-            "allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture' " +
+            "allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share' " +
             "allowfullscreen></iframe></div></body></html>";
-        return new HtmlWebViewSource { Html = html };
+        return new HtmlWebViewSource { Html = html, BaseUrl = "https://www.youtube.com" };
     }
 
     // --- Video: expandir a pantalla completa y volver (solo camino .mp4 / MediaElement) ---
