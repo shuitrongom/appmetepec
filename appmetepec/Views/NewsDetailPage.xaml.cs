@@ -445,23 +445,26 @@ public partial class NewsDetailPage : ContentPage
         var videoId = ExtraerVideoId(_news.videoUrl);
         if (videoId is not null)
         {
-            // YouTube embebido: ocultar el MediaElement (sin asignarle Source) y mostrar el WebView.
+            // YouTube EMBEBIDO que reproduce DENTRO de la app. El WebView carga un proxy HTML
+            // servido por nuestro backend (https://.../api/video/youtube?v=ID). Al servirse desde
+            // un dominio real, el embed tiene un origin remoto valido y YouTube lo reproduce sin el
+            // "Error 153" que daba al cargar el embed desde un HTML local. El reproductor de YouTube
+            // trae su propio poster, boton de play y controles.
             VideoInline.IsVisible = false;
             VideoFullscreenButton.IsVisible = false;
             VideoYoutube.IsVisible = true;
-            VideoYoutube.Source = ConstruirHtmlYoutube(videoId);
+            VideoYoutube.Source = new UrlWebViewSource { Url = ConstruirUrlProxyYoutube(videoId) };
             VideoBlock.IsVisible = true;
         }
         else if (EsDominioYoutube(_news.videoUrl))
         {
-            // Es un enlace de YouTube pero NO se pudo sacar un VIDEO_ID valido (URL rara). Antes de
-            // mostrar un recuadro negro vacio (WebView con un embed invalido), se oculta el bloque
-            // de video por completo: mejor no mostrar nada que un cuadro negro muerto.
+            // Enlace de YouTube del que no se pudo extraer un VIDEO_ID valido (URL rara): mejor no
+            // mostrar un reproductor vacio.
             VideoBlock.IsVisible = false;
         }
         else if (Uri.TryCreate(_news.videoUrl, UriKind.Absolute, out var videoUri))
         {
-            // .mp4 u otra URL de video directa: camino actual con MediaElement.
+            // .mp4 u otra URL de video directa: camino con MediaElement (inline + pantalla completa).
             VideoYoutube.IsVisible = false;
             VideoInline.IsVisible = true;
             VideoFullscreenButton.IsVisible = true;
@@ -474,50 +477,12 @@ public partial class NewsDetailPage : ContentPage
         }
     }
 
-    // HTML del reproductor de YouTube embebido.
-    //
-    // CAUSA RAIZ del "recuadro negro total" en versiones anteriores: el HTML envolvia el iframe en
-    // un contenedor con alto por "padding-top:56.25%" (truco 16:9 basado en el ANCHO). Dentro de un
-    // WebView de MAUI en Android, en el primer render el ancho de referencia del <body> no esta
-    // resuelto, el padding-top en % calcula 0 y la caja COLAPSA a altura 0 -> no se pinta nada
-    // (negro). El poster como background-image sobre esa caja colapsada tampoco se veia.
-    //
-    // FIX de raiz: el WebView ya tiene una altura real y fija en XAML (HeightRequest=210). Aqui el
-    // html/body ocupan el 100% de ESA altura (height:100%, no un % del ancho) y el iframe se ancla
-    // con position:absolute; inset:0 para llenar TODO el WebView. Asi SIEMPRE hay una caja con alto
-    // real donde pintar. Se deja que el propio reproductor de YouTube muestre su poster + boton de
-    // play grande + controles (es lo mas robusto y lo que el usuario espera ver), sin autoplay
-    // forzado: el usuario pulsa play sobre el reproductor de YouTube.
-    //
-    // La URL de embed es CANONICA y solo con el ID limpio de 11 chars:
-    //   https://www.youtube.com/embed/VIDEO_ID?playsinline=1&rel=0&modestbranding=1
-    // Funciona igual para videos normales y para SHORTS (el embed por ID es el mismo).
-    //
-    // BaseUrl = https://www.youtube.com es CLAVE: sin el, el HTML inline se carga con origen
-    // "about:blank"/local y el reproductor de YouTube bloquea el embed. Con un BaseUrl del mismo
-    // dominio que el embed, el documento tiene un origin valido y YouTube permite la reproduccion.
-    private static HtmlWebViewSource ConstruirHtmlYoutube(string videoId)
-    {
-        var embedSrc = $"https://www.youtube.com/embed/{videoId}?playsinline=1&rel=0&modestbranding=1";
-
-        var html =
-            "<!DOCTYPE html>" +
-            "<html><head><meta name='viewport' content='width=device-width, initial-scale=1'>" +
-            "<style>" +
-            // html/body con alto real (100% del alto del WebView, que es fijo). Sin esto, el
-            // documento no tiene altura de referencia y el embed queda sin lugar donde pintar.
-            "html,body{margin:0;padding:0;height:100%;width:100%;background:#000;overflow:hidden;}" +
-            // El iframe llena TODO el WebView con posicion absoluta (no depende de un % del ancho).
-            ".box{position:absolute;top:0;left:0;right:0;bottom:0;}" +
-            ".box iframe{width:100%;height:100%;border:0;display:block;}" +
-            "</style></head>" +
-            "<body><div class='box'>" +
-            $"<iframe src='{embedSrc}' " +
-            "allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share' " +
-            "allowfullscreen></iframe>" +
-            "</div></body></html>";
-        return new HtmlWebViewSource { Html = html, BaseUrl = "https://www.youtube.com" };
-    }
+    // URL del proxy de YouTube servido por nuestro backend. Cargar el embed desde este dominio
+    // real (no desde un HTML local) es lo que evita el "Error 153" en el WebView movil: YouTube
+    // valida el embed contra el origin de la pagina que lo contiene, y aqui ese origin es el del
+    // backend. El backend arma el iframe con enablejsapi=1 + origin correcto.
+    private static string ConstruirUrlProxyYoutube(string videoId) =>
+        $"{AppConstants.MetepecBackendUrl}/video/youtube?v={videoId}";
 
     // --- Video: expandir a pantalla completa y volver (solo camino .mp4 / MediaElement) ---
 
@@ -568,9 +533,9 @@ public partial class NewsDetailPage : ContentPage
     {
         base.OnDisappearing();
         try { VideoInline.Stop(); } catch { /* best-effort */ }
-        // YouTube: vaciar el WebView para que el iframe deje de reproducir/sonar al volver (de lo
-        // contrario el audio de YouTube seguiria aun fuera de la pantalla).
-        try { VideoYoutube.Source = new HtmlWebViewSource { Html = "<html></html>" }; } catch { /* best-effort */ }
+        // YouTube: navegar el WebView a blanco para que el reproductor embebido deje de
+        // reproducir/sonar al salir de la pantalla.
+        try { VideoYoutube.Source = new UrlWebViewSource { Url = "about:blank" }; } catch { /* best-effort */ }
         if (VideoFullscreenOverlay.IsVisible)
         {
             CerrarVideoFull();
