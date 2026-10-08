@@ -41,11 +41,13 @@ public partial class HomePage : ContentPage
         DarkThemeSwitch.IsToggled = _preferences.DarkThemeEnabled;
         SetActiveTab(reportsActive: true);
         BannerCarousel.ItemsSource = BuildBanners();
-        LogoImage.Behaviors.Add(new TouchBehavior
-        {
-            LongPressDuration = 3000,
-            LongPressCommand = new Command(OnLogoLongPressed)
-        });
+        // "Modo pruebas" (mantener presionado el logo 3 s abre la encuesta de experiencia sin
+        // esperar los 8 dias): desactivado para produccion. Para pruebas, descomentar.
+        // LogoImage.Behaviors.Add(new TouchBehavior
+        // {
+        //     LongPressDuration = 3000,
+        //     LongPressCommand = new Command(OnLogoLongPressed)
+        // });
 
 #if ANDROID || IOS
         // Firebase puede rotar el token del dispositivo en cualquier momento (no solo al
