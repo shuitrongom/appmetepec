@@ -402,8 +402,20 @@ public partial class NewsDetailPage : ContentPage
         "(?:youtube\\.com/(?:watch\\?(?:[^&]*&)*v=|shorts/|embed/|v/)|youtu\\.be/)([A-Za-z0-9_-]{11})",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
+    // Dominio de YouTube (youtube.com o youtu.be, con o sin www/http/https), sin exigir un
+    // VIDEO_ID valido. Sirve para distinguir "esto es un enlace de YouTube que no supimos parsear"
+    // (ocultar bloque, no mandarlo al reproductor .mp4) de "esto es otra cosa" (camino .mp4).
+    private static readonly Regex YoutubeDominioRegex = new(
+        "(?:^|//|\\.)(?:youtube\\.com|youtu\\.be)/",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    // true si la URL es de YouTube Y se le pudo extraer un VIDEO_ID valido (unico caso en que el
+    // embed sirve). Para "parece YouTube pero no parsea" usar EsDominioYoutube.
     private static bool EsYoutube(string? url) =>
         !string.IsNullOrWhiteSpace(url) && ExtraerVideoId(url) is not null;
+
+    private static bool EsDominioYoutube(string? url) =>
+        !string.IsNullOrWhiteSpace(url) && YoutubeDominioRegex.IsMatch(url);
 
     // Devuelve el VIDEO_ID (11 chars) si la URL es de YouTube, o null si no lo es / no se pudo
     // extraer. Robusto frente a parametros extra (?t=, &list=, etc.).
@@ -440,6 +452,13 @@ public partial class NewsDetailPage : ContentPage
             VideoYoutube.Source = ConstruirHtmlYoutube(videoId);
             VideoBlock.IsVisible = true;
         }
+        else if (EsDominioYoutube(_news.videoUrl))
+        {
+            // Es un enlace de YouTube pero NO se pudo sacar un VIDEO_ID valido (URL rara). Antes de
+            // mostrar un recuadro negro vacio (WebView con un embed invalido), se oculta el bloque
+            // de video por completo: mejor no mostrar nada que un cuadro negro muerto.
+            VideoBlock.IsVisible = false;
+        }
         else if (Uri.TryCreate(_news.videoUrl, UriKind.Absolute, out var videoUri))
         {
             // .mp4 u otra URL de video directa: camino actual con MediaElement.
@@ -455,21 +474,49 @@ public partial class NewsDetailPage : ContentPage
         }
     }
 
-    // HTML minimo con un iframe responsivo 16:9 que ocupa el ancho del contenedor. playsinline=1
-    // evita que iOS/Android fuerce pantalla completa al dar play; rel=0 y modestbranding=1
-    // reducen sugerencias/branding.
+    // HTML del reproductor de YouTube embebido.
+    //
+    // CAUSA RAIZ del "recuadro negro total" en versiones anteriores: el HTML envolvia el iframe en
+    // un contenedor con alto por "padding-top:56.25%" (truco 16:9 basado en el ANCHO). Dentro de un
+    // WebView de MAUI en Android, en el primer render el ancho de referencia del <body> no esta
+    // resuelto, el padding-top en % calcula 0 y la caja COLAPSA a altura 0 -> no se pinta nada
+    // (negro). El poster como background-image sobre esa caja colapsada tampoco se veia.
+    //
+    // FIX de raiz: el WebView ya tiene una altura real y fija en XAML (HeightRequest=210). Aqui el
+    // html/body ocupan el 100% de ESA altura (height:100%, no un % del ancho) y el iframe se ancla
+    // con position:absolute; inset:0 para llenar TODO el WebView. Asi SIEMPRE hay una caja con alto
+    // real donde pintar. Se deja que el propio reproductor de YouTube muestre su poster + boton de
+    // play grande + controles (es lo mas robusto y lo que el usuario espera ver), sin autoplay
+    // forzado: el usuario pulsa play sobre el reproductor de YouTube.
+    //
+    // La URL de embed es CANONICA y solo con el ID limpio de 11 chars:
+    //   https://www.youtube.com/embed/VIDEO_ID?playsinline=1&rel=0&modestbranding=1
+    // Funciona igual para videos normales y para SHORTS (el embed por ID es el mismo).
+    //
+    // BaseUrl = https://www.youtube.com es CLAVE: sin el, el HTML inline se carga con origen
+    // "about:blank"/local y el reproductor de YouTube bloquea el embed. Con un BaseUrl del mismo
+    // dominio que el embed, el documento tiene un origin valido y YouTube permite la reproduccion.
     private static HtmlWebViewSource ConstruirHtmlYoutube(string videoId)
     {
+        var embedSrc = $"https://www.youtube.com/embed/{videoId}?playsinline=1&rel=0&modestbranding=1";
+
         var html =
+            "<!DOCTYPE html>" +
             "<html><head><meta name='viewport' content='width=device-width, initial-scale=1'>" +
-            "<style>html,body{margin:0;padding:0;background:#000;height:100%;}" +
-            ".wrap{position:relative;width:100%;height:100%;overflow:hidden;}" +
-            ".wrap iframe{position:absolute;top:0;left:0;width:100%;height:100%;border:0;}</style></head>" +
-            "<body><div class='wrap'>" +
-            $"<iframe src='https://www.youtube.com/embed/{videoId}?playsinline=1&rel=0&modestbranding=1' " +
-            "allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture' " +
-            "allowfullscreen></iframe></div></body></html>";
-        return new HtmlWebViewSource { Html = html };
+            "<style>" +
+            // html/body con alto real (100% del alto del WebView, que es fijo). Sin esto, el
+            // documento no tiene altura de referencia y el embed queda sin lugar donde pintar.
+            "html,body{margin:0;padding:0;height:100%;width:100%;background:#000;overflow:hidden;}" +
+            // El iframe llena TODO el WebView con posicion absoluta (no depende de un % del ancho).
+            ".box{position:absolute;top:0;left:0;right:0;bottom:0;}" +
+            ".box iframe{width:100%;height:100%;border:0;display:block;}" +
+            "</style></head>" +
+            "<body><div class='box'>" +
+            $"<iframe src='{embedSrc}' " +
+            "allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share' " +
+            "allowfullscreen></iframe>" +
+            "</div></body></html>";
+        return new HtmlWebViewSource { Html = html, BaseUrl = "https://www.youtube.com" };
     }
 
     // --- Video: expandir a pantalla completa y volver (solo camino .mp4 / MediaElement) ---

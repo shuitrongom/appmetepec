@@ -23,6 +23,18 @@ namespace appmetepec
                 .UseMauiCommunityToolkit()
                 // Habilita <toolkit:MediaElement> para el reproductor de video de las noticias.
                 .UseMauiCommunityToolkitMediaElement()
+#if IOS
+                // En iOS el reproductor de YouTube embebido (WebView con iframe) necesita que el
+                // WKWebView se construya con AllowsInlineMediaPlayback=true y
+                // MediaTypesRequiringUserActionForPlayback=None; de lo contrario el video se ve
+                // pero no reproduce al dar play. Esas propiedades son de WKWebViewConfiguration y
+                // WebKit solo las respeta si se fijan ANTES de crear el WKWebView, por eso se usa
+                // un handler propio que las aplica al construir el PlatformView (no bastaria un
+                // mapping, que corre cuando el WebView ya existe). Afecta solo al <WebView>, unico
+                // de la app (el mapa usa HybridWebView, otro handler).
+                .ConfigureMauiHandlers(handlers =>
+                    handlers.AddHandler<Microsoft.Maui.Controls.WebView, appmetepec.Platforms.iOS.InlineMediaWebViewHandler>())
+#endif
                 .ConfigureFonts(fonts =>
                 {
                     fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
@@ -75,6 +87,25 @@ namespace appmetepec
             Microsoft.Maui.Handlers.EditorHandler.Mapper.AppendToMapping("NoUnderline", (handler, view) =>
             {
                 handler.PlatformView.Background = null;
+            });
+
+            // El reproductor de YouTube de las noticias (NewsDetailPage) es un <WebView> que carga
+            // un iframe embebido de YouTube. En el Android.Webkit.WebView nativo, por defecto
+            // MediaPlaybackRequiresUserGesture bloquea que el iframe arranque la reproduccion al
+            // dar play (el video se ve pero no reproduce), y el reproductor de YouTube exige
+            // JavaScript + DOM storage. Habilitarlos aqui es lo que destraba el play. Es el unico
+            // <WebView> de la app, asi que el mapping global no afecta a nada mas (el mapa usa
+            // HybridWebView, otro handler distinto).
+            Microsoft.Maui.Handlers.WebViewHandler.Mapper.AppendToMapping("YoutubeInlinePlayback", (handler, view) =>
+            {
+                var settings = handler.PlatformView.Settings;
+                if (settings is null)
+                {
+                    return;
+                }
+                settings.JavaScriptEnabled = true;
+                settings.DomStorageEnabled = true;
+                settings.MediaPlaybackRequiresUserGesture = false;
             });
 #endif
 

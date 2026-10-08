@@ -92,10 +92,12 @@
         </Grid>
 
         <!-- Contenido: la ilustracion de la sede es una CAPA DE FONDO (abajo-derecha, grande,
-             rebasa el borde derecho ~1/4 de su ancho) y la programacion va ENCIMA ocupando TODO
-             el ancho (asi los textos ya no se comprimen ni se parten letra por letra). La imagen
-             FLOTA en 3D (flotacion + parallax por giroscopio, aplicado en el code-behind). El
-             IsClippedToBounds hace que la imagen rebase y se recorte limpio sin romper el layout. -->
+             ahora MAS A LA IZQUIERDA y casi completa en pantalla) y la programacion va ENCIMA
+             ocupando TODO el ancho (asi los textos ya no se comprimen ni se parten letra por letra).
+             Como la figura queda mas adentro, va MUY TENUE (opacidad 0.50) a modo de marca de agua
+             para que el texto se lea 100% por encima. La imagen FLOTA en 3D (flotacion + parallax
+             por giroscopio, aplicado en el code-behind). El IsClippedToBounds recorta limpio por si
+             el borde roza el limite en pantallas angostas, sin romper el layout. -->
         <Grid Grid.Row="2" x:Name="ContenidoGrid" IsClippedToBounds="True">
 
             <!-- Ilustracion de la sede (opcional): CAPA DE FONDO. Va declarada ANTES del
@@ -105,17 +107,18 @@
                  InputTransparent para que no robe toques a la programacion. El tamaño y el empuje
                  fuera de pantalla los calcula el code-behind PROPORCIONAL al dispositivo.
                  Flota en 3D (flotacion + giroscopio) desde el code-behind. -->
-            <!-- Opacidad 0.80 (antes 0.82, antes 0.95): el usuario pidio "aclarar AUN MAS la imagen"
-                 = que estorbe menos y el texto NO se pierda donde se cruza con la imagen (no subir
-                 opacidad). El arreglo principal es el empuje a la derecha (code-behind: 0.60 del
-                 ancho) que saca de pantalla la parte del ave que invadia la columna de texto. Para
-                 blindar la legibilidad en cualquier cruce residual, bajamos la opacidad un escalon
-                 mas a 0.80 (piso del rango razonable): mas tenue = estorba menos al texto y este
-                 siempre se lee, pero sigue bien visible para el efecto premium (flotacion +
-                 parallax). No bajamos de 0.80 para no "apagar" la ilustracion. InputTransparent e
+            <!-- Opacidad 0.50 (antes 0.80, 0.82, 0.95): NUEVO CRITERIO del usuario — ahora la
+                 ilustracion va MAS A LA IZQUIERDA y CASI COMPLETA (code-behind: empuje 0.15 del
+                 ancho), por lo que queda mas adentro, sobre la columna de texto. Para que las letras
+                 de los eventos SIEMPRE se lean por encima ("si es mas clara se logren ver las letras
+                 de los eventos"), la bajamos a 0.50: funciona como MARCA DE AGUA elegante detras del
+                 texto — la figura se nota entera y el texto queda claramente al frente, 100% legible.
+                 0.50 es el equilibrio: lo bastante tenue para no competir con las letras aunque la
+                 figura quede detras de ellas, pero suficiente para que el mono se vea completo y el
+                 efecto premium (flotacion + parallax) siga luciendo. InputTransparent e
                  IsClippedToBounds intactos. -->
             <Image Grid.Row="0" x:Name="ImagenEscenario" IsVisible="False"
-                   Aspect="AspectFit" InputTransparent="True" Opacity="0.80"
+                   Aspect="AspectFit" InputTransparent="True" Opacity="0.50"
                    HorizontalOptions="End" VerticalOptions="End" />
 
             <!-- Programacion del dia: va ENCIMA de la imagen y ocupa TODO el ancho de la pagina
