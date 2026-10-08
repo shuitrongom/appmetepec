@@ -402,8 +402,20 @@ public partial class NewsDetailPage : ContentPage
         "(?:youtube\\.com/(?:watch\\?(?:[^&]*&)*v=|shorts/|embed/|v/)|youtu\\.be/)([A-Za-z0-9_-]{11})",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
+    // Dominio de YouTube (youtube.com o youtu.be, con o sin www/http/https), sin exigir un
+    // VIDEO_ID valido. Sirve para distinguir "esto es un enlace de YouTube que no supimos parsear"
+    // (ocultar bloque, no mandarlo al reproductor .mp4) de "esto es otra cosa" (camino .mp4).
+    private static readonly Regex YoutubeDominioRegex = new(
+        "(?:^|//|\\.)(?:youtube\\.com|youtu\\.be)/",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    // true si la URL es de YouTube Y se le pudo extraer un VIDEO_ID valido (unico caso en que el
+    // embed sirve). Para "parece YouTube pero no parsea" usar EsDominioYoutube.
     private static bool EsYoutube(string? url) =>
         !string.IsNullOrWhiteSpace(url) && ExtraerVideoId(url) is not null;
+
+    private static bool EsDominioYoutube(string? url) =>
+        !string.IsNullOrWhiteSpace(url) && YoutubeDominioRegex.IsMatch(url);
 
     // Devuelve el VIDEO_ID (11 chars) si la URL es de YouTube, o null si no lo es / no se pudo
     // extraer. Robusto frente a parametros extra (?t=, &list=, etc.).
@@ -440,6 +452,13 @@ public partial class NewsDetailPage : ContentPage
             VideoYoutube.Source = ConstruirHtmlYoutube(videoId);
             VideoBlock.IsVisible = true;
         }
+        else if (EsDominioYoutube(_news.videoUrl))
+        {
+            // Es un enlace de YouTube pero NO se pudo sacar un VIDEO_ID valido (URL rara). Antes de
+            // mostrar un recuadro negro vacio (WebView con un embed invalido), se oculta el bloque
+            // de video por completo: mejor no mostrar nada que un cuadro negro muerto.
+            VideoBlock.IsVisible = false;
+        }
         else if (Uri.TryCreate(_news.videoUrl, UriKind.Absolute, out var videoUri))
         {
             // .mp4 u otra URL de video directa: camino actual con MediaElement.
@@ -455,25 +474,59 @@ public partial class NewsDetailPage : ContentPage
         }
     }
 
-    // HTML minimo con un iframe responsivo 16:9 que ocupa el ancho del contenedor. playsinline=1
-    // evita que iOS/Android fuerce pantalla completa al dar play; rel=0 y modestbranding=1
-    // reducen sugerencias/branding.
+    // HTML del reproductor de YouTube embebido, con patron "click-to-play":
+    //
+    // Por que click-to-play y no un iframe desnudo: el iframe de YouTube cargado directo dentro de
+    // un WebView de MAUI se veia como un RECUADRO COMPLETAMENTE NEGRO (sin thumbnail, sin play, sin
+    // spinner) -- el documento inline no pinta de forma fiable (el alto en % colapsa a 0 en el
+    // primer render, o el JS del embed se queda cargando). Con click-to-play el poster es un <img>
+    // con tamano explicito (relacion 16:9 por aspect-ratio/padding), asi SIEMPRE se ve la miniatura
+    // del video + un boton de play centrado; recien al tocar se inyecta el iframe y reproduce dentro
+    // de la noticia (autoplay=1 porque ya hubo gesto del usuario). Esto es mas confiable y premium
+    // que el iframe crudo.
+    //
+    // La URL de embed es CANONICA y solo con el ID limpio de 11 chars:
+    //   https://www.youtube.com/embed/VIDEO_ID?playsinline=1&rel=0&modestbranding=1&autoplay=1
+    // Funciona igual para videos normales y para SHORTS (el embed por ID es el mismo).
     //
     // BaseUrl = https://www.youtube.com es CLAVE: sin el, el HTML inline se carga con origen
-    // "about:blank"/local y el reproductor de YouTube bloquea el embed (el iframe se ve pero el
-    // play no arranca). Al dar un BaseUrl del mismo dominio que el embed, el documento tiene un
-    // origin valido y YouTube permite la reproduccion.
+    // "about:blank"/local y el reproductor de YouTube bloquea el embed. Con un BaseUrl del mismo
+    // dominio que el embed, el documento tiene un origin valido y YouTube permite la reproduccion.
     private static HtmlWebViewSource ConstruirHtmlYoutube(string videoId)
     {
+        var embedSrc = $"https://www.youtube.com/embed/{videoId}?playsinline=1&rel=0&modestbranding=1&autoplay=1";
+        // hqdefault existe para todos los videos (incluidos shorts); maxresdefault no siempre.
+        var posterSrc = $"https://img.youtube.com/vi/{videoId}/hqdefault.jpg";
+
         var html =
             "<html><head><meta name='viewport' content='width=device-width, initial-scale=1'>" +
-            "<style>html,body{margin:0;padding:0;background:#000;height:100%;}" +
-            ".wrap{position:relative;width:100%;height:100%;overflow:hidden;}" +
-            ".wrap iframe{position:absolute;top:0;left:0;width:100%;height:100%;border:0;}</style></head>" +
-            "<body><div class='wrap'>" +
-            $"<iframe src='https://www.youtube.com/embed/{videoId}?playsinline=1&rel=0&modestbranding=1' " +
+            "<style>" +
+            "html,body{margin:0;padding:0;background:#000;}" +
+            // Caja 16:9 con tamano explicito (no depende de un alto en % que colapse): el padding-top
+            // reserva la altura segun el ancho real del WebView, por eso siempre hay algo que pintar.
+            ".wrap{position:relative;width:100%;padding-top:56.25%;background:#000;overflow:hidden;}" +
+            ".wrap>*{position:absolute;top:0;left:0;width:100%;height:100%;border:0;}" +
+            ".poster{background-position:center;background-size:cover;cursor:pointer;}" +
+            // Boton de play centrado, estilo YouTube (rojo redondeado con triangulo blanco).
+            ".play{display:flex;align-items:center;justify-content:center;}" +
+            ".play b{width:68px;height:48px;background:#ff0000;border-radius:14px;display:flex;" +
+            "align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.4);}" +
+            ".play b:after{content:'';border-style:solid;border-width:11px 0 11px 19px;" +
+            "border-color:transparent transparent transparent #fff;margin-left:4px;}" +
+            "</style></head>" +
+            "<body><div class='wrap' id='w'>" +
+            $"<div class='poster' id='p' style=\"background-image:url('{posterSrc}')\"></div>" +
+            "<div class='play' id='b'><b></b></div>" +
+            "</div>" +
+            "<script>" +
+            "function go(){" +
+            "var w=document.getElementById('w');" +
+            "w.innerHTML=\"<iframe src='" + embedSrc + "' " +
             "allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share' " +
-            "allowfullscreen></iframe></div></body></html>";
+            "allowfullscreen></iframe>\";}" +
+            "document.getElementById('p').addEventListener('click',go);" +
+            "document.getElementById('b').addEventListener('click',go);" +
+            "</script></body></html>";
         return new HtmlWebViewSource { Html = html, BaseUrl = "https://www.youtube.com" };
     }
 
