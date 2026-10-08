@@ -44,20 +44,13 @@
                         <RoundRectangle CornerRadius="12" />
                     </Border.StrokeShape>
                     <Grid>
+                        <!-- ── Camino .mp4: reproductor inline embebido (CommunityToolkit) ──
+                             Se reproduce dentro de la tarjeta; el boton de abajo abre pantalla
+                             completa. Oculto cuando el video es de YouTube. -->
                         <toolkit:MediaElement x:Name="VideoInline" HeightRequest="210"
                                               ShouldAutoPlay="False" ShouldShowPlaybackControls="True"
                                               Aspect="AspectFit" BackgroundColor="Black" />
-                        <!-- Reproductor de YouTube embebido (iframe dentro de un WebView). Se usa en
-                             runtime SOLO cuando videoUrl es un enlace de YouTube; para .mp4 se usa el
-                             MediaElement de arriba. El iframe de YouTube llena el 100% del WebView
-                             (no se usa un truco de padding-top en %, que en Android colapsaba a 0 y
-                             dejaba el recuadro negro). Oculto por defecto; OnAppearing decide cual
-                             mostrar. -->
-                        <WebView x:Name="VideoYoutube" HeightRequest="210" IsVisible="False"
-                                 BackgroundColor="Black" />
-                        <!-- Boton flotante "pantalla completa" arriba a la derecha del video. Solo
-                             aplica al camino .mp4 (MediaElement); para YouTube el iframe trae su
-                             propio boton de pantalla completa, por eso este se oculta en runtime. -->
+                        <!-- Boton flotante "pantalla completa" (solo camino .mp4). -->
                         <Border x:Name="VideoFullscreenButton" HorizontalOptions="End" VerticalOptions="Start" Margin="10"
                                 BackgroundColor="#99000000" StrokeThickness="0" Padding="8,6">
                             <Border.StrokeShape>
@@ -68,6 +61,16 @@
                                 <TapGestureRecognizer Tapped="OnExpandirVideoTapped" />
                             </Border.GestureRecognizers>
                         </Border>
+
+                        <!-- ── Camino YouTube: reproductor EMBEBIDO que se reproduce DENTRO de la
+                             app. El WebView carga un proxy HTML servido por nuestro backend
+                             (https://.../api/video/youtube?v=ID), que embebe el reproductor de
+                             YouTube con un origin remoto valido. Esto evita el "Error 153" que
+                             aparecia al cargar el embed desde un HTML local/sin origin. El propio
+                             reproductor de YouTube muestra su poster, boton de play y controles.
+                             Oculto por defecto; OnAppearing decide cual mostrar. -->
+                        <WebView x:Name="VideoYoutube" HeightRequest="210" IsVisible="False"
+                                 BackgroundColor="Black" />
                     </Grid>
                 </Border>
 
