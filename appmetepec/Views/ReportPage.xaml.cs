@@ -443,9 +443,21 @@ public partial class ReportPage : ContentPage
         var address = AddressEditor.Text?.Trim() ?? "";
         var comments = CommentsEditor.Text?.Trim() ?? "";
 
-        if (string.IsNullOrWhiteSpace(phone) || string.IsNullOrWhiteSpace(address))
+        // Se indica exactamente que falta (antes un solo mensaje "telefono y direccion" aunque
+        // el telefono ya estuviera capturado).
+        var faltantes = new List<string>();
+        if (string.IsNullOrWhiteSpace(phone)) faltantes.Add("tu teléfono");
+        if (string.IsNullOrWhiteSpace(address)) faltantes.Add("la dirección");
+        if (faltantes.Count > 0)
         {
-            await DisplayAlert("Campos obligatorios", "Captura telefono y direccion.", "Aceptar");
+            var mensaje = $"Captura {string.Join(" y ", faltantes)}.";
+            // Al elegir el punto en el mapa no siempre se llena la direccion (si no se pudo
+            // obtener de la ubicacion): se aclara que hay que escribirla aunque ya haya coordenadas.
+            if (string.IsNullOrWhiteSpace(address) && !string.IsNullOrWhiteSpace(_coordinates))
+            {
+                mensaje += "\n\nLa ubicación ya está marcada en el mapa; escribe también la dirección o una referencia del lugar.";
+            }
+            await DisplayAlert("Campos obligatorios", mensaje, "Aceptar");
             return;
         }
 

@@ -16,7 +16,8 @@ public partial class PanicoConfirmarPage : ContentPage
     private PanicoDatos? _datos;
 
     private const int IdServicioPanico = 42; // "Servicio de emergencia"
-    private const string NumeroLlamadaPanico = "*7311";
+    // Numero al que se marca al lanzar el servicio de emergencia (antes *7311).
+    private const string NumeroLlamadaPanico = "7222084857";
 
     public PanicoConfirmarPage(PreferencesService preferences, MetepecApiService api, NavigationState navigationState)
     {
