@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="appmetepec.Views.VideoEvidenciaPage"
+             BackgroundColor="Black"
+             Shell.NavBarIsVisible="False">
+    <Grid>
+        <!-- Video con el reproductor HTML5 del WebView (controles nativos: play/pausa, barra de avance).
+             No se usa MediaElement: en Android truena con AbstractMethodError (onSurfaceSizeChanged). -->
+        <WebView x:Name="Web" BackgroundColor="Black"
+                 HorizontalOptions="Fill" VerticalOptions="Fill"
+                 Navigating="OnNavigating" Navigated="OnNavigated" />
+
+        <ActivityIndicator x:Name="Cargando" Color="White" WidthRequest="36" HeightRequest="36"
+                           HorizontalOptions="Center" VerticalOptions="Center"
+                           IsRunning="True" IsVisible="True" InputTransparent="True" />
+
+        <!-- Barra superior: cerrar -->
+        <Grid VerticalOptions="Start" Padding="16,14,16,28" ColumnDefinitions="44,*,44">
+            <Grid.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                    <GradientStop Color="#B3000000" Offset="0" />
+                    <GradientStop Color="#00000000" Offset="1" />
+                </LinearGradientBrush>
+            </Grid.Background>
+            <Border WidthRequest="40" HeightRequest="40" StrokeThickness="0" BackgroundColor="#40FFFFFF" HorizontalOptions="Start">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="20" />
+                </Border.StrokeShape>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnCerrarTapped" />
+                </Border.GestureRecognizers>
+                <Label Text="✕" TextColor="White" FontSize="18" HorizontalOptions="Center" VerticalOptions="Center" />
+            </Border>
+        </Grid>
+
+        <!-- Descripcion del video junto al boton cerrar (abajo quedan los controles del reproductor) -->
+        <Label x:Name="DescripcionLabel" VerticalOptions="Start" Margin="72,22,72,0"
+               TextColor="White" FontSize="14" HorizontalTextAlignment="Center"
+               LineBreakMode="WordWrap" MaxLines="2" InputTransparent="True" />
+    </Grid>
+</ContentPage>

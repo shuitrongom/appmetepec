@@ -139,8 +139,11 @@ public partial class TicketDetailPage : ContentPage
         {
             BusyIndicator.IsRunning = BusyIndicator.IsVisible = true;
             var observaciones = await _api.GetTicketObservacionesAsync(idTicket);
+            // Las respuestas mas recientes primero.
             BindableLayout.SetItemsSource(ObservacionesView, observaciones
                 .Where(obs => string.Equals(obs.Clavetipomensaje, AppConstants.ClaveRespuestaPublica, StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(obs => obs.Fechaalta)
+                .ThenByDescending(obs => obs.Id)
                 .ToList());
         }
         catch (Exception ex)
@@ -160,7 +163,8 @@ public partial class TicketDetailPage : ContentPage
     }
 
     // Fotos: se abren en el visor de galeria de la app (GaleriaEvidenciasPage) con todas las fotos
-    // de esa respuesta. Otros archivos (video, PDF...) se abren con la app del sistema.
+    // de esa respuesta. Videos en el reproductor de la app (VideoEvidenciaPage). Otros archivos
+    // (PDF...) se abren con la app del sistema.
     private async void OnEvidenciaTapped(object sender, TappedEventArgs e)
     {
         if (_abriendoEvidencia ||
@@ -186,6 +190,14 @@ public partial class TicketDetailPage : ContentPage
 
             if (Uri.TryCreate(evidencia.RutaArchivo, UriKind.Absolute, out var uri))
             {
+                // Videos: reproductor de la app (VideoEvidenciaPage) en lugar del navegador.
+                if (EsVideo(evidencia))
+                {
+                    _volviendoDeGaleria = true;
+                    await Navigation.PushModalAsync(new VideoEvidenciaPage(evidencia, uri));
+                    return;
+                }
+
                 await Launcher.Default.OpenAsync(uri);
             }
         }
@@ -265,6 +277,17 @@ public partial class TicketDetailPage : ContentPage
     private static bool TieneExtensionImagen(string? archivo) =>
         !string.IsNullOrWhiteSpace(archivo) &&
         ExtensionesImagen.Contains(Path.GetExtension(archivo.Split('?')[0]), StringComparer.OrdinalIgnoreCase);
+
+    private static readonly string[] ExtensionesVideo = [".mp4", ".m4v", ".mov", ".3gp", ".webm", ".mkv"];
+
+    private static bool EsVideo(BackendTicketObservacionEvidenciaDto evidencia) =>
+        evidencia.TipoMime?.StartsWith("video/", StringComparison.OrdinalIgnoreCase) == true ||
+        TieneExtensionVideo(evidencia.RutaArchivo) ||
+        TieneExtensionVideo(evidencia.NombreArchivo);
+
+    private static bool TieneExtensionVideo(string? archivo) =>
+        !string.IsNullOrWhiteSpace(archivo) &&
+        ExtensionesVideo.Contains(Path.GetExtension(archivo.Split('?')[0]), StringComparer.OrdinalIgnoreCase);
 
     private static Color? TryParseColor(string? hex)
     {

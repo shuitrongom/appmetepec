@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
              x:Class="appmetepec.Views.NewsDetailPage"
              Title="Noticia"
              Shell.NavBarIsVisible="False">
@@ -44,12 +43,13 @@
                         <RoundRectangle CornerRadius="12" />
                     </Border.StrokeShape>
                     <Grid>
-                        <!-- ── Camino .mp4: reproductor inline embebido (CommunityToolkit) ──
+                        <!-- ── Camino .mp4: <video> HTML5 dentro de un WebView ──
                              Se reproduce dentro de la tarjeta; el boton de abajo abre pantalla
-                             completa. Oculto cuando el video es de YouTube. -->
-                        <toolkit:MediaElement x:Name="VideoInline" HeightRequest="210"
-                                              ShouldAutoPlay="False" ShouldShowPlaybackControls="True"
-                                              Aspect="AspectFit" BackgroundColor="Black" />
+                             completa (VideoEvidenciaPage). Oculto cuando el video es de YouTube.
+                             No se usa MediaElement: en Android truena con AbstractMethodError
+                             (onSurfaceSizeChanged) con solo crear el control, aunque no se reproduzca. -->
+                        <WebView x:Name="VideoMp4" HeightRequest="210" IsVisible="False"
+                                 BackgroundColor="Black" />
                         <!-- Boton flotante "pantalla completa" (solo camino .mp4). -->
                         <Border x:Name="VideoFullscreenButton" HorizontalOptions="End" VerticalOptions="Start" Margin="10"
                                 BackgroundColor="#99000000" StrokeThickness="0" Padding="8,6">
@@ -193,25 +193,7 @@
         </ScrollView>
         </RefreshView>
 
-        <!-- ══ VIDEO A PANTALLA COMPLETA (overlay) ══
-             Cubre toda la pagina (2 filas). Fondo negro, video centrado con controles y un boton
-             de cerrar/contraer. Al terminar el video (MediaEnded) o al tocar cerrar, se oculta y
-             regresa a la misma noticia (no al Home). Solo visible mientras se usa. -->
-        <Grid x:Name="VideoFullscreenOverlay" Grid.Row="0" Grid.RowSpan="2" IsVisible="False"
-              BackgroundColor="Black">
-            <toolkit:MediaElement x:Name="VideoFull" HorizontalOptions="Fill" VerticalOptions="Fill"
-                                  ShouldAutoPlay="True" ShouldShowPlaybackControls="True"
-                                  Aspect="AspectFit" BackgroundColor="Black" />
-            <Border HorizontalOptions="End" VerticalOptions="Start" Margin="16,48,16,0"
-                    BackgroundColor="#99000000" StrokeThickness="0" Padding="10,8">
-                <Border.StrokeShape>
-                    <RoundRectangle CornerRadius="20" />
-                </Border.StrokeShape>
-                <Label Text="✕ Cerrar" TextColor="White" FontSize="14" FontAttributes="Bold" />
-                <Border.GestureRecognizers>
-                    <TapGestureRecognizer Tapped="OnCerrarVideoFullTapped" />
-                </Border.GestureRecognizers>
-            </Border>
-        </Grid>
+        <!-- Video a pantalla completa: se abre como pagina modal (VideoEvidenciaPage), ya no como
+             overlay con MediaElement. -->
     </Grid>
 </ContentPage>
