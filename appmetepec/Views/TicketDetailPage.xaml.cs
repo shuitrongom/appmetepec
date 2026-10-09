@@ -139,8 +139,11 @@ public partial class TicketDetailPage : ContentPage
         {
             BusyIndicator.IsRunning = BusyIndicator.IsVisible = true;
             var observaciones = await _api.GetTicketObservacionesAsync(idTicket);
+            // Las respuestas mas recientes primero.
             BindableLayout.SetItemsSource(ObservacionesView, observaciones
                 .Where(obs => string.Equals(obs.Clavetipomensaje, AppConstants.ClaveRespuestaPublica, StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(obs => obs.Fechaalta)
+                .ThenByDescending(obs => obs.Id)
                 .ToList());
         }
         catch (Exception ex)
