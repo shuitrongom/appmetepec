@@ -117,6 +117,20 @@ public partial class EventoMapaPage : ContentPage
         InitializeComponent();
         _eventos = eventos;
         _navigationState = navigationState;
+
+        // El tope de alto de la lista es PROPORCIONAL al alto de la pagina (~33%), recalculado
+        // ante cambios de tamano/orientacion. No es un alto fijo por numero de escenarios.
+        SizeChanged += OnPageSizeChanged;
+    }
+
+    // Fija el tope de alto de la zona de lista como ~33% del alto de la pagina (clamp defensivo a
+    // un minimo razonable). Con pocos escenarios la lista mide menos que el tope (fila Auto chica,
+    // mapa grande); con muchos llega al tope y scrollea internamente, sin empujar el mapa fuera de
+    // pantalla. Al cambiar el alto del Viewport, su SizeChanged re-dispara DimensionarLienzo.
+    private void OnPageSizeChanged(object? sender, EventArgs e)
+    {
+        if (Height <= 0) return;
+        ListaEscenariosScroll.MaximumHeightRequest = Math.Max(120, Height * 0.33);
     }
 
     // Al cambiar el tamano del area del mapa (orientacion, primer layout, etc.) se recalcula el
@@ -223,6 +237,10 @@ public partial class EventoMapaPage : ContentPage
                 : ImageSource.FromFile(_evento.ImagenMapaUrl);
 
             DibujarHotspots();
+
+            // Arma la lista superior de escenarios (numero + punto de color + nombre) del mismo
+            // _evento.Escenarios que los pines, en el mismo punto del ciclo de vida.
+            DibujarListaEscenarios();
 
             // El mapa arranca INVISIBLE: la entrada premium (AnimarEntradaMapaAsync) lo revela
             // con fade al final. Asi, cuando hay intro de portada, al ocultarse el overlay NO se
@@ -743,6 +761,95 @@ public partial class EventoMapaPage : ContentPage
 
         // Arranca el flotar de todos los circulos con una sola generacion (anti duplicacion).
         ArrancarFlotar();
+    }
+
+    // Construye la LISTA superior de escenarios: una fila por escenario, ordenada por Numero
+    // ascendente, con un circulo del COLOR del escenario (via ResolverColor -> coincide EXACTO con
+    // el pin del mapa), el numero (blanco dentro del circulo, como en los pines) y el nombre
+    // (morado tenue, con elipsis si es largo). Se genera por codigo por coherencia con el resto de
+    // la UI de esta pagina (los pines tambien se dibujan por codigo). Las filas heredan la fuente
+    // "Como" del Style de la pagina. Idempotente: limpia las filas previas antes de redibujar y
+    // conserva el subtitulo tenue (PistaSuperior), que es el primer hijo del host.
+    private void DibujarListaEscenarios()
+    {
+        if (_evento is null) return;
+
+        // Deja solo el subtitulo (PistaSuperior) y quita filas de un dibujado anterior.
+        for (var i = ListaEscenariosHost.Children.Count - 1; i >= 0; i--)
+        {
+            if (!ReferenceEquals(ListaEscenariosHost.Children[i], PistaSuperior))
+            {
+                ListaEscenariosHost.Children.RemoveAt(i);
+            }
+        }
+
+        foreach (var escenario in _evento.Escenarios.OrderBy(e => e.Numero))
+        {
+            ListaEscenariosHost.Children.Add(CrearFilaEscenario(escenario));
+        }
+    }
+
+    // Una fila de la lista: circulo con el color del escenario y el numero en blanco, mas el
+    // nombre al lado en morado tenue. Envuelta en un Border con fondo blanco y esquinas
+    // redondeadas para el look premium. Coherente con los pines y el tema morado.
+    private View CrearFilaEscenario(BackendEscenarioDto escenario)
+    {
+        var numero = new Label
+        {
+            Text = escenario.Numero.ToString(),
+            TextColor = Colors.White,
+            FontAttributes = FontAttributes.Bold,
+            FontSize = 13,
+            HorizontalTextAlignment = TextAlignment.Center,
+            VerticalTextAlignment = TextAlignment.Center
+        };
+
+        var circulo = new Border
+        {
+            WidthRequest = 26,
+            HeightRequest = 26,
+            BackgroundColor = ResolverColor(escenario.Color),
+            StrokeThickness = 2,
+            Stroke = Colors.White,
+            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 13 },
+            Content = numero,
+            HorizontalOptions = LayoutOptions.Center,
+            VerticalOptions = LayoutOptions.Center
+        };
+
+        var nombre = new Label
+        {
+            Text = escenario.Nombre,
+            TextColor = Color.FromArgb("#3A2B4A"),
+            FontSize = 14,
+            VerticalTextAlignment = TextAlignment.Center,
+            LineBreakMode = LineBreakMode.TailTruncation,
+            MaxLines = 2
+        };
+
+        var fila = new Grid
+        {
+            ColumnDefinitions =
+            {
+                new ColumnDefinition { Width = GridLength.Auto },
+                new ColumnDefinition { Width = GridLength.Star }
+            },
+            ColumnSpacing = 10,
+            Padding = new Thickness(10, 7)
+        };
+        Grid.SetColumn(circulo, 0);
+        Grid.SetColumn(nombre, 1);
+        fila.Children.Add(circulo);
+        fila.Children.Add(nombre);
+
+        return new Border
+        {
+            BackgroundColor = Color.FromArgb("#FFFFFF"),
+            Stroke = Color.FromArgb("#ECE6F3"),
+            StrokeThickness = 1,
+            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 12 },
+            Content = fila
+        };
     }
 
     // Coloca cada pin con coordenadas ABSOLUTAS sobre el MapaLayout: el CENTRO del pin cae

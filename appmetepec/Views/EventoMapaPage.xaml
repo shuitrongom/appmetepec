@@ -12,7 +12,12 @@
         </Style>
     </ContentPage.Resources>
 
-    <Grid RowDefinitions="Auto,*">
+    <!-- Tres zonas: encabezado (Auto), lista de escenarios (Auto, con tope de alto proporcional
+         y scroll interno) y el area del mapa (*). El reparto Auto/* hace que con POCOS escenarios
+         la lista mida poco y el mapa crezca; con MUCHOS la lista llega a su tope (~33% del alto,
+         fijado por codigo en ListaEscenariosScroll.MaximumHeightRequest) y scrollea, sin empujar
+         el mapa fuera de pantalla. -->
+    <Grid RowDefinitions="Auto,Auto,*">
 
         <!-- Encabezado -->
         <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Padding="12,10" BackgroundColor="White">
@@ -31,8 +36,31 @@
             <ContentView Grid.Column="2" WidthRequest="34" />
         </Grid>
 
-        <!-- Area del mapa: un contenedor fijo (clip) donde se mueve/escala el contenido. -->
-        <Grid Grid.Row="1" x:Name="Viewport" IsClippedToBounds="True" BackgroundColor="#F4F1FA">
+        <!-- Zona de LISTA de escenarios (enumerados, con su color y nombre). Las filas se generan
+             por codigo en DibujarListaEscenarios (mismo patron que los pines: reutiliza
+             ResolverColor para que el punto coincida EXACTO con el pin del mapa). El ScrollView
+             no lleva alto fijo: su MaximumHeightRequest se calcula por codigo como ~33% del alto
+             de la pagina (ver OnPageSizeChanged), de modo que con muchos escenarios scrollea en
+             lugar de empujar el mapa. -->
+        <ScrollView Grid.Row="1" x:Name="ListaEscenariosScroll"
+                    Padding="16,10,16,6" VerticalScrollBarVisibility="Default">
+            <VerticalStackLayout x:Name="ListaEscenariosHost" Spacing="8">
+                <!-- Subtitulo tenue (reubicado desde la vieja PistaSuperior): la ayuda vive aqui,
+                     dentro de la zona de lista, para no flotar sobre el mapa. Las filas de
+                     escenarios se agregan por codigo debajo. -->
+                <Label x:Name="PistaSuperior"
+                       Text="Pica un número para ver las actividades del escenario"
+                       FontSize="12" TextColor="#9A8AAE"
+                       MaxLines="2" LineBreakMode="WordWrap" />
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <!-- Area del mapa: un contenedor fijo (clip) donde se mueve/escala el contenido. El
+             Padding da el aire alrededor del mapa; insetea el contenido pero el Viewport
+             conserva un tamano >0, por lo que DimensionarLienzo sigue recibiendo dimensiones
+             validas. -->
+        <Grid Grid.Row="2" x:Name="Viewport" IsClippedToBounds="True" BackgroundColor="#F4F1FA"
+              Padding="14,8,14,14">
 
             <!-- Contenido que se escala y traslada (imagen + pines). -->
             <AbsoluteLayout x:Name="MapaLayout" HorizontalOptions="Center" VerticalOptions="Center">
@@ -65,29 +93,12 @@
             </VerticalStackLayout>
         </Grid>
 
-        <!-- Pista superior (en el HUECO que deja el mapa cuadrado al entrar con "fit").
-             Va ANCLADA ARRIBA del area del mapa, centrada, con AIRE: ocupa esa franja vacia
-             entre el encabezado y la imagen del plano sin tapar el mapa ni los pines. Dos
-             micro-lineas con jerarquia (la segunda mas tenue) para que respire y se vea premium.
-             InputTransparent para no robar toques a los pines que quedaran por debajo. -->
-        <VerticalStackLayout Grid.Row="1" x:Name="PistaSuperior" Spacing="4"
-                             VerticalOptions="Start" HorizontalOptions="Center"
-                             Margin="24,18,24,0" InputTransparent="True">
-            <Label Text="Pica un número para ver las actividades del escenario"
-                   FontSize="13" TextColor="#5B2A86" HorizontalTextAlignment="Center"
-                   MaxLines="2" LineBreakMode="WordWrap" />
-            <Label Text="Inclina el teléfono para ver el plano en 3D"
-                   FontSize="11" TextColor="#9A8AAE" Opacity="0.9"
-                   HorizontalTextAlignment="Center"
-                   MaxLines="1" LineBreakMode="TailTruncation" />
-        </VerticalStackLayout>
-
         <!-- ══ INTRO DE PORTADA (overlay) ══
-             Cubre toda la pantalla (las 2 filas) y se muestra UNA sola vez al abrir el
+             Cubre toda la pantalla (las 3 filas) y se muestra UNA sola vez al abrir el
              evento si este trae imagenPortadaUrl. Fade + zoom suave; se puede saltar con un
              toque. El code-behind la oculta tras ~2.2 s o al tocar. Si no hay portada, nunca
              se hace visible y el flujo va directo al mapa. -->
-        <Grid Grid.Row="0" Grid.RowSpan="2" x:Name="IntroOverlay" IsVisible="False"
+        <Grid Grid.Row="0" Grid.RowSpan="3" x:Name="IntroOverlay" IsVisible="False"
               InputTransparent="False" BackgroundColor="Transparent">
             <Image x:Name="PortadaImagen" Aspect="AspectFill"
                    HorizontalOptions="Fill" VerticalOptions="Fill" />
