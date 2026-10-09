@@ -842,7 +842,7 @@ public partial class EventoMapaPage : ContentPage
         fila.Children.Add(circulo);
         fila.Children.Add(nombre);
 
-        return new Border
+        var tarjeta = new Border
         {
             BackgroundColor = Color.FromArgb("#FFFFFF"),
             Stroke = Color.FromArgb("#ECE6F3"),
@@ -850,6 +850,21 @@ public partial class EventoMapaPage : ContentPage
             StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 12 },
             Content = fila
         };
+
+        // Toda la fila es tocable y navega a la MISMA programacion que el pin del mapa
+        // (AbrirProgramacionAsync, mismo escenario). Micro-feedback discreto y premium: un leve
+        // "hundido" (ScaleTo a 0.97 y de regreso a 1.0) coherente con el rebote del pin pero mas
+        // sutil, por tratarse de una fila de lista.
+        var tap = new TapGestureRecognizer();
+        tap.Tapped += async (_, _) =>
+        {
+            await tarjeta.ScaleTo(0.97, 90, Easing.CubicOut);
+            await tarjeta.ScaleTo(1.0, 110, Easing.CubicIn);
+            await AbrirProgramacionAsync(escenario);
+        };
+        tarjeta.GestureRecognizers.Add(tap);
+
+        return tarjeta;
     }
 
     // Coloca cada pin con coordenadas ABSOLUTAS sobre el MapaLayout: el CENTRO del pin cae
