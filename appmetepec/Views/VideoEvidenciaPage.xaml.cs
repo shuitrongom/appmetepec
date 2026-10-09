@@ -13,15 +13,24 @@ public partial class VideoEvidenciaPage : ContentPage
     private const string EsquemaAviso = "videoevidencia://";
 
     private readonly Uri _uri;
+    private readonly bool _cerrarAlTerminar;
     private bool _fallo;
 
     public VideoEvidenciaPage(BackendTicketObservacionEvidenciaDto video, Uri uri)
+        : this(uri, video.HasDescripcion ? video.Descripcion : null)
+    {
+    }
+
+    // Tambien se usa como "pantalla completa" del video de una noticia (NewsDetailPage), con
+    // cerrarAlTerminar = true: al acabar el video se cierra sola y regresa a la misma noticia.
+    public VideoEvidenciaPage(Uri uri, string? descripcion = null, bool cerrarAlTerminar = false)
     {
         InitializeComponent();
         _uri = uri;
+        _cerrarAlTerminar = cerrarAlTerminar;
 
-        DescripcionLabel.Text = video.Descripcion ?? "";
-        DescripcionLabel.IsVisible = video.HasDescripcion;
+        DescripcionLabel.Text = descripcion ?? "";
+        DescripcionLabel.IsVisible = !string.IsNullOrWhiteSpace(descripcion);
 
         // La fuente se asigna ya con el control nativo creado, para permitir la autorreproduccion.
         Web.HandlerChanged += OnWebHandlerChanged;
@@ -64,6 +73,7 @@ public partial class VideoEvidenciaPage : ContentPage
                 v.addEventListener('playing', function () { avisar('listo'); });
                 v.addEventListener('loadeddata', function () { avisar('listo'); });
                 v.addEventListener('error', function () { avisar('error'); });
+                v.addEventListener('ended', function () { avisar('fin'); });
               </script>
             </body>
             </html>
@@ -83,6 +93,10 @@ public partial class VideoEvidenciaPage : ContentPage
         else if (evento == "error")
         {
             _ = MostrarFalloAsync();
+        }
+        else if (evento == "fin" && _cerrarAlTerminar)
+        {
+            _ = CerrarAsync();
         }
     }
 

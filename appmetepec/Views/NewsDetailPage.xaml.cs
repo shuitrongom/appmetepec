@@ -450,7 +450,7 @@ public partial class NewsDetailPage : ContentPage
             // un dominio real, el embed tiene un origin remoto valido y YouTube lo reproduce sin el
             // "Error 153" que daba al cargar el embed desde un HTML local. El reproductor de YouTube
             // trae su propio poster, boton de play y controles.
-            VideoInline.IsVisible = false;
+            VideoMp4.IsVisible = false;
             VideoFullscreenButton.IsVisible = false;
             VideoYoutube.IsVisible = true;
             // Cargar el proxy CON header Referer = origin del backend. Es el paso que faltaba:
@@ -468,11 +468,12 @@ public partial class NewsDetailPage : ContentPage
         }
         else if (Uri.TryCreate(_news.videoUrl, UriKind.Absolute, out var videoUri))
         {
-            // .mp4 u otra URL de video directa: camino con MediaElement (inline + pantalla completa).
+            // .mp4 u otra URL de video directa: <video> HTML5 en un WebView (inline) + boton de
+            // pantalla completa (VideoEvidenciaPage).
             VideoYoutube.IsVisible = false;
-            VideoInline.IsVisible = true;
+            VideoMp4.IsVisible = true;
             VideoFullscreenButton.IsVisible = true;
-            VideoInline.Source = CommunityToolkit.Maui.Views.MediaSource.FromUri(videoUri);
+            VideoMp4.Source = new HtmlWebViewSource { Html = CrearHtmlVideoInline(videoUri) };
             VideoBlock.IsVisible = true;
         }
         else
@@ -556,13 +557,35 @@ public partial class NewsDetailPage : ContentPage
         }
     }
 
-    // --- Video: expandir a pantalla completa y volver (solo camino .mp4 / MediaElement) ---
+    // HTML del video .mp4 dentro de la tarjeta: <video> con controles nativos, sin autoplay.
+    private static string CrearHtmlVideoInline(Uri uri)
+    {
+        var src = System.Net.WebUtility.HtmlEncode(uri.AbsoluteUri);
+        return $$"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+              <style>
+                html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+                video { width: 100%; height: 100%; object-fit: contain; background: #000; }
+              </style>
+            </head>
+            <body>
+              <video src="{{src}}" controls playsinline preload="metadata"></video>
+            </body>
+            </html>
+            """;
+    }
 
-    // "Pantalla completa": pausa el reproductor inline, carga la misma fuente en el overlay a
-    // pantalla completa y lo reproduce. Suscribe MediaEnded para que, al terminar, el overlay se
-    // cierre solo y el usuario regrese a la misma noticia (no al Home). No aplica a YouTube: ese
-    // boton se oculta en ConfigurarVideo cuando el video es de YouTube.
-    private void OnExpandirVideoTapped(object sender, TappedEventArgs e)
+    // --- Video: pantalla completa (solo camino .mp4) ---
+
+    // "Pantalla completa": detiene el video de la tarjeta y abre el reproductor a pantalla
+    // completa (VideoEvidenciaPage, el mismo de las evidencias). Al cerrarlo se regresa a la misma
+    // noticia. No aplica a YouTube: ese boton se oculta en ConfigurarVideo.
+    private bool _volviendoDeVideo;
+
+    private async void OnExpandirVideoTapped(object sender, TappedEventArgs e)
     {
         if (_news is null || string.IsNullOrWhiteSpace(_news.videoUrl)
             || EsYoutube(_news.videoUrl)
@@ -571,46 +594,25 @@ public partial class NewsDetailPage : ContentPage
             return;
         }
 
-        try { VideoInline.Pause(); } catch { /* best-effort */ }
-
-        VideoFull.Source = CommunityToolkit.Maui.Views.MediaSource.FromUri(videoUri);
-        VideoFull.MediaEnded += OnVideoFullEnded;
-        VideoFullscreenOverlay.IsVisible = true;
-        try { VideoFull.Play(); } catch { /* el control autoreproduce igual (ShouldAutoPlay) */ }
+        // Recargar el HTML detiene el video de la tarjeta (para que no suenen los dos).
+        VideoMp4.Source = new HtmlWebViewSource { Html = CrearHtmlVideoInline(videoUri) };
+        _volviendoDeVideo = true;
+        // Igual que el overlay de antes: al terminar el video se cierra solo y regresa a la noticia.
+        await Navigation.PushModalAsync(new VideoEvidenciaPage(videoUri, cerrarAlTerminar: true));
     }
 
-    // Al terminar el video en pantalla completa: cerrar el overlay y volver a la noticia.
-    private void OnVideoFullEnded(object? sender, EventArgs e)
-    {
-        CerrarVideoFull();
-    }
-
-    private void OnCerrarVideoFullTapped(object sender, TappedEventArgs e)
-    {
-        CerrarVideoFull();
-    }
-
-    // Cierra el overlay de pantalla completa, detiene y libera el video grande, y deja la noticia
-    // tal cual (el reproductor inline sigue disponible para volver a ver).
-    private void CerrarVideoFull()
-    {
-        VideoFull.MediaEnded -= OnVideoFullEnded;
-        try { VideoFull.Stop(); } catch { /* best-effort */ }
-        VideoFull.Source = null;
-        VideoFullscreenOverlay.IsVisible = false;
-    }
-
-    // Al salir de la pagina: detener y liberar ambos reproductores (bateria y memoria).
+    // Al salir de la pagina: detener los reproductores (bateria y memoria). Si solo se abrio la
+    // pantalla completa del video, la tarjeta se queda como esta.
     protected override void OnDisappearing()
     {
         base.OnDisappearing();
-        try { VideoInline.Stop(); } catch { /* best-effort */ }
-        // YouTube: navegar el WebView a blanco para que el reproductor embebido deje de
-        // reproducir/sonar al salir de la pantalla.
-        try { VideoYoutube.Source = new UrlWebViewSource { Url = "about:blank" }; } catch { /* best-effort */ }
-        if (VideoFullscreenOverlay.IsVisible)
+        if (_volviendoDeVideo)
         {
-            CerrarVideoFull();
+            _volviendoDeVideo = false;
+            return;
         }
+        // Navegar los WebView a blanco para que el video deje de reproducir/sonar.
+        try { VideoMp4.Source = new UrlWebViewSource { Url = "about:blank" }; } catch { /* best-effort */ }
+        try { VideoYoutube.Source = new UrlWebViewSource { Url = "about:blank" }; } catch { /* best-effort */ }
     }
 }
