@@ -51,12 +51,16 @@ public partial class EventoMapaPage : ContentPage
     // --- Estado del bottom sheet (FASE 4) ---
     // Detents como FRACCIONES del alto del area del mapa (responsivo en gama baja/alta). H es
     // SIEMPRE Viewport.Height (fuente unica), nunca this.Height.
-    private const double PEEK = 0.12, MEDIO = 0.45, EXPANDIDO = 0.90;
-    private enum Detent { Peek, Medio, Expandido }
+    // SOLO DOS ESTADOS (se elimino el intermedio MEDIO): PEEK (colapsado) y ABIERTO (70%). El
+    // tope superior del arrastre es 70% -> el mapa SIEMPRE queda visible (~30% arriba), nunca se
+    // tapa por completo. El sheet mide 0.70*H de alto; en peek baja casi todo (deja ver el handle
+    // + segmented + pista), en abierto sube a 70%.
+    private const double PEEK = 0.12, ABIERTO = 0.70;
+    private enum Detent { Peek, Abierto }
     private Detent _detentActual = Detent.Peek;
-    // Alto del sheet (= EXPANDIDO*H) y TranslationY de cada detent, recalculados en cada
+    // Alto del sheet (= ABIERTO*H) y TranslationY de cada detent, recalculados en cada
     // SizeChanged valido del Viewport.
-    private double _altoSheet, _tyPeek, _tyMedio, _tyExp;
+    private double _altoSheet, _tyPeek, _tyAbierto;
     // Posicion de TranslationY al iniciar un arrastre (GestureStatus.Started).
     private double _tyInicio;
     // Generacion del snap: cada AplicarDetent la incrementa para que una animacion vieja que
@@ -170,21 +174,21 @@ public partial class EventoMapaPage : ContentPage
 
     // --- Detents del bottom sheet (HIGH-1) ---
 
-    // Recalcula el alto del sheet y los TranslationY de los 3 detents a partir de H = alto del
+    // Recalcula el alto del sheet y los TranslationY de los 2 detents a partir de H = alto del
     // Viewport (fuente UNICA, nunca this.Height). Guarda identica a DimensionarLienzo para no
     // fijar HeightRequest=0 en el primer frame; re-escribe HeightRequest en CADA SizeChanged
-    // valido (rotacion/gama baja) y re-aplica el detent actual sin animar.
+    // valido (rotacion/gama baja) y re-aplica el detent actual sin animar. El alto del sheet es
+    // 70% de H, por lo que ABIERTO (TranslationY=0) deja SIEMPRE ~30% de mapa visible arriba.
     private void RecalcularDetents()
     {
         var h = Viewport.Height;
         if (h <= 0) return; // evita HeightRequest=0 en el primer frame (como DimensionarLienzo)
 
-        _altoSheet = EXPANDIDO * h;
+        _altoSheet = ABIERTO * h;               // tope: el sheet nunca mide mas del 70% de H
         BottomSheet.HeightRequest = _altoSheet; // re-escrito en cada SizeChanged valido
 
         var peekPx = Math.Max(56, PEEK * h);    // minimo de accesibilidad (handle + pista)
-        _tyExp = 0;
-        _tyMedio = _altoSheet - (MEDIO * h);
+        _tyAbierto = 0;                          // abierto = tope del sheet (70% del alto)
         _tyPeek = Math.Min(_altoSheet, _altoSheet - peekPx);
 
         AplicarDetent(_detentActual, animado: false);
@@ -198,8 +202,7 @@ public partial class EventoMapaPage : ContentPage
         _detentActual = destino;
         var ty = destino switch
         {
-            Detent.Expandido => _tyExp,
-            Detent.Medio => _tyMedio,
+            Detent.Abierto => _tyAbierto,
             _ => _tyPeek
         };
         PistaPeek.IsVisible = destino == Detent.Peek;
@@ -218,7 +221,9 @@ public partial class EventoMapaPage : ContentPage
 
     // Arrastre del sheet: adjunto SOLO a SheetHandleYCabecera (fila 0), nunca al Border raiz,
     // para no competir con el scroll interno de las listas (MEDIUM-4). Durante el arrastre
-    // clampa TranslationY entre EXPANDIDO (0) y PEEK; al soltar hace snap al detent mas cercano.
+    // clampa TranslationY entre ABIERTO (0 = tope 70%) y PEEK; aunque el usuario arrastre fuerte
+    // hacia arriba, el panel se DETIENE en 70% (_tyAbierto=0) y el mapa sigue visible. Al soltar
+    // hace snap al detent mas cercano (solo 2: peek o 70%).
     private void OnSheetPan(object? sender, PanUpdatedEventArgs e)
     {
         if (Viewport.Height <= 0) return;
@@ -228,7 +233,7 @@ public partial class EventoMapaPage : ContentPage
                 _tyInicio = BottomSheet.TranslationY;
                 break;
             case GestureStatus.Running:
-                BottomSheet.TranslationY = Math.Clamp(_tyInicio + e.TotalY, _tyExp, _tyPeek);
+                BottomSheet.TranslationY = Math.Clamp(_tyInicio + e.TotalY, _tyAbierto, _tyPeek);
                 break;
             case GestureStatus.Completed:
             case GestureStatus.Canceled:
@@ -237,33 +242,30 @@ public partial class EventoMapaPage : ContentPage
         }
     }
 
-    // Elige el detent cuyo TranslationY este mas cerca de la posicion final; si el gesto fue un
-    // flick (|totalY| > 60), sesga en la direccion del movimiento (arriba = expandir). El clamp
-    // garantiza que el sheet nunca se descarta: siempre queda al menos PEEK.
+    // Tocar el handle COLAPSA el sheet a PEEK para dejar el mapa completo visible. Si ya esta en
+    // peek no hace nada (AplicarDetent lo re-asienta sin efecto visible). Complementa al arrastre
+    // hacia abajo: el usuario puede bajar el panel tocando el handle o arrastrando.
+    private void OnHandleTapped(object? sender, TappedEventArgs e)
+    {
+        if (Viewport.Height <= 0) return;
+        if (_detentActual == Detent.Peek) return;
+        AplicarDetent(Detent.Peek, animado: true);
+    }
+
+    // Elige entre los DOS unicos detents (peek / abierto 70%) el mas cercano a la posicion final;
+    // si el gesto fue un flick (|totalY| > 60), sesga en la direccion del movimiento (arriba =
+    // abrir, abajo = colapsar). El clamp garantiza que el sheet nunca se descarta: siempre queda
+    // al menos PEEK, y nunca sube mas del 70% (el mapa permanece visible).
     private Detent ElegirDetentCercano(double ty, double totalY)
     {
-        var dExp = Math.Abs(ty - _tyExp);
-        var dMedio = Math.Abs(ty - _tyMedio);
-        var dPeek = Math.Abs(ty - _tyPeek);
-
-        var destino = Detent.Peek;
-        var mejor = dPeek;
-        if (dMedio < mejor) { mejor = dMedio; destino = Detent.Medio; }
-        if (dExp < mejor) { destino = Detent.Expandido; }
-
         if (Math.Abs(totalY) > 60)
         {
-            if (totalY < 0) // flick hacia arriba -> abrir mas
-            {
-                destino = destino == Detent.Peek ? Detent.Medio : Detent.Expandido;
-            }
-            else // flick hacia abajo -> cerrar mas
-            {
-                destino = destino == Detent.Expandido ? Detent.Medio : Detent.Peek;
-            }
+            // Flick: hacia arriba abre a 70%; hacia abajo colapsa a peek.
+            return totalY < 0 ? Detent.Abierto : Detent.Peek;
         }
 
-        return destino;
+        // Sin flick: va al detent cuyo TranslationY este mas cerca.
+        return Math.Abs(ty - _tyAbierto) <= Math.Abs(ty - _tyPeek) ? Detent.Abierto : Detent.Peek;
     }
 
     // Cuando el lienzo ya tiene (o cambia) su tamano real, recoloca los pines con coordenadas
@@ -1240,7 +1242,8 @@ public partial class EventoMapaPage : ContentPage
     }
 
     // Cambia de pestaña: anima la pastilla a su columna, togglea la visibilidad de los scrolls y,
-    // si el sheet esta en PEEK, lo sube a MEDIO para revelar el contenido. Al pasar a Agenda,
+    // si el sheet esta en PEEK, lo ABRE al 70% para revelar el contenido (elegir una pestaña =
+    // abrir). Si ya estaba abierto, se queda en 70% y solo cambia el contenido. Al pasar a Agenda,
     // refresca Mi agenda.
     private async void CambiarTab(Tab destino)
     {
@@ -1265,7 +1268,7 @@ public partial class EventoMapaPage : ContentPage
 
         if (_detentActual == Detent.Peek)
         {
-            AplicarDetent(Detent.Medio, animado: true);
+            AplicarDetent(Detent.Abierto, animado: true);
         }
 
         // Traslada la pastilla a la columna destino (ancho de una columna = mitad del contenedor).

@@ -16,8 +16,8 @@
          El mapa (Viewport) ocupa TODA la fila * bajo el encabezado -> SIEMPRE mide >0 y
          DimensionarLienzo recibe dimensiones validas. El bottom sheet NO vive en una fila
          propia: es un OVERLAY superpuesto en la MISMA fila * (declarado DESPUES del Viewport
-         para quedar por encima del mapa), anclado abajo y deslizable por codigo (3 detents:
-         PEEK/MEDIO/EXPANDIDO) con PanGestureRecognizer + TranslationY. Asi el mapa queda DETRAS
+         para quedar por encima del mapa), anclado abajo y deslizable por codigo (2 detents:
+         PEEK / ABIERTO 70%) con PanGestureRecognizer + TranslationY. Asi el mapa queda DETRAS
          del sheet (no debajo) y su medicion es la del area entera. -->
     <Grid RowDefinitions="Auto,*">
 
@@ -41,12 +41,18 @@
         <!-- Area del mapa: un contenedor fijo (clip) donde se mueve/escala el contenido. Ocupa
              toda la fila * bajo el encabezado; el bottom sheet se superpone encima (overlay),
              por lo que el Viewport conserva un tamano >0 y DimensionarLienzo sigue recibiendo
-             dimensiones validas. Padding minimo para dar protagonismo al mapa. -->
+             dimensiones validas. Sin padding superior: el mapa arranca JUSTO bajo el encabezado
+             (se elimino la franja gris superior que no se usaba). -->
         <Grid Grid.Row="1" x:Name="Viewport" IsClippedToBounds="True" BackgroundColor="#F4F1FA"
-              Padding="6,4,6,0">
+              Padding="6,0,6,0">
 
-            <!-- Contenido que se escala y traslada (imagen + pines). -->
-            <AbsoluteLayout x:Name="MapaLayout" HorizontalOptions="Center" VerticalOptions="Center">
+            <!-- Contenido que se escala y traslada (imagen + pines). Anclado ARRIBA
+                 (VerticalOptions="Start") para que el mapa aproveche el alto disponible desde el
+                 encabezado y NO quede una franja gris encima; el sobrante por AspectFit (si la
+                 imagen es mas ancha que alta) cae abajo, donde el bottom sheet lo cubre. El
+                 centrado horizontal (HorizontalOptions="Center") y el AspectFit de
+                 DimensionarLienzo se conservan intactos. -->
+            <AbsoluteLayout x:Name="MapaLayout" HorizontalOptions="Center" VerticalOptions="Start">
                 <!-- La imagen llena el MapaLayout con AspectFit (nunca deforma). Como el
                      code-behind dimensiona el MapaLayout con la proporcion REAL del archivo
                      (medida tras cargar la imagen, no con los enteros del backend que pueden
@@ -80,8 +86,8 @@
              Panel propio (CERO dependencias NuGet): se descarto el plugin The49 por
              incompatibilidad net9 (ver design.md §1). Vive en la MISMA fila * que el Viewport
              pero DECLARADO DESPUES -> mayor Z -> queda por encima del mapa. Anclado abajo
-             (VerticalOptions="End"), su alto (HeightRequest = 0.90*Viewport.Height) y los 3
-             detents (TranslationY) los fija RecalcularDetents por codigo desde OnViewportSizeChanged
+             (VerticalOptions="End"), su alto (HeightRequest = 0.70*Viewport.Height) y los 2
+             detents (peek / abierto 70%) los fija RecalcularDetents por codigo desde OnViewportSizeChanged
              (fuente unica: Viewport.Height). NO lleva InputTransparent: recibe sus toques. El
              PanGestureRecognizer va SOLO en la cabecera (fila 0), no en el Border raiz, para no
              competir con el scroll interno de las listas. -->
@@ -108,6 +114,8 @@
                            HorizontalTextAlignment="Center" HorizontalOptions="Center" />
                     <Grid.GestureRecognizers>
                         <PanGestureRecognizer PanUpdated="OnSheetPan" />
+                        <!-- Tocar el handle colapsa el sheet a PEEK (deja el mapa completo). -->
+                        <TapGestureRecognizer Tapped="OnHandleTapped" />
                     </Grid.GestureRecognizers>
                 </Grid>
 
