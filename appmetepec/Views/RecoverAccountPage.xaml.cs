@@ -47,6 +47,12 @@ public partial class RecoverAccountPage : ContentPage
             BusyIndicator.IsRunning = BusyIndicator.IsVisible = true;
 
             var respuesta = await _api.SolicitarRecuperacionAsync(email);
+            if (respuesta?.NoEncontrado == true)
+            {
+                await DisplayAlert("Correo no registrado", respuesta.Mensaje, "Aceptar");
+                return;
+            }
+
             if (respuesta is null || string.IsNullOrWhiteSpace(respuesta.Token))
             {
                 await DisplayAlert("No se pudo continuar", "Intenta de nuevo mas tarde.", "Aceptar");

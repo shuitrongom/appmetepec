@@ -367,6 +367,10 @@ public sealed class BackendSolicitarRecuperacionResponse
 
     [JsonPropertyName("bloqueado")]
     public bool Bloqueado { get; set; }
+
+    // true = no hay ninguna cuenta con ese correo (no se envio codigo).
+    [JsonPropertyName("noEncontrado")]
+    public bool NoEncontrado { get; set; }
 }
 
 public sealed class BackendIdentificarUsuarioResponse
