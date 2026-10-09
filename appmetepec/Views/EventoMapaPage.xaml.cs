@@ -52,10 +52,13 @@ public partial class EventoMapaPage : ContentPage
     // Detents como FRACCIONES del alto del area del mapa (responsivo en gama baja/alta). H es
     // SIEMPRE Viewport.Height (fuente unica), nunca this.Height.
     // SOLO DOS ESTADOS (se elimino el intermedio MEDIO): PEEK (colapsado) y ABIERTO (70%). El
-    // tope superior del arrastre es 70% -> el mapa SIEMPRE queda visible (~30% arriba), nunca se
-    // tapa por completo. El sheet mide 0.70*H de alto; en peek baja casi todo (deja ver el handle
-    // + segmented + pista), en abierto sube a 70%.
-    private const double PEEK = 0.12, ABIERTO = 0.70;
+    // tope superior del arrastre es 40% -> el mapa SIEMPRE queda visible (>=60% arriba), nunca se
+    // tapa por completo. El sheet mide 0.40*H de alto; en peek baja casi todo (deja ver el handle
+    // + segmento + pista), en abierto sube a 40%.
+    // ABIERTO = 0.40 -> el sheet mide COMO MAXIMO el 40% del alto, dejando SIEMPRE >=60% de mapa
+    // visible arriba (criterio del cliente: "60% mapa, 40% agenda/escenarios"). El mapa NUNCA se
+    // tapa por completo bajo ninguna circunstancia.
+    private const double PEEK = 0.12, ABIERTO = 0.40;
     private enum Detent { Peek, Abierto }
     private Detent _detentActual = Detent.Peek;
     // Alto del sheet (= ABIERTO*H) y TranslationY de cada detent, recalculados en cada
@@ -184,13 +187,22 @@ public partial class EventoMapaPage : ContentPage
         var h = Viewport.Height;
         if (h <= 0) return; // evita HeightRequest=0 en el primer frame (como DimensionarLienzo)
 
-        _altoSheet = ABIERTO * h;               // tope: el sheet nunca mide mas del 70% de H
-        BottomSheet.HeightRequest = _altoSheet; // re-escrito en cada SizeChanged valido
+        // Alto DURO del sheet = 40% de H. Como el Border lleva VerticalOptions="End" y este
+        // HeightRequest fijo, el panel NUNCA crece con su contenido (14 escenarios o muchos
+        // favoritos): el exceso scrollea DENTRO de los ScrollView internos. Asi el mapa conserva
+        // SIEMPRE >=60% de alto visible, pase lo que pase.
+        _altoSheet = ABIERTO * h;
+        BottomSheet.HeightRequest = _altoSheet;        // re-escrito en cada SizeChanged valido
+        BottomSheet.MaximumHeightRequest = _altoSheet; // TOPE DURO: el Border no puede crecer con el
+                                                       // contenido mas alla del 40% (candado anti-tapar-mapa)
 
-        var peekPx = Math.Max(56, PEEK * h);    // minimo de accesibilidad (handle + pista)
-        _tyAbierto = 0;                          // abierto = tope del sheet (70% del alto)
-        _tyPeek = Math.Min(_altoSheet, _altoSheet - peekPx);
+        var peekPx = Math.Max(56, PEEK * h);    // minimo de accesibilidad (handle + pista + segmented)
+        _tyAbierto = 0;                          // abierto = tope del sheet (40% del alto)
+        _tyPeek = Math.Max(0, _altoSheet - peekPx); // peek = baja el sheet dejando solo el peek visible
 
+        // Re-aplica el detent actual con el alto ya calculado (sin animar). Corrige el bug de
+        // "abre tapando todo": en cuanto el Viewport mide >0, el sheet queda confinado a 40% y en
+        // su detent, sin importar el alto de contenido que haya tomado en el primer frame.
         AplicarDetent(_detentActual, animado: false);
     }
 
@@ -1242,13 +1254,23 @@ public partial class EventoMapaPage : ContentPage
     }
 
     // Cambia de pestaña: anima la pastilla a su columna, togglea la visibilidad de los scrolls y,
-    // si el sheet esta en PEEK, lo ABRE al 70% para revelar el contenido (elegir una pestaña =
-    // abrir). Si ya estaba abierto, se queda en 70% y solo cambia el contenido. Al pasar a Agenda,
-    // refresca Mi agenda.
+    // si el sheet esta en PEEK, lo ABRE al 40% para revelar el contenido (elegir una pestaña =
+    // abrir). Si ya estaba abierto y se toca la MISMA pestaña, colapsa (toggle). Al pasar a
+    // Agenda, refresca Mi agenda.
     private async void CambiarTab(Tab destino)
     {
         if (_pastillaSegmented is null || _tabEscenariosLabel is null || _tabAgendaLabel is null)
         {
+            return;
+        }
+
+        // TOGGLE para contraer: si se toca la pestaña que YA esta activa y el sheet esta ABIERTO,
+        // se colapsa a PEEK (deja el mapa completo). Asi el usuario puede contraer tocando la
+        // propia pestaña, ademas de con el handle o arrastrando. (El cliente reporto que "si
+        // quiero contraer escenarios o la agenda no me deja".)
+        if (destino == _tabActiva && _detentActual == Detent.Abierto)
+        {
+            AplicarDetent(Detent.Peek, animado: true);
             return;
         }
 

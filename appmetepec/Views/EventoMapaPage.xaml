@@ -86,8 +86,8 @@
              Panel propio (CERO dependencias NuGet): se descarto el plugin The49 por
              incompatibilidad net9 (ver design.md §1). Vive en la MISMA fila * que el Viewport
              pero DECLARADO DESPUES -> mayor Z -> queda por encima del mapa. Anclado abajo
-             (VerticalOptions="End"), su alto (HeightRequest = 0.70*Viewport.Height) y los 2
-             detents (peek / abierto 70%) los fija RecalcularDetents por codigo desde OnViewportSizeChanged
+             (VerticalOptions="End"), su alto (HeightRequest = 0.40*Viewport.Height) y los 2
+             detents (peek / abierto 40%) los fija RecalcularDetents por codigo desde OnViewportSizeChanged
              (fuente unica: Viewport.Height). NO lleva InputTransparent: recibe sus toques. El
              PanGestureRecognizer va SOLO en la cabecera (fila 0), no en el Border raiz, para no
              competir con el scroll interno de las listas. -->
