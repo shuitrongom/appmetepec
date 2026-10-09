@@ -126,6 +126,59 @@
                  columnas angostas que partian las palabras letra por letra). -->
             <ScrollView Grid.Row="0">
                 <VerticalStackLayout x:Name="ProgramaStack" Padding="16" Spacing="12">
+
+                    <!-- FASE 3: franja "AHORA / A CONTINUACION". Tarjeta premium que SOLO aparece
+                         cuando el dia mostrado es HOY y hay una actividad en curso y/o una proxima.
+                         Va como PRIMER hijo del ProgramaStack (antes del CollectionView) para que
+                         scrollee junto con la lista y no requiera tocar el Grid raiz ni sus Grid.Row
+                         (minimo riesgo para fases 1/2 y el 3D de la imagen). El fondo es un tinte
+                         MUY claro del color del escenario; el code-behind rellena los textos, decide
+                         su visibilidad (IsVisible) y maneja un leve 'pulso' del punto de 'Ahora'.
+                         Toda la tarjeta es tocable (abre el detalle de la actividad 'Ahora' si tiene
+                         descripcion); la seccion 'A continuacion' tiene su propio gesto. -->
+                    <Border x:Name="FranjaAhora" IsVisible="False"
+                            StrokeThickness="0" Padding="14,12"
+                            StrokeShape="RoundRectangle 16">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnFranjaAhoraTocada" />
+                        </Border.GestureRecognizers>
+                        <VerticalStackLayout Spacing="10">
+                            <!-- Bloque "AHORA": punto que late (pulso) + etiqueta + actividad en curso -->
+                            <VerticalStackLayout x:Name="FranjaEnCursoStack" Spacing="2" IsVisible="False">
+                                <HorizontalStackLayout Spacing="7">
+                                    <!-- Punto de 'Ahora': su color es el del escenario; el code-behind
+                                         anima su opacidad/escala en bucle mientras la franja este visible.
+                                         Es un Border circular (StrokeShape RoundRectangle 5 sobre 10x10)
+                                         para seguir el MISMO patron de 'dot' que ya usa el calendario,
+                                         en vez de depender de la figura Ellipse. -->
+                                    <Border x:Name="FranjaPuntoPulso" WidthRequest="10" HeightRequest="10"
+                                            StrokeThickness="0" StrokeShape="RoundRectangle 5"
+                                            VerticalOptions="Center" />
+                                    <Label x:Name="FranjaEnCursoEtiqueta" Text="AHORA" FontSize="11"
+                                           FontAttributes="Bold" VerticalTextAlignment="Center" />
+                                </HorizontalStackLayout>
+                                <Label x:Name="FranjaEnCursoTitulo" Text="" FontSize="15" FontAttributes="Bold"
+                                       LineBreakMode="TailTruncation" MaxLines="2" />
+                            </VerticalStackLayout>
+
+                            <!-- Separador tenue solo visible cuando se muestran AMBAS secciones -->
+                            <BoxView x:Name="FranjaSeparador" HeightRequest="1" IsVisible="False"
+                                     Color="#1A000000" HorizontalOptions="Fill" />
+
+                            <!-- Bloque "A CONTINUACION": mas tenue; su propio gesto abre el detalle
+                                 de la PROXIMA actividad si tiene descripcion. -->
+                            <VerticalStackLayout x:Name="FranjaProximaStack" Spacing="2" IsVisible="False">
+                                <VerticalStackLayout.GestureRecognizers>
+                                    <TapGestureRecognizer Tapped="OnFranjaProximaTocada" />
+                                </VerticalStackLayout.GestureRecognizers>
+                                <Label x:Name="FranjaProximaEtiqueta" Text="A CONTINUACIÓN" FontSize="11"
+                                       FontAttributes="Bold" TextColor="#8A7A9E" />
+                                <Label x:Name="FranjaProximaTitulo" Text="" FontSize="14"
+                                       TextColor="#555" LineBreakMode="TailTruncation" MaxLines="2" />
+                            </VerticalStackLayout>
+                        </VerticalStackLayout>
+                    </Border>
+
                     <!-- Sin SelectionMode: la seleccion nativa pintaba un fondo gris feo al tocar.
                          En su lugar, cada fila lleva un TapGestureRecognizer; el code-behind
                          (OnActividadTocada) abre el modal SOLO si la actividad tiene descripcion.
@@ -133,7 +186,7 @@
                     <CollectionView x:Name="ActividadesView" SelectionMode="None">
                         <CollectionView.ItemTemplate>
                             <DataTemplate>
-                                <Grid ColumnDefinitions="Auto,Auto,*,Auto" Padding="0,8" ColumnSpacing="12"
+                                <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" Padding="0,8" ColumnSpacing="12"
                                       BackgroundColor="Transparent">
                                     <Grid.GestureRecognizers>
                                         <TapGestureRecognizer Tapped="OnActividadTocada" />
@@ -157,6 +210,23 @@
                                            TextColor="{Binding Color}" Opacity="0.55"
                                            IsVisible="{Binding TieneDescripcion}"
                                            VerticalOptions="Center" />
+                                    <!-- Estrella de FAVORITO LOCAL: control APARTE y tocable por si
+                                         mismo. Su TapGestureRecognizer consume el toque, de modo que
+                                         tocarla marca/desmarca el favorito y NO abre el detalle (el
+                                         gesto de la fila no se dispara). Glifo ★/☆ y color los expone
+                                         ActividadItem (relleno + color del escenario cuando es
+                                         favorita; contorno gris tenue cuando no). Area tactil comoda
+                                         (40x40) para gama baja y alta sin romper el layout: la columna
+                                         * del contenido sigue siendo la que se expande. -->
+                                    <Label Grid.Column="4" Text="{Binding EstrellaGlifo}" FontSize="22"
+                                           TextColor="{Binding EstrellaColor}"
+                                           WidthRequest="40" HeightRequest="40"
+                                           HorizontalTextAlignment="Center" VerticalTextAlignment="Center"
+                                           VerticalOptions="Center">
+                                        <Label.GestureRecognizers>
+                                            <TapGestureRecognizer Tapped="OnFavoritoTocado" />
+                                        </Label.GestureRecognizers>
+                                    </Label>
                                 </Grid>
                             </DataTemplate>
                         </CollectionView.ItemTemplate>

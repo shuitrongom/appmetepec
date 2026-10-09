@@ -12,12 +12,14 @@
         </Style>
     </ContentPage.Resources>
 
-    <!-- Tres zonas: encabezado (Auto), lista de escenarios (Auto, con tope de alto proporcional
-         y scroll interno) y el area del mapa (*). El reparto Auto/* hace que con POCOS escenarios
-         la lista mida poco y el mapa crezca; con MUCHOS la lista llega a su tope (~33% del alto,
-         fijado por codigo en ListaEscenariosScroll.MaximumHeightRequest) y scrollea, sin empujar
-         el mapa fuera de pantalla. -->
-    <Grid RowDefinitions="Auto,Auto,*">
+    <!-- FASE 4 (estilo Google/Apple Maps): dos zonas, encabezado (Auto) y area del mapa (*).
+         El mapa (Viewport) ocupa TODA la fila * bajo el encabezado -> SIEMPRE mide >0 y
+         DimensionarLienzo recibe dimensiones validas. El bottom sheet NO vive en una fila
+         propia: es un OVERLAY superpuesto en la MISMA fila * (declarado DESPUES del Viewport
+         para quedar por encima del mapa), anclado abajo y deslizable por codigo (3 detents:
+         PEEK/MEDIO/EXPANDIDO) con PanGestureRecognizer + TranslationY. Asi el mapa queda DETRAS
+         del sheet (no debajo) y su medicion es la del area entera. -->
+    <Grid RowDefinitions="Auto,*">
 
         <!-- Encabezado -->
         <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Padding="12,10" BackgroundColor="White">
@@ -36,31 +38,12 @@
             <ContentView Grid.Column="2" WidthRequest="34" />
         </Grid>
 
-        <!-- Zona de LISTA de escenarios (enumerados, con su color y nombre). Las filas se generan
-             por codigo en DibujarListaEscenarios (mismo patron que los pines: reutiliza
-             ResolverColor para que el punto coincida EXACTO con el pin del mapa). El ScrollView
-             no lleva alto fijo: su MaximumHeightRequest se calcula por codigo como ~33% del alto
-             de la pagina (ver OnPageSizeChanged), de modo que con muchos escenarios scrollea en
-             lugar de empujar el mapa. -->
-        <ScrollView Grid.Row="1" x:Name="ListaEscenariosScroll"
-                    Padding="16,10,16,6" VerticalScrollBarVisibility="Default">
-            <VerticalStackLayout x:Name="ListaEscenariosHost" Spacing="8">
-                <!-- Subtitulo tenue (reubicado desde la vieja PistaSuperior): la ayuda vive aqui,
-                     dentro de la zona de lista, para no flotar sobre el mapa. Las filas de
-                     escenarios se agregan por codigo debajo. -->
-                <Label x:Name="PistaSuperior"
-                       Text="Pica un número para ver las actividades del escenario"
-                       FontSize="12" TextColor="#9A8AAE"
-                       MaxLines="2" LineBreakMode="WordWrap" />
-            </VerticalStackLayout>
-        </ScrollView>
-
-        <!-- Area del mapa: un contenedor fijo (clip) donde se mueve/escala el contenido. El
-             Padding da el aire alrededor del mapa; insetea el contenido pero el Viewport
-             conserva un tamano >0, por lo que DimensionarLienzo sigue recibiendo dimensiones
-             validas. -->
-        <Grid Grid.Row="2" x:Name="Viewport" IsClippedToBounds="True" BackgroundColor="#F4F1FA"
-              Padding="14,8,14,14">
+        <!-- Area del mapa: un contenedor fijo (clip) donde se mueve/escala el contenido. Ocupa
+             toda la fila * bajo el encabezado; el bottom sheet se superpone encima (overlay),
+             por lo que el Viewport conserva un tamano >0 y DimensionarLienzo sigue recibiendo
+             dimensiones validas. Padding minimo para dar protagonismo al mapa. -->
+        <Grid Grid.Row="1" x:Name="Viewport" IsClippedToBounds="True" BackgroundColor="#F4F1FA"
+              Padding="6,4,6,0">
 
             <!-- Contenido que se escala y traslada (imagen + pines). -->
             <AbsoluteLayout x:Name="MapaLayout" HorizontalOptions="Center" VerticalOptions="Center">
@@ -93,12 +76,73 @@
             </VerticalStackLayout>
         </Grid>
 
+        <!-- ══ BOTTOM SHEET (overlay deslizable) ══
+             Panel propio (CERO dependencias NuGet): se descarto el plugin The49 por
+             incompatibilidad net9 (ver design.md §1). Vive en la MISMA fila * que el Viewport
+             pero DECLARADO DESPUES -> mayor Z -> queda por encima del mapa. Anclado abajo
+             (VerticalOptions="End"), su alto (HeightRequest = 0.90*Viewport.Height) y los 3
+             detents (TranslationY) los fija RecalcularDetents por codigo desde OnViewportSizeChanged
+             (fuente unica: Viewport.Height). NO lleva InputTransparent: recibe sus toques. El
+             PanGestureRecognizer va SOLO en la cabecera (fila 0), no en el Border raiz, para no
+             competir con el scroll interno de las listas. -->
+        <Border Grid.Row="1" x:Name="BottomSheet"
+                VerticalOptions="End" HorizontalOptions="Fill"
+                BackgroundColor="#FFFFFF" StrokeThickness="0"
+                StrokeShape="RoundRectangle 20,20,0,0">
+            <Border.Shadow>
+                <Shadow Brush="Black" Opacity="0.12" Radius="12" Offset="0,-3" />
+            </Border.Shadow>
+
+            <Grid RowDefinitions="Auto,Auto,*">
+
+                <!-- Fila 0: zona de arrastre (handle + pista). AQUI el PanGestureRecognizer. -->
+                <Grid Grid.Row="0" x:Name="SheetHandleYCabecera" Padding="0,8,0,6"
+                      BackgroundColor="Transparent" RowDefinitions="Auto,Auto" RowSpacing="4">
+                    <Border Grid.Row="0" WidthRequest="36" HeightRequest="5"
+                            BackgroundColor="#cfc3dd" StrokeThickness="0"
+                            StrokeShape="RoundRectangle 2.5"
+                            HorizontalOptions="Center" VerticalOptions="Center" />
+                    <Label Grid.Row="1" x:Name="PistaPeek"
+                           Text="Escenarios · Mi agenda ⭐"
+                           FontSize="12" TextColor="#9A8AAE"
+                           HorizontalTextAlignment="Center" HorizontalOptions="Center" />
+                    <Grid.GestureRecognizers>
+                        <PanGestureRecognizer PanUpdated="OnSheetPan" />
+                    </Grid.GestureRecognizers>
+                </Grid>
+
+                <!-- Fila 1: segmented 'Escenarios | Mi agenda ⭐' (sus hijos se crean en CrearSegmented). -->
+                <Grid Grid.Row="1" x:Name="SegmentedHost" Padding="16,2,16,8" />
+
+                <!-- Fila 2: contenido con DOS scrolls superpuestos (uno visible a la vez). -->
+                <Grid Grid.Row="2">
+                    <ScrollView x:Name="EscenariosScroll" Padding="16,0,16,12"
+                                VerticalScrollBarVisibility="Default">
+                        <VerticalStackLayout x:Name="ListaEscenariosHost" Spacing="8">
+                            <!-- Subtitulo tenue (PistaSuperior): primer hijo del host; el metodo
+                                 DibujarListaEscenarios lo respeta por ReferenceEquals. -->
+                            <Label x:Name="PistaSuperior"
+                                   Text="Pica un número para ver las actividades del escenario"
+                                   FontSize="12" TextColor="#9A8AAE"
+                                   MaxLines="2" LineBreakMode="WordWrap" />
+                        </VerticalStackLayout>
+                    </ScrollView>
+
+                    <ScrollView x:Name="AgendaScroll" IsVisible="False" Padding="16,0,16,12"
+                                VerticalScrollBarVisibility="Default">
+                        <VerticalStackLayout x:Name="AgendaHost" Spacing="4" />
+                    </ScrollView>
+                </Grid>
+            </Grid>
+        </Border>
+
         <!-- ══ INTRO DE PORTADA (overlay) ══
-             Cubre toda la pantalla (las 3 filas) y se muestra UNA sola vez al abrir el
+             Cubre toda la pantalla (las 2 filas) y se muestra UNA sola vez al abrir el
              evento si este trae imagenPortadaUrl. Fade + zoom suave; se puede saltar con un
              toque. El code-behind la oculta tras ~2.2 s o al tocar. Si no hay portada, nunca
-             se hace visible y el flujo va directo al mapa. -->
-        <Grid Grid.Row="0" Grid.RowSpan="3" x:Name="IntroOverlay" IsVisible="False"
+             se hace visible y el flujo va directo al mapa. Declarado al final -> mayor Z ->
+             cubre encabezado, mapa y sheet durante la intro. -->
+        <Grid Grid.Row="0" Grid.RowSpan="2" x:Name="IntroOverlay" IsVisible="False"
               InputTransparent="False" BackgroundColor="Transparent">
             <Image x:Name="PortadaImagen" Aspect="AspectFill"
                    HorizontalOptions="Fill" VerticalOptions="Fill" />

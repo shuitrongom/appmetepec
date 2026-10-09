@@ -8,7 +8,14 @@
 	<uses-permission android:name="android.permission.CAMERA" />
 	<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
 	<uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-	<!-- Requerido desde Android 13 (API 33) para poder mostrar las notificaciones push de Firebase. -->
+	<!-- Requerido desde Android 13 (API 33) para poder mostrar notificaciones. Lo usan tanto el
+	     push remoto de Firebase como los RECORDATORIOS LOCALES del modulo de Eventos
+	     (Plugin.LocalNotification; aviso 15 min antes de una actividad favorita). El resto de
+	     permisos que necesita el plugin (programacion por AlarmManager, rearme tras reinicio,
+	     etc.) los aporta su propio manifest (AAR) al fusionarse; aqui solo declaramos el permiso
+	     de runtime que la app debe pedir al usuario. Se usa programacion INEXACTA (un
+	     recordatorio 15 min antes tolera leve holgura), por lo que NO se requieren los permisos
+	     especiales SCHEDULE_EXACT_ALARM / USE_EXACT_ALARM (que molestarian al usuario). -->
 	<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
 	<!-- Android 11+ (visibilidad de paquetes): sin declarar estos intents, Android oculta la app de
