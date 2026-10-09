@@ -36,6 +36,8 @@
 	<string>Usamos tu galeria para agregar una foto o video como evidencia de tu reporte.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Usamos tu ubicacion para completar la direccion de tu reporte.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Usamos tu ubicacion para completar la direccion de tu reporte y mostrarte el punto exacto en el mapa.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
