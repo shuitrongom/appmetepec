@@ -28,7 +28,7 @@
 
 		<!-- Versions -->
 		<ApplicationDisplayVersion>1.5.0</ApplicationDisplayVersion>
-		<ApplicationVersion>80</ApplicationVersion>
+		<ApplicationVersion>81</ApplicationVersion>
 
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">15.0</SupportedOSPlatformVersion>
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">13.1</SupportedOSPlatformVersion>
@@ -39,7 +39,20 @@
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net9.0-android|AnyCPU'">
-	  <AndroidPackageFormat>apk</AndroidPackageFormat>
+	  <!-- aab: formato que exige Google Play. Para un APK de prueba (instalar a mano), compilar con
+	       -p:AndroidPackageFormat=apk -->
+	  <AndroidPackageFormat>aab</AndroidPackageFormat>
+	  <!-- Todas las arquitecturas (como la version anterior de la app). Sin android-arm (ARM de 32
+	       bits) Google Play deja fuera ~35% de celulares (gama baja / Android de 32 bits). -->
+	  <RuntimeIdentifiers>android-arm;android-arm64;android-x86;android-x64</RuntimeIdentifiers>
+	  <AndroidKeyStore>true</AndroidKeyStore>
+	  <!-- Datos de firma fuera del proyecto: se leen de variables de entorno del equipo que compila
+	       (METEPEC_KEYSTORE_PATH, METEPEC_KEY_ALIAS, METEPEC_KEYSTORE_PASS, METEPEC_KEY_PASS).
+	       "env:" hace que las contrasenas no aparezcan en los logs de compilacion. -->
+	  <AndroidSigningKeyStore>$(METEPEC_KEYSTORE_PATH)</AndroidSigningKeyStore>
+	  <AndroidSigningKeyAlias>$(METEPEC_KEY_ALIAS)</AndroidSigningKeyAlias>
+	  <AndroidSigningStorePass>env:METEPEC_KEYSTORE_PASS</AndroidSigningStorePass>
+	  <AndroidSigningKeyPass>env:METEPEC_KEY_PASS</AndroidSigningKeyPass>
 	</PropertyGroup>
 
 	<ItemGroup>
