@@ -21,27 +21,32 @@ public sealed class MetepecApiService
         _preferences = preferences;
     }
 
-    public Task<NewsLetterResponse?> GetNewsAsync(CancellationToken cancellationToken = default)
+    // Noticias de la app anterior (mobzilla, http): no se usa (las noticias vienen del back-end
+    // propio). Comentado junto con AppConstants.EnvConsultingUrl.
+    // public Task<NewsLetterResponse?> GetNewsAsync(CancellationToken cancellationToken = default)
+    // {
+    //     const string url = AppConstants.EnvConsultingUrl +
+    //                        "?actorId=0&comm=searchnewsletter&environmentId=10&newsletterId=0&newsletterTypeId=0&serviceId=10&subjectId=23";
+    //     return GetJsonAsync<NewsLetterResponse>(url, cancellationToken);
+    // }
+
+    // Token de Recoleccion de basura: se pedia a AppConstants.MetepecApiUrl (http, comentada). El
+    // modulo no esta habilitado en esta app (no hay acceso desde el Home), asi que se deja sin token.
+    // Si se habilita, ese servicio necesita https (Android bloquea http).
+    public Task<string?> GetRecoleccionTokenAsync(CancellationToken cancellationToken = default)
     {
-        const string url = AppConstants.EnvConsultingUrl +
-                           "?actorId=0&comm=searchnewsletter&environmentId=10&newsletterId=0&newsletterTypeId=0&serviceId=10&subjectId=23";
-        return GetJsonAsync<NewsLetterResponse>(url, cancellationToken);
-    }
+        // var content = JsonContent(new { apikey = AppConstants.RecoleccionApiKey });
+        // using var response = await _httpClient.PostAsync(AppConstants.MetepecApiUrl + "/", content, cancellationToken);
+        // response.EnsureSuccessStatusCode();
+        // var result = await ReadJsonAsync<TokenRecoleccionResponse>(response, cancellationToken);
+        //
+        // if (result?.code == true && !string.IsNullOrWhiteSpace(result.token))
+        // {
+        //     _preferences.RecoleccionToken = result.token;
+        //     return result.token;
+        // }
 
-    public async Task<string?> GetRecoleccionTokenAsync(CancellationToken cancellationToken = default)
-    {
-        var content = JsonContent(new { apikey = AppConstants.RecoleccionApiKey });
-        using var response = await _httpClient.PostAsync(AppConstants.MetepecApiUrl + "/", content, cancellationToken);
-        response.EnsureSuccessStatusCode();
-        var result = await ReadJsonAsync<TokenRecoleccionResponse>(response, cancellationToken);
-
-        if (result?.code == true && !string.IsNullOrWhiteSpace(result.token))
-        {
-            _preferences.RecoleccionToken = result.token;
-            return result.token;
-        }
-
-        return null;
+        return Task.FromResult<string?>(null);
     }
 
     public async Task<List<RoutesModel>> GetRoutesByLocationAsync(double latitude, double longitude, CancellationToken cancellationToken = default)

@@ -3,12 +3,19 @@ namespace appmetepec.Services;
 public static class AppConstants
 {
     public const string AppName = "Metepec *7311";
-    public const string EnvConsultingUrl = "http://env_consulting_api.mobzilla.com/";
-    public const string ServerDtUrl = "http://api.mobzilla.com/index.aspx";
+    // URLs http de la app anterior (mobzilla), comentadas: no se usan en esta app y Android bloquea
+    // el trafico sin https (network_security_config). RecoleccionApiKey solo servia para pedir el
+    // token de MetepecApiUrl; se comenta para que no quede expuesta dentro del APK.
+    // public const string EnvConsultingUrl = "http://env_consulting_api.mobzilla.com/";
+    // public const string ServerDtUrl = "http://api.mobzilla.com/index.aspx";
+    // public const string MetepecApiUrl = "http://metepec-api.mobzilla.com";
+    // public const string RecoleccionApiKey = "M3T3p3c_Sm1_2022";
+    // Recoleccion de basura: modulo no habilitado en esta app (el acceso del Home esta comentado).
     public const string RecoleccionUrl = "https://recolecciongt.mx/api_external/";
-    public const string MetepecApiUrl = "http://metepec-api.mobzilla.com";
-    public const string RecoleccionApiKey = "M3T3p3c_Sm1_2022";
-    public const string PrivacyUrl = "https://metepec7311.com/privacidad/";
+    // Aviso de Privacidad: ruta publica de la web (front-end/public/legal/aviso-privacidad.html).
+    // Antes apuntaba a https://metepec7311.com/privacidad/, dominio que no existe. Al pasar a
+    // produccion, cambiar al dominio de la web de produccion (la misma URL va en Google Play).
+    public const string PrivacyUrl = "https://dess-ti.ddns.net:8067/#/aviso-privacidad";
     public const string SamUrl = "https://rebrand.ly/uqqh70m";
     // Banners "PAGO EN LINEA" del carrusel de Inicio (HomePage.OnPromoBannerTapped).
     public const string PredialUrl = "https://recaudacion.tesoreriametepec.com.mx/";
