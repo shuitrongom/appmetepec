@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Globalization;
 using appmetepec.Models;
 using appmetepec.Services;
@@ -13,6 +14,8 @@ namespace appmetepec.Views;
 public partial class EscenarioProgramaPage : ContentPage
 {
     private readonly NavigationState _navigationState;
+    private readonly FavoritosService _favoritos;
+    private readonly RecordatoriosService _recordatorios;
 
     private BackendEscenarioDto? _escenario;
     private DateTime _diaSeleccionado;
@@ -23,10 +26,25 @@ public partial class EscenarioProgramaPage : ContentPage
     private static readonly Color ColorPorDefecto = Color.FromArgb("#5B2A86");
     private Color _colorEscenario = ColorPorDefecto;
 
-    public EscenarioProgramaPage(NavigationState navigationState)
+    // --- FASE 3: franja "AHORA / A CONTINUACION" ---
+    // Actividades que la franja referencia ahora mismo (para abrir su detalle al tocar). Se
+    // recalculan en cada refresco; pueden ser null si no hay en curso / proxima.
+    private BackendActividadDto? _actividadEnCurso;
+    private BackendActividadDto? _actividadProxima;
+    // Timer ligero que recalcula la franja mientras la pagina esta visible (efecto 'vivo'). Se
+    // crea en OnAppearing y se DETIENE/suelta en OnDisappearing (no dejar timers vivos: bateria).
+    private IDispatcherTimer? _franjaTimer;
+    // Pulso del punto de 'Ahora': mismo patron de guardas de generacion/flag que los lazos de la
+    // imagen 3D (evita duplicar bucles al entrar/salir). Se detiene en OnDisappearing / al ocultar.
+    private bool _franjaPulsoActivo;
+    private int _franjaGeneracionPulso;
+
+    public EscenarioProgramaPage(NavigationState navigationState, FavoritosService favoritos, RecordatoriosService recordatorios)
     {
         InitializeComponent();
         _navigationState = navigationState;
+        _favoritos = favoritos;
+        _recordatorios = recordatorios;
     }
 
     protected override void OnAppearing()
@@ -49,6 +67,11 @@ public partial class EscenarioProgramaPage : ContentPage
             {
                 IniciarImagen3D();
             }
+
+            // FASE 3: al reaparecer (p. ej. al cerrar el calendario o el modal de detalle),
+            // recalculamos la franja y re-arrancamos el timer. Idempotente por sus guardas.
+            IniciarFranjaTimer();
+            RefrescarFranjaAhora();
             return;
         }
 
@@ -85,6 +108,10 @@ public partial class EscenarioProgramaPage : ContentPage
 
         // Arranca en el dia de hoy.
         MostrarDia(DateTime.Today);
+
+        // FASE 3: arranca el timer ligero que mantiene 'viva' la franja (recalcula cada ~45 s
+        // mientras la pagina sea visible). MostrarDia ya hizo el primer calculo de la franja.
+        IniciarFranjaTimer();
     }
 
     private void MostrarDia(DateTime dia)
@@ -102,13 +129,16 @@ public partial class EscenarioProgramaPage : ContentPage
         var items = _escenario.Actividades
             .Where(a => a.Fecha.Date == _diaSeleccionado)
             .OrderBy(a => MinutosDesdeMedianoche(a.HoraInicio))
-            .Select(a => new ActividadItem(a, _colorEscenario, _escenario!.Nombre))
+            .Select(a => new ActividadItem(a, _colorEscenario, _escenario!.Nombre, _favoritos.EsFavorito(a.Id)))
             .ToList();
 
         ActividadesView.ItemsSource = items;
         var hay = items.Count > 0;
         ActividadesView.IsVisible = hay;
         VacioLabel.IsVisible = !hay;
+
+        // FASE 3: al cambiar de dia, recalcula la franja (solo aplica cuando el dia es HOY).
+        RefrescarFranjaAhora();
     }
 
     private async void OnCalendarioTapped(object sender, TappedEventArgs e)
@@ -484,12 +514,322 @@ public partial class EscenarioProgramaPage : ContentPage
         }
     }
 
+    // Toque sobre la ESTRELLA de favorito de una fila. Es un control APARTE del resto de la
+    // fila: alterna el favorito LOCAL y NO abre el detalle. El TapGestureRecognizer propio de
+    // la estrella consume el toque, por lo que el gesto de la fila (OnActividadTocada) no se
+    // dispara al tocar aqui. El cambio se refleja al instante (★/☆ + color) y se persiste.
+    private async void OnFavoritoTocado(object sender, TappedEventArgs e)
+    {
+        // El sender es el Label de la estrella; su BindingContext es el ActividadItem de la fila.
+        if (sender is not Label estrella || estrella.BindingContext is not ActividadItem item)
+        {
+            return;
+        }
+
+        // Alterna y persiste (todo local). El servicio devuelve el nuevo estado.
+        item.EsFavorito = _favoritos.Alternar(item.Actividad.Id);
+
+        // RECORDATORIO LOCAL (FASE 2), servicio HERMANO del de favoritos: segun el nuevo estado,
+        // programamos o cancelamos un aviso 15 min antes del inicio de la actividad.
+        //  - Si quedo FAVORITO: aseguramos el permiso de notificaciones y, SOLO si hay permiso,
+        //    programamos el recordatorio. REGLA CONFIRMADA POR EL CLIENTE: "guardar siempre,
+        //    avisar si hay permiso" -> el favorito YA quedo guardado arriba (Fase 1); si el
+        //    usuario niega el permiso, simplemente no se programa el aviso (sin molestar: nada
+        //    de alertas insistentes).
+        //  - Si quedo NO favorito: cancelamos el recordatorio por el mismo id de actividad.
+        if (item.EsFavorito)
+        {
+            if (await _recordatorios.AsegurarPermisoAsync())
+            {
+                await _recordatorios.ProgramarRecordatorioActividadAsync(item.Actividad, _escenario!.Nombre);
+            }
+        }
+        else
+        {
+            _recordatorios.CancelarRecordatorioActividad(item.Actividad.Id);
+        }
+
+        // Micro-animacion premium: pequeno rebote de escala, discreto y coherente con la pantalla.
+        try
+        {
+            await estrella.ScaleTo(1.3, 110, Easing.CubicOut);
+            await estrella.ScaleTo(1.0, 90, Easing.CubicIn);
+        }
+        catch
+        {
+            // Si el control se libera a mitad de animacion, se ignora.
+            estrella.Scale = 1.0;
+        }
+    }
+
+    // ===================== FASE 3: franja "AHORA / A CONTINUACION" =====================
+
+    // Periodo de refresco del timer: 45 s da el efecto 'vivo' (una actividad que empieza/termina
+    // se refleja en menos de un minuto) sin coste de bateria apreciable. Solo corre mientras la
+    // pagina es visible (arranca en OnAppearing, se detiene en OnDisappearing).
+    private static readonly TimeSpan FranjaIntervalo = TimeSpan.FromSeconds(45);
+
+    // Crea (si no existe) y arranca el timer que recalcula la franja periodicamente. Idempotente:
+    // si ya hay timer, solo se asegura de que este corriendo. El timer vive ligado a la pagina y
+    // se para en OnDisappearing para no gastar bateria ni disparar refrescos fuera de pantalla.
+    private void IniciarFranjaTimer()
+    {
+        if (_franjaTimer is null)
+        {
+            _franjaTimer = Dispatcher.CreateTimer();
+            _franjaTimer.Interval = FranjaIntervalo;
+            _franjaTimer.IsRepeating = true;
+            _franjaTimer.Tick += OnFranjaTimerTick;
+        }
+
+        if (!_franjaTimer.IsRunning)
+        {
+            _franjaTimer.Start();
+        }
+    }
+
+    // Para el timer de la franja (sin soltar el handler: se reusa al reaparecer). Lo llama
+    // OnDisappearing para no dejar refrescos corriendo con la pagina fuera de pantalla.
+    private void DetenerFranjaTimer()
+    {
+        if (_franjaTimer is { IsRunning: true })
+        {
+            _franjaTimer.Stop();
+        }
+    }
+
+    private void OnFranjaTimerTick(object? sender, EventArgs e) => RefrescarFranjaAhora();
+
+    // Recalcula que mostrar en la franja y actualiza su UI. Reglas:
+    //  - Solo cuando el dia MOSTRADO es HOY (no tiene sentido 'ahora' en un dia pasado/futuro).
+    //  - 'En curso': la actividad cuyo intervalo [inicio, fin] contiene la hora actual. Si una
+    //    actividad no tiene HoraFin, se considera en curso si ya empezo (inicio <= ahora) y es la
+    //    de inicio MAS RECIENTE del dia que ya comenzo (criterio documentado: sin fin, se asume
+    //    vigente hasta que empiece la siguiente).
+    //  - 'Proxima': la de MENOR hora de inicio estrictamente mayor a la hora actual.
+    //  - Si no hay ni en curso ni proxima (el dia ya termino), la franja se OCULTA.
+    private void RefrescarFranjaAhora()
+    {
+        if (_escenario is null)
+        {
+            OcultarFranja();
+            return;
+        }
+
+        // Solo aplica a HOY.
+        if (_diaSeleccionado != DateTime.Today)
+        {
+            OcultarFranja();
+            return;
+        }
+
+        var ahoraMin = (int)DateTime.Now.TimeOfDay.TotalMinutes;
+
+        // Actividades de hoy en este escenario, con hora de inicio valida, ordenadas por inicio.
+        var deHoy = _escenario.Actividades
+            .Where(a => a.Fecha.Date == _diaSeleccionado)
+            .Where(a => MinutosDesdeMedianoche(a.HoraInicio) != int.MaxValue)
+            .OrderBy(a => MinutosDesdeMedianoche(a.HoraInicio))
+            .ToList();
+
+        BackendActividadDto? enCurso = null;
+        BackendActividadDto? proxima = null;
+
+        // 'En curso': recorre las ya iniciadas (inicio <= ahora). Con HoraFin, exige que ahora
+        // este dentro del intervalo. Sin HoraFin, se queda con la de inicio mas reciente ya
+        // iniciada (la lista esta ordenada ascendente -> la ultima que cumple es la mas reciente).
+        foreach (var a in deHoy)
+        {
+            var ini = MinutosDesdeMedianoche(a.HoraInicio);
+            if (ini > ahoraMin) break; // las siguientes aun no empiezan (lista ordenada)
+
+            var finMin = MinutosDesdeMedianoche(a.HoraFin);
+            if (finMin != int.MaxValue)
+            {
+                // Con fin: en curso solo si ahora cae dentro de [inicio, fin).
+                enCurso = ahoraMin < finMin ? a : enCurso;
+            }
+            else
+            {
+                // Sin fin: candidata; al seguir el bucle, una posterior ya iniciada la reemplaza.
+                enCurso = a;
+            }
+        }
+
+        // 'Proxima': primera cuya hora de inicio es estrictamente mayor a ahora.
+        proxima = deHoy.FirstOrDefault(a => MinutosDesdeMedianoche(a.HoraInicio) > ahoraMin);
+
+        _actividadEnCurso = enCurso;
+        _actividadProxima = proxima;
+
+        // Si no hay nada que mostrar, ocultamos (el dia ya termino): criterio premium.
+        if (enCurso is null && proxima is null)
+        {
+            OcultarFranja();
+            return;
+        }
+
+        // Pinta la seccion 'Ahora'.
+        if (enCurso is not null)
+        {
+            FranjaEnCursoTitulo.Text = TituloActividad(enCurso, incluirHora: true);
+            FranjaEnCursoEtiqueta.TextColor = _colorEscenario;
+            FranjaPuntoPulso.BackgroundColor = _colorEscenario;
+            FranjaEnCursoStack.IsVisible = true;
+        }
+        else
+        {
+            FranjaEnCursoStack.IsVisible = false;
+        }
+
+        // Pinta la seccion 'A continuacion'.
+        if (proxima is not null)
+        {
+            FranjaProximaTitulo.Text = TituloActividad(proxima, incluirHora: true);
+            FranjaProximaStack.IsVisible = true;
+        }
+        else
+        {
+            FranjaProximaStack.IsVisible = false;
+        }
+
+        // Separador solo cuando se ven AMBAS secciones.
+        FranjaSeparador.IsVisible = enCurso is not null && proxima is not null;
+
+        // Tinte muy claro del color del escenario como fondo de la tarjeta (acabado premium).
+        FranjaAhora.BackgroundColor = _colorEscenario.WithAlpha(0.10f);
+        FranjaAhora.IsVisible = true;
+
+        // Arranca el pulso del punto 'Ahora' solo si esa seccion esta visible; si no, lo detiene.
+        if (enCurso is not null)
+        {
+            IniciarPulsoFranja();
+        }
+        else
+        {
+            DetenerPulsoFranja();
+        }
+    }
+
+    // Oculta la franja por completo y detiene el pulso. Deja limpias las referencias de toque.
+    private void OcultarFranja()
+    {
+        _actividadEnCurso = null;
+        _actividadProxima = null;
+        DetenerPulsoFranja();
+        FranjaEnCursoStack.IsVisible = false;
+        FranjaProximaStack.IsVisible = false;
+        FranjaSeparador.IsVisible = false;
+        FranjaAhora.IsVisible = false;
+    }
+
+    // Titulo compacto de una actividad para la franja: su hora (rango) + primera linea de
+    // contenido. Reutiliza la logica de hora de la pagina y las lineas del DTO sin duplicar
+    // el formato enriquecido (aqui basta texto plano de una linea con elipsis).
+    private static string TituloActividad(BackendActividadDto a, bool incluirHora)
+    {
+        var ini = ActividadFormato.NormalizarHora(a.HoraInicio);
+        var fin = ActividadFormato.NormalizarHora(a.HoraFin);
+        string hora;
+        if (ini is not null && fin is not null) hora = $"{ini} - {fin}";
+        else if (ini is not null) hora = ini;
+        else if (fin is not null) hora = fin;
+        else hora = "";
+
+        var primeraLinea = a.Lineas
+            .Select(l => l.Texto)
+            .FirstOrDefault(t => !string.IsNullOrWhiteSpace(t))
+            ?.Trim() ?? "";
+
+        if (!incluirHora || hora.Length == 0)
+        {
+            return primeraLinea.Length > 0 ? primeraLinea : "Actividad";
+        }
+
+        return primeraLinea.Length > 0 ? $"{hora} · {primeraLinea}" : hora;
+    }
+
+    // Pulso del punto de 'Ahora': late suave (opacidad + leve escala) en bucle mientras la franja
+    // este visible. Mismo patron de guardas que los lazos de la imagen 3D (flag + generacion) para
+    // no duplicar bucles al entrar/salir. Idempotente.
+    private void IniciarPulsoFranja()
+    {
+        if (_franjaPulsoActivo) return;
+        _franjaPulsoActivo = true;
+        var generacion = ++_franjaGeneracionPulso;
+        _ = PulsoFranjaAsync(generacion);
+    }
+
+    private void DetenerPulsoFranja()
+    {
+        _franjaPulsoActivo = false;
+        _franjaGeneracionPulso++;
+        // Deja el punto en estado neutro para que no quede 'congelado' a media animacion.
+        FranjaPuntoPulso.Opacity = 1;
+        FranjaPuntoPulso.Scale = 1;
+    }
+
+    private async Task PulsoFranjaAsync(int generacion)
+    {
+        try
+        {
+            while (_franjaPulsoActivo && generacion == _franjaGeneracionPulso && FranjaEnCursoStack.IsVisible)
+            {
+                await FranjaPuntoPulso.FadeTo(0.35, 650, Easing.SinInOut);
+                await FranjaPuntoPulso.ScaleTo(0.85, 1, Easing.Linear);
+                await FranjaPuntoPulso.FadeTo(1.0, 650, Easing.SinInOut);
+                await FranjaPuntoPulso.ScaleTo(1.0, 1, Easing.Linear);
+            }
+        }
+        catch
+        {
+            // Si el control se libera a mitad de animacion, se ignora.
+        }
+    }
+
+    // Toque sobre la tarjeta de la franja: abre el detalle de la actividad EN CURSO si la hay y
+    // tiene descripcion. Mismo camino que la lista (OnActividadTocada). Si no hay en curso o no
+    // tiene descripcion, no hace nada (mismo criterio que las filas).
+    private async void OnFranjaAhoraTocada(object sender, TappedEventArgs e)
+    {
+        await AbrirDetalleFranjaAsync(_actividadEnCurso);
+    }
+
+    // Toque sobre la seccion 'A continuacion': abre el detalle de la PROXIMA actividad (su gesto
+    // propio consume el toque, por lo que no dispara tambien el de la tarjeta).
+    private async void OnFranjaProximaTocada(object sender, TappedEventArgs e)
+    {
+        await AbrirDetalleFranjaAsync(_actividadProxima);
+    }
+
+    // Abre el modal de detalle para una actividad de la franja reutilizando EXACTAMENTE el mismo
+    // camino que la lista. Solo abre si la actividad tiene descripcion con texto.
+    private async Task AbrirDetalleFranjaAsync(BackendActividadDto? actividad)
+    {
+        if (_escenario is null || actividad is null) return;
+        if (string.IsNullOrWhiteSpace(actividad.Descripcion)) return;
+
+        var ini = ActividadFormato.NormalizarHora(actividad.HoraInicio);
+        var fin = ActividadFormato.NormalizarHora(actividad.HoraFin);
+        string horaRango;
+        if (ini is not null && fin is not null) horaRango = $"{ini} - {fin}";
+        else if (ini is not null) horaRango = ini;
+        else if (fin is not null) horaRango = fin;
+        else horaRango = "";
+
+        await ActividadDetallePage.PickAsync(
+            Navigation, _escenario.Nombre, horaRango, actividad, _colorEscenario);
+    }
+
     // Al salir de la pagina: detiene el efecto 3D de la imagen (libera el acelerometro y para
-    // los lazos) para no gastar bateria ni dejar animaciones corriendo.
+    // los lazos) para no gastar bateria ni dejar animaciones corriendo. FASE 3: tambien para el
+    // timer de la franja y el bucle del pulso (nada de lazos/timers vivos fuera de pantalla).
     protected override void OnDisappearing()
     {
         base.OnDisappearing();
         DetenerImagen3D();
+        DetenerFranjaTimer();
+        DetenerPulsoFranja();
     }
 
     private static string CapitalizarFecha(DateTime d)
@@ -513,10 +853,12 @@ public partial class EscenarioProgramaPage : ContentPage
         return int.MaxValue;
     }
 
-    // Item de presentacion para el CollectionView.
-    private sealed class ActividadItem
+    // Item de presentacion para el CollectionView. Implementa INotifyPropertyChanged para que
+    // al alternar el favorito la estrella de la fila se actualice al instante via binding
+    // (glifo ★/☆ y su color), sin tener que reconstruir toda la lista.
+    private sealed class ActividadItem : INotifyPropertyChanged
     {
-        public ActividadItem(BackendActividadDto a, Color colorEscenario, string sedeNombre)
+        public ActividadItem(BackendActividadDto a, Color colorEscenario, string sedeNombre, bool esFavorito)
         {
             Actividad = a;
             SedeNombre = sedeNombre;
@@ -526,7 +868,40 @@ public partial class EscenarioProgramaPage : ContentPage
             Contenido = ActividadFormato.Construir(a);
             Descripcion = a.Descripcion;
             TieneDescripcion = !string.IsNullOrWhiteSpace(a.Descripcion);
+            _esFavorito = esFavorito;
         }
+
+        public event PropertyChangedEventHandler? PropertyChanged;
+
+        // Color gris tenue para la estrella vacia (sin favorito): se lee bien en gama baja y alta
+        // sin competir con el contenido.
+        private static readonly Color ColorEstrellaVacia = Color.FromArgb("#C2B8CF");
+
+        private bool _esFavorito;
+
+        // Estado LOCAL de favorito de esta actividad. Al cambiarlo se notifican tambien las
+        // propiedades derivadas (glifo y color de la estrella) para refrescar el binding.
+        public bool EsFavorito
+        {
+            get => _esFavorito;
+            set
+            {
+                if (_esFavorito == value) return;
+                _esFavorito = value;
+                Notificar(nameof(EsFavorito));
+                Notificar(nameof(EstrellaGlifo));
+                Notificar(nameof(EstrellaColor));
+            }
+        }
+
+        // Glifo de la estrella: rellena (★) si es favorita, contorno (☆) si no.
+        public string EstrellaGlifo => _esFavorito ? "\u2605" : "\u2606";
+
+        // Color de la estrella: el color del escenario cuando esta marcada, gris tenue si no.
+        public Color EstrellaColor => _esFavorito ? Color : ColorEstrellaVacia;
+
+        private void Notificar(string propiedad) =>
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propiedad));
 
         // Actividad original: la conserva para reconstruir el contenido con formato en el
         // modal (un mismo FormattedString no puede tener dos Labels padre, por eso el modal

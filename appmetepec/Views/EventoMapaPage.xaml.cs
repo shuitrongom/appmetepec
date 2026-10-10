@@ -1,3 +1,4 @@
+using System.Globalization;
 using appmetepec.Models;
 using appmetepec.Services;
 using Microsoft.Maui.Devices.Sensors;
@@ -44,6 +45,35 @@ public partial class EventoMapaPage : ContentPage
 
     private readonly EventosService _eventos;
     private readonly NavigationState _navigationState;
+    private readonly FavoritosService _favoritos;
+    private readonly RecordatoriosService _recordatorios;
+
+    // --- Estado del bottom sheet (FASE 4, rediseño por ALTURA DE FILA) ---
+    // DOS ESTADOS: PEEK (colapsado, solo handle+segmento) y ABIERTO (40% del alto de la pagina).
+    // La altura REAL del sheet es la de la fila 2 del Grid raiz (SheetRow); el mapa (fila '*')
+    // recibe SIEMPRE el resto -> el mapa NUNCA se tapa. ABIERTO = 0.40 (criterio del cliente:
+    // "60% mapa, 40% agenda/escenarios").
+    private const double ABIERTO = 0.40;
+    private enum Detent { Peek, Abierto }
+    // Estado INICIAL = Peek: al entrar se ve el mapa completo y el panel abajo colapsado.
+    private Detent _detentActual = Detent.Peek;
+    // Generacion de la animacion de altura: una animacion vieja que siga en vuelo no pisa una mas
+    // reciente (mismo patron que _generacionLoop del parallax).
+    private int _generacionSheet;
+
+    // Pestaña activa del sheet.
+    private enum Tab { Escenarios, Agenda }
+    private Tab _tabActiva = Tab.Escenarios;
+    // El segmented se construye una sola vez (guarda de idempotencia).
+    private bool _segmentedCreado;
+    // Pastilla morada del segmented y columna de "Mi agenda" (para animar su traslacion en X).
+    private Border? _pastillaSegmented;
+    private Label? _tabEscenariosLabel;
+    private Label? _tabAgendaLabel;
+
+    // Cultura es-MX para los encabezados de dia de Mi agenda (duplica el criterio de
+    // EscenarioProgramaPage.CapitalizarFecha; alla es private static, no reutilizable).
+    private static readonly CultureInfo EsMx = new("es-MX");
 
     private BackendEventoDto? _evento;
     private readonly List<View> _pines = [];
@@ -112,21 +142,103 @@ public partial class EventoMapaPage : ContentPage
     // Ultimos valores de inclinacion con los que se recalculo la sombra (para gatear por umbral).
     private double _tiltSombraX = double.NaN, _tiltSombraY = double.NaN;
 
-    public EventoMapaPage(EventosService eventos, NavigationState navigationState)
+    // La pagina se instancia UNICAMENTE via DI/Shell (verificado: no existe ningun
+    // "new EventoMapaPage(...)" en el repo). Es Transient y los servicios inyectados son
+    // Singleton, por lo que ampliar el constructor es seguro para el contenedor DI.
+    public EventoMapaPage(EventosService eventos, NavigationState navigationState,
+        FavoritosService favoritos, RecordatoriosService recordatorios)
     {
         InitializeComponent();
         _eventos = eventos;
         _navigationState = navigationState;
+        _favoritos = favoritos;
+        _recordatorios = recordatorios;
+
+        // Cuando la pagina obtiene (o cambia) su alto, reasienta la altura de la fila del sheet al
+        // estado actual sin animar. Como _detentActual arranca en Peek, el PRIMER layout deja el
+        // sheet COLAPSADO (mapa completo), sin depender del timing del Viewport.
+        SizeChanged += (_, _) => AjustarAlturaSheet(animado: false);
     }
 
     // Al cambiar el tamano del area del mapa (orientacion, primer layout, etc.) se recalcula el
-    // lienzo para que la imagen siga entrando entera. El reposicionamiento de los pines se
-    // dispara solo cuando el MapaLayout cambia de tamano (OnMapaLayoutSizeChanged).
+    // lienzo para que la imagen siga entrando entera, y los detents del sheet (su unica fuente de
+    // alto es Viewport.Height). El reposicionamiento de los pines se dispara solo cuando el
+    // MapaLayout cambia de tamano (OnMapaLayoutSizeChanged).
     private void OnViewportSizeChanged(object? sender, EventArgs e)
     {
         if (_evento is null) return;
         DimensionarLienzo();
+        // Reasienta la altura de la fila del sheet al estado actual (sin animar) ahora que ya hay
+        // alto valido. Esto GARANTIZA que al entrar quede COLAPSADO (mapa completo) aunque en el
+        // primer frame el alto llegara en 0.
+        AjustarAlturaSheet(animado: false);
     }
+
+    // --- Bottom sheet por ALTURA DE FILA (rediseño de raiz) ---
+
+    // Alto (px) del sheet colapsado: lo justo para el handle + el segmento. Fijo y pequeño; no
+    // depende del contenido. Coincide con el Height="118" inicial de SheetRow en el XAML.
+    private const double AltoPeekPx = 118;
+
+    // Aplica la altura de la FILA del sheet (SheetRow) segun el estado actual, usando el alto
+    // total de la pagina. El mapa (fila '*') recibe SIEMPRE el resto del alto -> es IMPOSIBLE
+    // taparlo. Deterministico: no depende de timing de layout ni de TranslationY. Guarda si aun
+    // no hay alto valido (se reintenta en SizeChanged). Reemplaza al viejo RecalcularDetents.
+    private void AjustarAlturaSheet(bool animado)
+    {
+        var h = Height; // alto total de la pagina (ContentPage)
+        if (h <= 0) return;
+
+        var destino = _detentActual == Detent.Abierto
+            ? Math.Max(AltoPeekPx, ABIERTO * h) // ABIERTO = 40% del alto -> mapa conserva 60%
+            : AltoPeekPx;                        // COLAPSADO = solo el peek (mapa casi completo)
+
+        PistaPeek.IsVisible = _detentActual == Detent.Peek;
+
+        if (!animado)
+        {
+            SheetRow.Height = new GridLength(destino);
+            return;
+        }
+
+        // Animacion suave de la altura de la fila. Generacion para que una animacion vieja no
+        // pise una mas reciente.
+        var gen = ++_generacionSheet;
+        var inicio = SheetRow.Height.IsAbsolute ? SheetRow.Height.Value : destino;
+        var anim = new Animation(v =>
+        {
+            if (gen != _generacionSheet) return;
+            SheetRow.Height = new GridLength(v);
+        }, inicio, destino, Easing.CubicOut);
+        anim.Commit(this, "sheetAnim", length: 220);
+    }
+
+    // Alterna abrir/colapsar (lo usa el tap del handle).
+    private void AlternarSheet()
+    {
+        _detentActual = _detentActual == Detent.Abierto ? Detent.Peek : Detent.Abierto;
+        AjustarAlturaSheet(animado: true);
+    }
+
+    // Abre el sheet al 40% si no lo estaba (lo usa cambiar de pestaña).
+    private void AbrirSheet()
+    {
+        if (_detentActual == Detent.Abierto) return;
+        _detentActual = Detent.Abierto;
+        AjustarAlturaSheet(animado: true);
+    }
+
+    // Colapsa el sheet dejando el mapa completo (lo usa el toggle de pestaña activa).
+    private void ColapsarSheet()
+    {
+        if (_detentActual == Detent.Peek) return;
+        _detentActual = Detent.Peek;
+        AjustarAlturaSheet(animado: true);
+    }
+
+    // Tocar el handle ALTERNA: si esta abierto colapsa (mapa completo), si esta colapsado abre
+    // al 40%. Simple y predecible; la altura real de la fila hace el trabajo.
+    private void OnHandleTapped(object? sender, TappedEventArgs e) => AlternarSheet();
 
     // Cuando el lienzo ya tiene (o cambia) su tamano real, recoloca los pines con coordenadas
     // absolutas exactas. Esto hace el posicionamiento inmune al timing del layout.
@@ -158,6 +270,11 @@ public partial class EventoMapaPage : ContentPage
         if (_evento is not null)
         {
             ReanudarParallax3D();
+            // Al volver de un detalle/escenario, refleja cambios de favoritos si estamos en Agenda.
+            if (_tabActiva == Tab.Agenda)
+            {
+                RefrescarMiAgenda();
+            }
             return;
         }
 
@@ -223,6 +340,16 @@ public partial class EventoMapaPage : ContentPage
                 : ImageSource.FromFile(_evento.ImagenMapaUrl);
 
             DibujarHotspots();
+
+            // Arma la lista de escenarios (numero + punto de color + nombre) dentro del sheet,
+            // del mismo _evento.Escenarios que los pines, en el mismo punto del ciclo de vida.
+            DibujarListaEscenarios();
+
+            // Construye el segmented 'Escenarios | Mi agenda ⭐' (idempotente) y deja el sheet
+            // COLAPSADO; la altura real de la fila la fija AjustarAlturaSheet cuando la pagina ya
+            // mide >0 (OnViewportSizeChanged), garantizando que al entrar se vea el mapa completo.
+            CrearSegmented();
+            _detentActual = Detent.Peek;
 
             // El mapa arranca INVISIBLE: la entrada premium (AnimarEntradaMapaAsync) lo revela
             // con fade al final. Asi, cuando hay intro de portada, al ocultarse el overlay NO se
@@ -745,6 +872,125 @@ public partial class EventoMapaPage : ContentPage
         ArrancarFlotar();
     }
 
+    // Construye la LISTA superior de escenarios: una fila por escenario, ordenada por Numero
+    // ascendente, con un circulo del COLOR del escenario (via ResolverColor -> coincide EXACTO con
+    // el pin del mapa), el numero (blanco dentro del circulo, como en los pines) y el nombre
+    // (morado tenue, con elipsis si es largo). Se genera por codigo por coherencia con el resto de
+    // la UI de esta pagina (los pines tambien se dibujan por codigo). Las filas heredan la fuente
+    // "Como" del Style de la pagina. Idempotente: limpia las filas previas antes de redibujar y
+    // conserva el subtitulo tenue (PistaSuperior), que es el primer hijo del host.
+    private void DibujarListaEscenarios()
+    {
+        if (_evento is null) return;
+
+        // Deja solo el subtitulo (PistaSuperior) y quita filas de un dibujado anterior.
+        for (var i = ListaEscenariosHost.Children.Count - 1; i >= 0; i--)
+        {
+            if (!ReferenceEquals(ListaEscenariosHost.Children[i], PistaSuperior))
+            {
+                ListaEscenariosHost.Children.RemoveAt(i);
+            }
+        }
+
+        foreach (var escenario in _evento.Escenarios.OrderBy(e => e.Numero))
+        {
+            ListaEscenariosHost.Children.Add(CrearFilaEscenario(escenario));
+        }
+    }
+
+    // Una fila de la lista: circulo con el color del escenario y el numero en blanco, mas el
+    // nombre al lado en morado tenue. Envuelta en un Border con fondo blanco y esquinas
+    // redondeadas para el look premium. Coherente con los pines y el tema morado.
+    private View CrearFilaEscenario(BackendEscenarioDto escenario)
+    {
+        var numero = new Label
+        {
+            Text = escenario.Numero.ToString(),
+            TextColor = Colors.White,
+            FontAttributes = FontAttributes.Bold,
+            FontSize = 13,
+            HorizontalTextAlignment = TextAlignment.Center,
+            VerticalTextAlignment = TextAlignment.Center
+        };
+
+        var circulo = new Border
+        {
+            WidthRequest = 26,
+            HeightRequest = 26,
+            BackgroundColor = ResolverColor(escenario.Color),
+            StrokeThickness = 2,
+            Stroke = Colors.White,
+            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 13 },
+            Content = numero,
+            HorizontalOptions = LayoutOptions.Center,
+            VerticalOptions = LayoutOptions.Center
+        };
+
+        var nombre = new Label
+        {
+            Text = escenario.Nombre,
+            TextColor = Color.FromArgb("#3A2B4A"),
+            FontSize = 14,
+            VerticalTextAlignment = TextAlignment.Center,
+            LineBreakMode = LineBreakMode.TailTruncation,
+            MaxLines = 2
+        };
+
+        // Chevron '›' a la derecha (NIT-2): señal visual aditiva de "entrar" a la programacion.
+        // Es un cambio real al metodo (3a columna Auto); lo INTACTO es la navegacion y el
+        // micro-feedback de abajo.
+        var chevron = new Label
+        {
+            Text = "\u203A",
+            TextColor = Color.FromArgb("#cfc3dd"),
+            FontSize = 20,
+            VerticalTextAlignment = TextAlignment.Center,
+            HorizontalTextAlignment = TextAlignment.Center
+        };
+
+        var fila = new Grid
+        {
+            ColumnDefinitions =
+            {
+                new ColumnDefinition { Width = GridLength.Auto },
+                new ColumnDefinition { Width = GridLength.Star },
+                new ColumnDefinition { Width = GridLength.Auto }
+            },
+            ColumnSpacing = 10,
+            Padding = new Thickness(10, 7)
+        };
+        Grid.SetColumn(circulo, 0);
+        Grid.SetColumn(nombre, 1);
+        Grid.SetColumn(chevron, 2);
+        fila.Children.Add(circulo);
+        fila.Children.Add(nombre);
+        fila.Children.Add(chevron);
+
+        var tarjeta = new Border
+        {
+            BackgroundColor = Color.FromArgb("#FFFFFF"),
+            Stroke = Color.FromArgb("#ECE6F3"),
+            StrokeThickness = 1,
+            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 12 },
+            Content = fila
+        };
+
+        // Toda la fila es tocable y navega a la MISMA programacion que el pin del mapa
+        // (AbrirProgramacionAsync, mismo escenario). Micro-feedback discreto y premium: un leve
+        // "hundido" (ScaleTo a 0.97 y de regreso a 1.0) coherente con el rebote del pin pero mas
+        // sutil, por tratarse de una fila de lista.
+        var tap = new TapGestureRecognizer();
+        tap.Tapped += async (_, _) =>
+        {
+            await tarjeta.ScaleTo(0.97, 90, Easing.CubicOut);
+            await tarjeta.ScaleTo(1.0, 110, Easing.CubicIn);
+            await AbrirProgramacionAsync(escenario);
+        };
+        tarjeta.GestureRecognizers.Add(tap);
+
+        return tarjeta;
+    }
+
     // Coloca cada pin con coordenadas ABSOLUTAS sobre el MapaLayout: el CENTRO del pin cae
     // exactamente en (posX%, posY%) del lienzo (que coincide 1:1 con la imagen). Se centra
     // restando media area tactil, el mismo criterio que el admin (left:x% + translate(-50%,-50%)).
@@ -890,6 +1136,412 @@ public partial class EventoMapaPage : ContentPage
         await Shell.Current.GoToAsync(nameof(EscenarioProgramaPage));
     }
 
+    // --- Segmented 'Escenarios | Mi agenda ⭐' (por codigo, dentro del sheet) ---
+
+    // Construye el toggle una sola vez (idempotente). Una pastilla morada (#5B2A86) se traslada
+    // en X entre las dos columnas; el texto activo va en blanco, el inactivo en #8a7ba0.
+    private void CrearSegmented()
+    {
+        if (_segmentedCreado) return;
+        _segmentedCreado = true;
+
+        var contenedor = new Grid
+        {
+            ColumnDefinitions =
+            {
+                new ColumnDefinition { Width = GridLength.Star },
+                new ColumnDefinition { Width = GridLength.Star }
+            }
+        };
+
+        // Pastilla morada detras de las etiquetas (se mueve en X al cambiar de pestaña).
+        _pastillaSegmented = new Border
+        {
+            BackgroundColor = Color.FromArgb("#5B2A86"),
+            StrokeThickness = 0,
+            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 16 },
+            Margin = new Thickness(3),
+            HorizontalOptions = LayoutOptions.Fill,
+            VerticalOptions = LayoutOptions.Fill
+        };
+        Grid.SetColumn(_pastillaSegmented, 0);
+
+        _tabEscenariosLabel = new Label
+        {
+            Text = "Escenarios",
+            TextColor = Colors.White,
+            FontAttributes = FontAttributes.Bold,
+            FontSize = 14,
+            HorizontalTextAlignment = TextAlignment.Center,
+            VerticalTextAlignment = TextAlignment.Center,
+            HeightRequest = 44 // area tactil >= 44px
+        };
+        Grid.SetColumn(_tabEscenariosLabel, 0);
+
+        _tabAgendaLabel = new Label
+        {
+            Text = "Mi agenda ⭐",
+            TextColor = Color.FromArgb("#8a7ba0"),
+            FontAttributes = FontAttributes.Bold,
+            FontSize = 14,
+            HorizontalTextAlignment = TextAlignment.Center,
+            VerticalTextAlignment = TextAlignment.Center,
+            HeightRequest = 44
+        };
+        Grid.SetColumn(_tabAgendaLabel, 1);
+
+        var tapEsc = new TapGestureRecognizer();
+        tapEsc.Tapped += (_, _) => CambiarTab(Tab.Escenarios);
+        _tabEscenariosLabel.GestureRecognizers.Add(tapEsc);
+
+        var tapAgenda = new TapGestureRecognizer();
+        tapAgenda.Tapped += (_, _) => CambiarTab(Tab.Agenda);
+        _tabAgendaLabel.GestureRecognizers.Add(tapAgenda);
+
+        contenedor.Children.Add(_pastillaSegmented);
+        contenedor.Children.Add(_tabEscenariosLabel);
+        contenedor.Children.Add(_tabAgendaLabel);
+
+        var marco = new Border
+        {
+            BackgroundColor = Color.FromArgb("#ECE6F3"),
+            StrokeThickness = 0,
+            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 18 },
+            Content = contenedor
+        };
+
+        SegmentedHost.Children.Clear();
+        SegmentedHost.Children.Add(marco);
+    }
+
+    // Cambia de pestaña: anima la pastilla a su columna, togglea la visibilidad de los scrolls y,
+    // si el sheet esta en PEEK, lo ABRE al 40% para revelar el contenido (elegir una pestaña =
+    // abrir). Si ya estaba abierto y se toca la MISMA pestaña, colapsa (toggle). Al pasar a
+    // Agenda, refresca Mi agenda.
+    private async void CambiarTab(Tab destino)
+    {
+        if (_pastillaSegmented is null || _tabEscenariosLabel is null || _tabAgendaLabel is null)
+        {
+            return;
+        }
+
+        // TOGGLE para contraer: si se toca la pestaña que YA esta activa y el sheet esta ABIERTO,
+        // se colapsa (deja el mapa completo). Asi el usuario puede contraer tocando la propia
+        // pestaña, ademas de con el handle. (El cliente reporto que "si quiero contraer escenarios
+        // o la agenda no me deja".)
+        if (destino == _tabActiva && _detentActual == Detent.Abierto)
+        {
+            ColapsarSheet();
+            return;
+        }
+
+        _tabActiva = destino;
+
+        var esAgenda = destino == Tab.Agenda;
+        EscenariosScroll.IsVisible = !esAgenda;
+        AgendaScroll.IsVisible = esAgenda;
+
+        _tabEscenariosLabel.TextColor = esAgenda ? Color.FromArgb("#8a7ba0") : Colors.White;
+        _tabAgendaLabel.TextColor = esAgenda ? Colors.White : Color.FromArgb("#8a7ba0");
+
+        if (esAgenda)
+        {
+            RefrescarMiAgenda();
+        }
+
+        // Elegir una pestaña ABRE el panel al 40% (si estaba colapsado).
+        AbrirSheet();
+
+        // Traslada la pastilla a la columna destino (ancho de una columna = mitad del contenedor).
+        var destinoX = esAgenda ? _pastillaSegmented.Width : 0;
+        if (double.IsNaN(destinoX) || destinoX <= 0)
+        {
+            // Primer cambio antes de medir: coloca sin animar.
+            Grid.SetColumn(_pastillaSegmented, esAgenda ? 1 : 0);
+            _pastillaSegmented.TranslationX = 0;
+            return;
+        }
+
+        if (esAgenda)
+        {
+            await _pastillaSegmented.TranslateTo(destinoX, 0, 180, Easing.CubicOut);
+            Grid.SetColumn(_pastillaSegmented, 1);
+            _pastillaSegmented.TranslationX = 0;
+        }
+        else
+        {
+            Grid.SetColumn(_pastillaSegmented, 0);
+            _pastillaSegmented.TranslationX = destinoX;
+            await _pastillaSegmented.TranslateTo(0, 0, 180, Easing.CubicOut);
+        }
+    }
+
+    // --- Mi agenda (favoritos agrupados por dia) ---
+
+    // Dia/HoraOrden/ColorEscenario/SedeNombre se PRECOMPUTAN una sola vez para agrupar/ordenar y
+    // pintar la tarjeta, sin reparsear la actividad despues (NIT-3). No es un error de redundancia:
+    // es cache de presentacion para no recalcular por item en el render.
+    private sealed record AgendaItem(
+        BackendActividadDto Actividad,
+        BackendEscenarioDto Escenario,
+        DateTime Dia,
+        TimeSpan? HoraOrden,
+        Color ColorEscenario,
+        string SedeNombre);
+
+    private sealed record AgendaGrupo(DateTime Dia, IReadOnlyList<AgendaItem> Items);
+
+    // Helper PURO y ESTATICO (HIGH-3): recibe el set de favoritos (el llamador construye el
+    // HashSet) y devuelve los grupos por dia ya ordenados. Testeable sin UI.
+    private static IReadOnlyList<AgendaGrupo> ConstruirAgenda(
+        IEnumerable<BackendEscenarioDto> escenarios, ISet<int> favoritos)
+    {
+        var items = new List<AgendaItem>();
+        foreach (var esc in escenarios)
+        {
+            foreach (var a in esc.Actividades)
+            {
+                if (favoritos.Contains(a.Id))
+                {
+                    items.Add(new AgendaItem(a, esc, a.Fecha.Date, ParsearHoraOrden(a.HoraInicio),
+                        ResolverColor(esc.Color), esc.Nombre));
+                }
+            }
+        }
+
+        return items
+            .GroupBy(i => i.Dia)
+            .OrderBy(g => g.Key)
+            .Select(g => new AgendaGrupo(g.Key,
+                g.OrderBy(i => i.HoraOrden ?? TimeSpan.MaxValue).ToList())) // sin hora -> al final
+            .ToList();
+    }
+
+    // Parseo de la hora "HH:mm" SOLO para ORDENAR (MEDIUM-1). Copia LITERAL de la logica de
+    // RecordatoriosService.ParsearHora (alla es private static, no referenciable). null/invalido
+    // -> null (la actividad va al final del dia).
+    private static TimeSpan? ParsearHoraOrden(string? hhmm)
+    {
+        if (string.IsNullOrWhiteSpace(hhmm))
+        {
+            return null;
+        }
+
+        var partes = hhmm.Split(':');
+        if (partes.Length < 2)
+        {
+            return null;
+        }
+
+        if (int.TryParse(partes[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out var h)
+            && int.TryParse(partes[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var m)
+            && h is >= 0 and <= 23
+            && m is >= 0 and <= 59)
+        {
+            return new TimeSpan(h, m, 0);
+        }
+
+        return null;
+    }
+
+    // Encabezado de dia en es-MX con primera letra mayuscula (NIT-1): duplica el criterio de
+    // EscenarioProgramaPage.CapitalizarFecha (private static alla).
+    private static string CapitalizarFechaAgenda(DateTime d)
+    {
+        var texto = d.ToString("dddd d 'de' MMMM", EsMx);
+        return texto.Length > 0 ? char.ToUpper(texto[0], EsMx) + texto[1..] : texto;
+    }
+
+    // Re-arma Mi agenda desde FavoritosService + _evento (idempotente, en memoria, barato). Se
+    // llama al entrar a la pestaña y al volver a la pagina estando en Agenda.
+    private void RefrescarMiAgenda()
+    {
+        if (_evento is null) return;
+
+        AgendaHost.Children.Clear();
+
+        var favs = new HashSet<int>(_favoritos.ObtenerFavoritos()); // HIGH-3
+        var grupos = ConstruirAgenda(_evento.Escenarios, favs);
+
+        if (grupos.Count == 0)
+        {
+            AgendaHost.Children.Add(CrearEstadoVacioAgenda());
+            return;
+        }
+
+        foreach (var g in grupos)
+        {
+            AgendaHost.Children.Add(new Label
+            {
+                Text = CapitalizarFechaAgenda(g.Dia),
+                TextColor = Color.FromArgb("#5B2A86"),
+                FontAttributes = FontAttributes.Bold,
+                FontSize = 15,
+                Margin = new Thickness(0, 10, 0, 4)
+            });
+
+            foreach (var item in g.Items)
+            {
+                AgendaHost.Children.Add(CrearTarjetaAgenda(item));
+            }
+        }
+    }
+
+    // Tarjeta de una actividad favorita: barra lateral del color del escenario, hora + escenario
+    // + titulo, y estrella ★ para quitar el favorito. Tocar el cuerpo abre el detalle SOLO si hay
+    // descripcion (MEDIUM-3); la estrella SIEMPRE desmarca y cancela su recordatorio.
+    private View CrearTarjetaAgenda(AgendaItem item)
+    {
+        // Hora de PRESENTACION (MEDIUM-1): NormalizarHora + mismo bloque if/else ini/fin que
+        // EscenarioProgramaPage.
+        var ini = EscenarioProgramaPage.ActividadFormato.NormalizarHora(item.Actividad.HoraInicio);
+        var fin = EscenarioProgramaPage.ActividadFormato.NormalizarHora(item.Actividad.HoraFin);
+        string horaRango;
+        if (ini is not null && fin is not null) horaRango = $"{ini} - {fin}";
+        else if (ini is not null) horaRango = ini;
+        else if (fin is not null) horaRango = fin;
+        else horaRango = "";
+
+        // Titulo (MEDIUM-2): primera linea no vacia, o el nombre de la sede. Texto plano.
+        var titulo = item.Actividad.Lineas.FirstOrDefault(l => !string.IsNullOrWhiteSpace(l.Texto))?.Texto
+                     ?? item.SedeNombre;
+
+        var barra = new Border
+        {
+            WidthRequest = 4,
+            BackgroundColor = item.ColorEscenario,
+            StrokeThickness = 0,
+            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 2 },
+            HorizontalOptions = LayoutOptions.Start,
+            VerticalOptions = LayoutOptions.Fill
+        };
+        Grid.SetColumn(barra, 0);
+
+        var contenido = new VerticalStackLayout { Spacing = 2 };
+        if (!string.IsNullOrWhiteSpace(horaRango))
+        {
+            contenido.Children.Add(new Label
+            {
+                Text = horaRango,
+                TextColor = item.ColorEscenario,
+                FontAttributes = FontAttributes.Bold,
+                FontSize = 13
+            });
+        }
+        contenido.Children.Add(new Label
+        {
+            Text = item.SedeNombre,
+            TextColor = Color.FromArgb("#9a8aae"),
+            FontSize = 12,
+            LineBreakMode = LineBreakMode.TailTruncation,
+            MaxLines = 1
+        });
+        contenido.Children.Add(new Label
+        {
+            Text = titulo,
+            TextColor = Color.FromArgb("#3A2B4A"),
+            FontSize = 14,
+            LineBreakMode = LineBreakMode.TailTruncation,
+            MaxLines = 2
+        });
+        Grid.SetColumn(contenido, 1);
+
+        var estrella = new Label
+        {
+            Text = "\u2605", // ★
+            TextColor = Color.FromArgb("#f0a81e"),
+            FontSize = 20,
+            VerticalTextAlignment = TextAlignment.Center,
+            HorizontalTextAlignment = TextAlignment.Center,
+            WidthRequest = 44,
+            HeightRequest = 44
+        };
+        Grid.SetColumn(estrella, 2);
+
+        var fila = new Grid
+        {
+            ColumnDefinitions =
+            {
+                new ColumnDefinition { Width = GridLength.Auto },
+                new ColumnDefinition { Width = GridLength.Star },
+                new ColumnDefinition { Width = GridLength.Auto }
+            },
+            ColumnSpacing = 10,
+            Padding = new Thickness(8, 8, 4, 8)
+        };
+        fila.Children.Add(barra);
+        fila.Children.Add(contenido);
+        fila.Children.Add(estrella);
+
+        var tarjeta = new Border
+        {
+            BackgroundColor = Color.FromArgb("#FFFFFF"),
+            Stroke = Color.FromArgb("#ECE6F3"),
+            StrokeThickness = 1,
+            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 12 },
+            Margin = new Thickness(0, 3),
+            Content = fila
+        };
+
+        // La estrella SIEMPRE quita el favorito (+ cancela su recordatorio) y re-renderiza.
+        var tapEstrella = new TapGestureRecognizer();
+        tapEstrella.Tapped += async (_, _) =>
+        {
+            _favoritos.Desmarcar(item.Actividad.Id);
+            _recordatorios.CancelarRecordatorioActividad(item.Actividad.Id);
+            await estrella.ScaleTo(0.8, 80, Easing.CubicOut);
+            await estrella.ScaleTo(1.0, 100, Easing.CubicIn);
+            RefrescarMiAgenda();
+        };
+        estrella.GestureRecognizers.Add(tapEstrella);
+
+        // Tocar el cuerpo (contenido, no la estrella) abre el detalle SOLO si hay descripcion.
+        if (!string.IsNullOrWhiteSpace(item.Actividad.Descripcion))
+        {
+            var tapCuerpo = new TapGestureRecognizer();
+            tapCuerpo.Tapped += async (_, _) =>
+            {
+                await tarjeta.ScaleTo(0.97, 90, Easing.CubicOut);
+                await tarjeta.ScaleTo(1.0, 110, Easing.CubicIn);
+                await ActividadDetallePage.PickAsync(Navigation, item.SedeNombre, horaRango,
+                    item.Actividad, item.ColorEscenario);
+            };
+            contenido.GestureRecognizers.Add(tapCuerpo);
+        }
+
+        return tarjeta;
+    }
+
+    // Estado vacio premium de Mi agenda: estrella grande + mensaje, centrado.
+    private static View CrearEstadoVacioAgenda()
+    {
+        return new VerticalStackLayout
+        {
+            Spacing = 10,
+            Padding = new Thickness(24, 36),
+            HorizontalOptions = LayoutOptions.Center,
+            VerticalOptions = LayoutOptions.Center,
+            Children =
+            {
+                new Label
+                {
+                    Text = "\u2605",
+                    TextColor = Color.FromArgb("#f0a81e"),
+                    FontSize = 40,
+                    HorizontalTextAlignment = TextAlignment.Center
+                },
+                new Label
+                {
+                    Text = "Marca actividades con ⭐ para armar tu agenda",
+                    TextColor = Color.FromArgb("#9a8aae"),
+                    FontSize = 14,
+                    HorizontalTextAlignment = TextAlignment.Center,
+                    LineBreakMode = LineBreakMode.WordWrap
+                }
+            }
+        };
+    }
+
     private async void OnBackTapped(object sender, TappedEventArgs e)
     {
         await Shell.Current.GoToAsync("..");
@@ -905,6 +1557,11 @@ public partial class EventoMapaPage : ContentPage
 
         // Detiene el efecto parallax y libera el acelerometro (importante para la bateria).
         DetenerParallax3D();
+
+        // Invalida y corta cualquier animacion de snap del sheet en vuelo (igual criterio que
+        // el parallax): un TranslateTo pendiente no debe reactivarse tras cambiar de pagina.
+        _generacionSheet++;
+        BottomSheet.CancelAnimations();
 
         // Libera los handlers de tamano.
         if (_viewportSuscrito)

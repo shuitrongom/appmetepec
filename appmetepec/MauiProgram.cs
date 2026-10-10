@@ -4,6 +4,7 @@ using appmetepec.Views;
 using CommunityToolkit.Maui;
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.LifecycleEvents;
+using Plugin.LocalNotification;
 #if ANDROID
 using Plugin.Firebase.Core.Platforms.Android;
 #elif IOS
@@ -23,6 +24,12 @@ namespace appmetepec
                 .UseMauiCommunityToolkit()
                 // Habilita <toolkit:MediaElement> para el reproductor de video de las noticias.
                 .UseMauiCommunityToolkitMediaElement()
+                // Notificaciones LOCALES (Plugin.LocalNotification): habilita el centro de
+                // notificaciones para programar/cancelar los recordatorios de actividades
+                // favoritas (ver RecordatoriosService). Es LOCAL en el dispositivo; convive
+                // con el push remoto de Firebase (ConfigureLifecycleEvents mas abajo) sin
+                // reemplazarlo. No reordenar el registro de Firebase.
+                .UseLocalNotification()
                 .ConfigureFonts(fonts =>
                 {
                     fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
@@ -128,6 +135,14 @@ namespace appmetepec
             builder.Services.AddSingleton<GeocodingService>();
             builder.Services.AddSingleton<EvidencePhotoService>();
             builder.Services.AddSingleton<EventosService>();
+            // Favoritos LOCALES del modulo de Eventos (estrella en la programacion de un
+            // escenario). Todo local en el dispositivo; base para "mi agenda" y recordatorios
+            // en fases futuras.
+            builder.Services.AddSingleton<FavoritosService>();
+            // Recordatorios LOCALES: servicio HERMANO de FavoritosService. Al marcar una
+            // actividad como favorita programa una notificacion local 15 min antes del inicio;
+            // al desmarcar la cancela. Encapsula Plugin.LocalNotification. Todo LOCAL.
+            builder.Services.AddSingleton<RecordatoriosService>();
 
             builder.Services.AddTransient<SplashViewModel>();
             builder.Services.AddTransient<SplashPage>();
