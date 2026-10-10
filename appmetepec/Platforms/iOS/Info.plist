@@ -42,5 +42,10 @@
 	<array>
 		<string>remote-notification</string>
 	</array>
+	<!-- La app no implementa cifrado propio (solo usa HTTPS estandar del sistema), por lo que esta
+	     EXENTA de la declaracion de export compliance de Apple. Declararlo aqui evita que cada
+	     build quede atascado en "Falta informacion de exportacion" en App Store Connect. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>
