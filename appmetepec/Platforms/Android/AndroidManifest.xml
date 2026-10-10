@@ -7,7 +7,11 @@
 	<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 	<uses-permission android:name="android.permission.CAMERA" />
 	<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
-	<uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+	<!-- READ_MEDIA_IMAGES comentado: Google Play (politica de permisos de fotos y videos) rechaza
+	     las apps que lo piden si solo eligen fotos/videos puntuales. MediaPicker.PickPhotoAsync /
+	     PickVideoAsync usan el selector de fotos del sistema (Photo Picker) en Android 13+, que no
+	     requiere este permiso; en Android 12 o menor se usa READ_EXTERNAL_STORAGE (arriba). -->
+	<!-- <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" /> -->
 	<!-- Requerido desde Android 13 (API 33) para poder mostrar notificaciones. Lo usan tanto el
 	     push remoto de Firebase como los RECORDATORIOS LOCALES del modulo de Eventos
 	     (Plugin.LocalNotification; aviso 15 min antes de una actividad favorita). El resto de
