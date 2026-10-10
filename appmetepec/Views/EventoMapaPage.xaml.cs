@@ -48,26 +48,17 @@ public partial class EventoMapaPage : ContentPage
     private readonly FavoritosService _favoritos;
     private readonly RecordatoriosService _recordatorios;
 
-    // --- Estado del bottom sheet (FASE 4) ---
-    // Detents como FRACCIONES del alto del area del mapa (responsivo en gama baja/alta). H es
-    // SIEMPRE Viewport.Height (fuente unica), nunca this.Height.
-    // SOLO DOS ESTADOS (se elimino el intermedio MEDIO): PEEK (colapsado) y ABIERTO (70%). El
-    // tope superior del arrastre es 40% -> el mapa SIEMPRE queda visible (>=60% arriba), nunca se
-    // tapa por completo. El sheet mide 0.40*H de alto; en peek baja casi todo (deja ver el handle
-    // + segmento + pista), en abierto sube a 40%.
-    // ABIERTO = 0.40 -> el sheet mide COMO MAXIMO el 40% del alto, dejando SIEMPRE >=60% de mapa
-    // visible arriba (criterio del cliente: "60% mapa, 40% agenda/escenarios"). El mapa NUNCA se
-    // tapa por completo bajo ninguna circunstancia.
-    private const double PEEK = 0.12, ABIERTO = 0.40;
+    // --- Estado del bottom sheet (FASE 4, rediseño por ALTURA DE FILA) ---
+    // DOS ESTADOS: PEEK (colapsado, solo handle+segmento) y ABIERTO (40% del alto de la pagina).
+    // La altura REAL del sheet es la de la fila 2 del Grid raiz (SheetRow); el mapa (fila '*')
+    // recibe SIEMPRE el resto -> el mapa NUNCA se tapa. ABIERTO = 0.40 (criterio del cliente:
+    // "60% mapa, 40% agenda/escenarios").
+    private const double ABIERTO = 0.40;
     private enum Detent { Peek, Abierto }
+    // Estado INICIAL = Peek: al entrar se ve el mapa completo y el panel abajo colapsado.
     private Detent _detentActual = Detent.Peek;
-    // Alto del sheet (= ABIERTO*H) y TranslationY de cada detent, recalculados en cada
-    // SizeChanged valido del Viewport.
-    private double _altoSheet, _tyPeek, _tyAbierto;
-    // Posicion de TranslationY al iniciar un arrastre (GestureStatus.Started).
-    private double _tyInicio;
-    // Generacion del snap: cada AplicarDetent la incrementa para que una animacion vieja que
-    // siga en vuelo tras un await no pise un snap mas reciente (mismo patron que _generacionLoop).
+    // Generacion de la animacion de altura: una animacion vieja que siga en vuelo no pisa una mas
+    // reciente (mismo patron que _generacionLoop del parallax).
     private int _generacionSheet;
 
     // Pestaña activa del sheet.
@@ -162,6 +153,11 @@ public partial class EventoMapaPage : ContentPage
         _navigationState = navigationState;
         _favoritos = favoritos;
         _recordatorios = recordatorios;
+
+        // Cuando la pagina obtiene (o cambia) su alto, reasienta la altura de la fila del sheet al
+        // estado actual sin animar. Como _detentActual arranca en Peek, el PRIMER layout deja el
+        // sheet COLAPSADO (mapa completo), sin depender del timing del Viewport.
+        SizeChanged += (_, _) => AjustarAlturaSheet(animado: false);
     }
 
     // Al cambiar el tamano del area del mapa (orientacion, primer layout, etc.) se recalcula el
@@ -172,113 +168,77 @@ public partial class EventoMapaPage : ContentPage
     {
         if (_evento is null) return;
         DimensionarLienzo();
-        RecalcularDetents();
+        // Reasienta la altura de la fila del sheet al estado actual (sin animar) ahora que ya hay
+        // alto valido. Esto GARANTIZA que al entrar quede COLAPSADO (mapa completo) aunque en el
+        // primer frame el alto llegara en 0.
+        AjustarAlturaSheet(animado: false);
     }
 
-    // --- Detents del bottom sheet (HIGH-1) ---
+    // --- Bottom sheet por ALTURA DE FILA (rediseño de raiz) ---
 
-    // Recalcula el alto del sheet y los TranslationY de los 2 detents a partir de H = alto del
-    // Viewport (fuente UNICA, nunca this.Height). Guarda identica a DimensionarLienzo para no
-    // fijar HeightRequest=0 en el primer frame; re-escribe HeightRequest en CADA SizeChanged
-    // valido (rotacion/gama baja) y re-aplica el detent actual sin animar. El alto del sheet es
-    // 70% de H, por lo que ABIERTO (TranslationY=0) deja SIEMPRE ~30% de mapa visible arriba.
-    private void RecalcularDetents()
+    // Alto (px) del sheet colapsado: lo justo para el handle + el segmento. Fijo y pequeño; no
+    // depende del contenido. Coincide con el Height="118" inicial de SheetRow en el XAML.
+    private const double AltoPeekPx = 118;
+
+    // Aplica la altura de la FILA del sheet (SheetRow) segun el estado actual, usando el alto
+    // total de la pagina. El mapa (fila '*') recibe SIEMPRE el resto del alto -> es IMPOSIBLE
+    // taparlo. Deterministico: no depende de timing de layout ni de TranslationY. Guarda si aun
+    // no hay alto valido (se reintenta en SizeChanged). Reemplaza al viejo RecalcularDetents.
+    private void AjustarAlturaSheet(bool animado)
     {
-        var h = Viewport.Height;
-        if (h <= 0) return; // evita HeightRequest=0 en el primer frame (como DimensionarLienzo)
+        var h = Height; // alto total de la pagina (ContentPage)
+        if (h <= 0) return;
 
-        // Alto DURO del sheet = 40% de H. Como el Border lleva VerticalOptions="End" y este
-        // HeightRequest fijo, el panel NUNCA crece con su contenido (14 escenarios o muchos
-        // favoritos): el exceso scrollea DENTRO de los ScrollView internos. Asi el mapa conserva
-        // SIEMPRE >=60% de alto visible, pase lo que pase.
-        _altoSheet = ABIERTO * h;
-        BottomSheet.HeightRequest = _altoSheet;        // re-escrito en cada SizeChanged valido
-        BottomSheet.MaximumHeightRequest = _altoSheet; // TOPE DURO: el Border no puede crecer con el
-                                                       // contenido mas alla del 40% (candado anti-tapar-mapa)
+        var destino = _detentActual == Detent.Abierto
+            ? Math.Max(AltoPeekPx, ABIERTO * h) // ABIERTO = 40% del alto -> mapa conserva 60%
+            : AltoPeekPx;                        // COLAPSADO = solo el peek (mapa casi completo)
 
-        var peekPx = Math.Max(56, PEEK * h);    // minimo de accesibilidad (handle + pista + segmented)
-        _tyAbierto = 0;                          // abierto = tope del sheet (40% del alto)
-        _tyPeek = Math.Max(0, _altoSheet - peekPx); // peek = baja el sheet dejando solo el peek visible
+        PistaPeek.IsVisible = _detentActual == Detent.Peek;
 
-        // Re-aplica el detent actual con el alto ya calculado (sin animar). Corrige el bug de
-        // "abre tapando todo": en cuanto el Viewport mide >0, el sheet queda confinado a 40% y en
-        // su detent, sin importar el alto de contenido que haya tomado en el primer frame.
-        AplicarDetent(_detentActual, animado: false);
-    }
-
-    // Traduce un detent a su TranslationY, actualiza el estado y la visibilidad de la pista de
-    // PEEK, y protege el snap por generacion (una animacion vieja que termine tras un await no
-    // pisa un snap mas reciente).
-    private async void AplicarDetent(Detent destino, bool animado)
-    {
-        _detentActual = destino;
-        var ty = destino switch
+        if (!animado)
         {
-            Detent.Abierto => _tyAbierto,
-            _ => _tyPeek
-        };
-        PistaPeek.IsVisible = destino == Detent.Peek;
+            SheetRow.Height = new GridLength(destino);
+            return;
+        }
 
+        // Animacion suave de la altura de la fila. Generacion para que una animacion vieja no
+        // pise una mas reciente.
         var gen = ++_generacionSheet;
-        if (animado)
+        var inicio = SheetRow.Height.IsAbsolute ? SheetRow.Height.Value : destino;
+        var anim = new Animation(v =>
         {
-            await BottomSheet.TranslateTo(0, ty, 220, Easing.CubicOut);
-            if (gen != _generacionSheet) return; // un snap mas reciente gano
-        }
-        else
-        {
-            BottomSheet.TranslationY = ty;
-        }
+            if (gen != _generacionSheet) return;
+            SheetRow.Height = new GridLength(v);
+        }, inicio, destino, Easing.CubicOut);
+        anim.Commit(this, "sheetAnim", length: 220);
     }
 
-    // Arrastre del sheet: adjunto SOLO a SheetHandleYCabecera (fila 0), nunca al Border raiz,
-    // para no competir con el scroll interno de las listas (MEDIUM-4). Durante el arrastre
-    // clampa TranslationY entre ABIERTO (0 = tope 70%) y PEEK; aunque el usuario arrastre fuerte
-    // hacia arriba, el panel se DETIENE en 70% (_tyAbierto=0) y el mapa sigue visible. Al soltar
-    // hace snap al detent mas cercano (solo 2: peek o 70%).
-    private void OnSheetPan(object? sender, PanUpdatedEventArgs e)
+    // Alterna abrir/colapsar (lo usa el tap del handle).
+    private void AlternarSheet()
     {
-        if (Viewport.Height <= 0) return;
-        switch (e.StatusType)
-        {
-            case GestureStatus.Started:
-                _tyInicio = BottomSheet.TranslationY;
-                break;
-            case GestureStatus.Running:
-                BottomSheet.TranslationY = Math.Clamp(_tyInicio + e.TotalY, _tyAbierto, _tyPeek);
-                break;
-            case GestureStatus.Completed:
-            case GestureStatus.Canceled:
-                AplicarDetent(ElegirDetentCercano(BottomSheet.TranslationY, e.TotalY), animado: true);
-                break;
-        }
+        _detentActual = _detentActual == Detent.Abierto ? Detent.Peek : Detent.Abierto;
+        AjustarAlturaSheet(animado: true);
     }
 
-    // Tocar el handle COLAPSA el sheet a PEEK para dejar el mapa completo visible. Si ya esta en
-    // peek no hace nada (AplicarDetent lo re-asienta sin efecto visible). Complementa al arrastre
-    // hacia abajo: el usuario puede bajar el panel tocando el handle o arrastrando.
-    private void OnHandleTapped(object? sender, TappedEventArgs e)
+    // Abre el sheet al 40% si no lo estaba (lo usa cambiar de pestaña).
+    private void AbrirSheet()
     {
-        if (Viewport.Height <= 0) return;
+        if (_detentActual == Detent.Abierto) return;
+        _detentActual = Detent.Abierto;
+        AjustarAlturaSheet(animado: true);
+    }
+
+    // Colapsa el sheet dejando el mapa completo (lo usa el toggle de pestaña activa).
+    private void ColapsarSheet()
+    {
         if (_detentActual == Detent.Peek) return;
-        AplicarDetent(Detent.Peek, animado: true);
+        _detentActual = Detent.Peek;
+        AjustarAlturaSheet(animado: true);
     }
 
-    // Elige entre los DOS unicos detents (peek / abierto 70%) el mas cercano a la posicion final;
-    // si el gesto fue un flick (|totalY| > 60), sesga en la direccion del movimiento (arriba =
-    // abrir, abajo = colapsar). El clamp garantiza que el sheet nunca se descarta: siempre queda
-    // al menos PEEK, y nunca sube mas del 70% (el mapa permanece visible).
-    private Detent ElegirDetentCercano(double ty, double totalY)
-    {
-        if (Math.Abs(totalY) > 60)
-        {
-            // Flick: hacia arriba abre a 70%; hacia abajo colapsa a peek.
-            return totalY < 0 ? Detent.Abierto : Detent.Peek;
-        }
-
-        // Sin flick: va al detent cuyo TranslationY este mas cerca.
-        return Math.Abs(ty - _tyAbierto) <= Math.Abs(ty - _tyPeek) ? Detent.Abierto : Detent.Peek;
-    }
+    // Tocar el handle ALTERNA: si esta abierto colapsa (mapa completo), si esta colapsado abre
+    // al 40%. Simple y predecible; la altura real de la fila hace el trabajo.
+    private void OnHandleTapped(object? sender, TappedEventArgs e) => AlternarSheet();
 
     // Cuando el lienzo ya tiene (o cambia) su tamano real, recoloca los pines con coordenadas
     // absolutas exactas. Esto hace el posicionamiento inmune al timing del layout.
@@ -385,8 +345,9 @@ public partial class EventoMapaPage : ContentPage
             // del mismo _evento.Escenarios que los pines, en el mismo punto del ciclo de vida.
             DibujarListaEscenarios();
 
-            // Construye el segmented 'Escenarios | Mi agenda ⭐' (idempotente) y deja el sheet en
-            // PEEK; el TranslationY real lo fija RecalcularDetents cuando el Viewport ya mide >0.
+            // Construye el segmented 'Escenarios | Mi agenda ⭐' (idempotente) y deja el sheet
+            // COLAPSADO; la altura real de la fila la fija AjustarAlturaSheet cuando la pagina ya
+            // mide >0 (OnViewportSizeChanged), garantizando que al entrar se vea el mapa completo.
             CrearSegmented();
             _detentActual = Detent.Peek;
 
@@ -1265,12 +1226,12 @@ public partial class EventoMapaPage : ContentPage
         }
 
         // TOGGLE para contraer: si se toca la pestaña que YA esta activa y el sheet esta ABIERTO,
-        // se colapsa a PEEK (deja el mapa completo). Asi el usuario puede contraer tocando la
-        // propia pestaña, ademas de con el handle o arrastrando. (El cliente reporto que "si
-        // quiero contraer escenarios o la agenda no me deja".)
+        // se colapsa (deja el mapa completo). Asi el usuario puede contraer tocando la propia
+        // pestaña, ademas de con el handle. (El cliente reporto que "si quiero contraer escenarios
+        // o la agenda no me deja".)
         if (destino == _tabActiva && _detentActual == Detent.Abierto)
         {
-            AplicarDetent(Detent.Peek, animado: true);
+            ColapsarSheet();
             return;
         }
 
@@ -1288,10 +1249,8 @@ public partial class EventoMapaPage : ContentPage
             RefrescarMiAgenda();
         }
 
-        if (_detentActual == Detent.Peek)
-        {
-            AplicarDetent(Detent.Abierto, animado: true);
-        }
+        // Elegir una pestaña ABRE el panel al 40% (si estaba colapsado).
+        AbrirSheet();
 
         // Traslada la pastilla a la columna destino (ancho de una columna = mitad del contenedor).
         var destinoX = esAgenda ? _pastillaSegmented.Width : 0;

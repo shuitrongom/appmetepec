@@ -12,14 +12,28 @@
         </Style>
     </ContentPage.Resources>
 
-    <!-- FASE 4 (estilo Google/Apple Maps): dos zonas, encabezado (Auto) y area del mapa (*).
-         El mapa (Viewport) ocupa TODA la fila * bajo el encabezado -> SIEMPRE mide >0 y
-         DimensionarLienzo recibe dimensiones validas. El bottom sheet NO vive en una fila
-         propia: es un OVERLAY superpuesto en la MISMA fila * (declarado DESPUES del Viewport
-         para quedar por encima del mapa), anclado abajo y deslizable por codigo (2 detents:
-         PEEK / ABIERTO 70%) con PanGestureRecognizer + TranslationY. Asi el mapa queda DETRAS
-         del sheet (no debajo) y su medicion es la del area entera. -->
-    <Grid RowDefinitions="Auto,*">
+    <!-- FASE 4 (estilo Google/Apple Maps) REDISEÑADA DE RAIZ: TRES filas reales.
+         Fila 0 (Auto): encabezado.
+         Fila 1 (*): el MAPA (Viewport). Ocupa TODO el espacio que la fila del sheet NO usa, asi
+                     que el mapa SIEMPRE es visible y nunca lo tapa el sheet (el Grid reparte el
+                     alto: lo que crece el sheet lo cede el mapa, nunca al reves porque el sheet
+                     tiene tope).
+         Fila 2 (Auto): el BOTTOM SHEET. Su altura REAL la controla el code-behind via
+                        SheetRow.Height (NO TranslationY): COLAPSADO = solo handle+segmento
+                        (~peek), ABIERTO = 40% del alto. Como es alto de FILA de Grid, el mapa
+                        recibe el resto garantizado (>=60%). Determinista, sin depender de timing
+                        ni de translations. El contenido del sheet (listas) scrollea DENTRO de su
+                        fila fija, nunca empuja al mapa. -->
+    <Grid x:Name="RaizGrid">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <!-- Fila del sheet: ARRANCA FIJA en 118px (alto de PEEK) DESDE EL XAML, para que en el
+                 PRIMER frame el sheet ya sea pequeño y el mapa grande, sin esperar al code-behind
+                 (evita el "abre tapando todo"). Despues AjustarAlturaSheet la ajusta (118 o 40%)
+                 segun el estado. NUNCA es 'Auto' -> el contenido jamas estira la fila. -->
+            <RowDefinition x:Name="SheetRow" Height="118" />
+        </Grid.RowDefinitions>
 
         <!-- Encabezado -->
         <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Padding="12,10" BackgroundColor="White">
@@ -82,17 +96,13 @@
             </VerticalStackLayout>
         </Grid>
 
-        <!-- ══ BOTTOM SHEET (overlay deslizable) ══
-             Panel propio (CERO dependencias NuGet): se descarto el plugin The49 por
-             incompatibilidad net9 (ver design.md §1). Vive en la MISMA fila * que el Viewport
-             pero DECLARADO DESPUES -> mayor Z -> queda por encima del mapa. Anclado abajo
-             (VerticalOptions="End"), su alto (HeightRequest = 0.40*Viewport.Height) y los 2
-             detents (peek / abierto 40%) los fija RecalcularDetents por codigo desde OnViewportSizeChanged
-             (fuente unica: Viewport.Height). NO lleva InputTransparent: recibe sus toques. El
-             PanGestureRecognizer va SOLO en la cabecera (fila 0), no en el Border raiz, para no
-             competir con el scroll interno de las listas. -->
-        <Border Grid.Row="1" x:Name="BottomSheet"
-                VerticalOptions="End" HorizontalOptions="Fill"
+        <!-- ══ BOTTOM SHEET (fila propia del Grid) ══
+             Panel propio (CERO dependencias NuGet). Vive en la FILA 2 del Grid raiz; su altura
+             la controla el code-behind cambiando SheetRow.Height (NO TranslationY): el mapa (fila
+             *) recibe SIEMPRE el resto del alto, asi que NUNCA se tapa. Arranca COLAPSADO. El
+             handle alterna colapsar/expandir; el contenido scrollea dentro de la fila fija. -->
+        <Border Grid.Row="2" x:Name="BottomSheet"
+                HorizontalOptions="Fill" VerticalOptions="Fill"
                 BackgroundColor="#FFFFFF" StrokeThickness="0"
                 StrokeShape="RoundRectangle 20,20,0,0">
             <Border.Shadow>
@@ -101,7 +111,7 @@
 
             <Grid RowDefinitions="Auto,Auto,*">
 
-                <!-- Fila 0: zona de arrastre (handle + pista). AQUI el PanGestureRecognizer. -->
+                <!-- Fila 0: handle + pista. Tocar aqui ALTERNA abrir/colapsar (OnHandleTapped). -->
                 <Grid Grid.Row="0" x:Name="SheetHandleYCabecera" Padding="0,8,0,6"
                       BackgroundColor="Transparent" RowDefinitions="Auto,Auto" RowSpacing="4">
                     <Border Grid.Row="0" WidthRequest="36" HeightRequest="5"
@@ -113,8 +123,8 @@
                            FontSize="12" TextColor="#9A8AAE"
                            HorizontalTextAlignment="Center" HorizontalOptions="Center" />
                     <Grid.GestureRecognizers>
-                        <PanGestureRecognizer PanUpdated="OnSheetPan" />
-                        <!-- Tocar el handle colapsa el sheet a PEEK (deja el mapa completo). -->
+                        <!-- Tocar el handle ALTERNA: si esta abierto colapsa (mapa completo), si
+                             esta colapsado abre al 40%. -->
                         <TapGestureRecognizer Tapped="OnHandleTapped" />
                     </Grid.GestureRecognizers>
                 </Grid>
@@ -150,7 +160,7 @@
              toque. El code-behind la oculta tras ~2.2 s o al tocar. Si no hay portada, nunca
              se hace visible y el flujo va directo al mapa. Declarado al final -> mayor Z ->
              cubre encabezado, mapa y sheet durante la intro. -->
-        <Grid Grid.Row="0" Grid.RowSpan="2" x:Name="IntroOverlay" IsVisible="False"
+        <Grid Grid.Row="0" Grid.RowSpan="3" x:Name="IntroOverlay" IsVisible="False"
               InputTransparent="False" BackgroundColor="Transparent">
             <Image x:Name="PortadaImagen" Aspect="AspectFill"
                    HorizontalOptions="Fill" VerticalOptions="Fill" />
