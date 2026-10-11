@@ -123,9 +123,12 @@
                            FontSize="12" TextColor="#9A8AAE"
                            HorizontalTextAlignment="Center" HorizontalOptions="Center" />
                     <Grid.GestureRecognizers>
-                        <!-- Tocar el handle ALTERNA: si esta abierto colapsa (mapa completo), si
-                             esta colapsado abre al 40%. -->
+                        <!-- Tocar el handle ALTERNA abrir/colapsar. -->
                         <TapGestureRecognizer Tapped="OnHandleTapped" />
+                        <!-- Deslizar el dedo (swipe) sobre el handle arrastra el panel: arriba abre
+                             al 40%, abajo colapsa. El panel sigue al dedo y hace snap al soltar.
+                             Clampeado al 40% -> el mapa nunca se tapa. (Toque premium.) -->
+                        <PanGestureRecognizer PanUpdated="OnSheetPan" />
                     </Grid.GestureRecognizers>
                 </Grid>
 

@@ -240,6 +240,62 @@ public partial class EventoMapaPage : ContentPage
     // al 40%. Simple y predecible; la altura real de la fila hace el trabajo.
     private void OnHandleTapped(object? sender, TappedEventArgs e) => AlternarSheet();
 
+    // --- Gesto de ARRASTRE (swipe) premium del bottom sheet ---
+    // Permite abrir/colapsar deslizando el dedo sobre el handle, ademas del tap. Durante el
+    // arrastre la fila del sheet SIGUE al dedo (sensacion premium), clampeada SIEMPRE entre el
+    // alto de PEEK (118px) y el ABIERTO (40% del alto) -> el mapa NUNCA se tapa por completo. Al
+    // soltar, hace snap al detent mas cercano (o segun la direccion si fue un deslizamiento
+    // marcado). Va SOLO en el handle (ver XAML), no en el Border raiz, para no competir con el
+    // scroll interno de las listas.
+    private double _alturaSheetAlIniciarPan;
+
+    private void OnSheetPan(object? sender, PanUpdatedEventArgs e)
+    {
+        var h = Height;
+        if (h <= 0) return;
+
+        var altoAbierto = Math.Max(AltoPeekPx, ABIERTO * h); // tope duro: 40% del alto
+        var altoPeek = AltoPeekPx;
+
+        switch (e.StatusType)
+        {
+            case GestureStatus.Started:
+                // Altura real de la fila al empezar a arrastrar (base sobre la que sumamos el
+                // desplazamiento del dedo).
+                _alturaSheetAlIniciarPan = SheetRow.Height.IsAbsolute ? SheetRow.Height.Value : altoPeek;
+                // Cancela cualquier animacion de altura en vuelo para que el arrastre mande.
+                _generacionSheet++;
+                break;
+
+            case GestureStatus.Running:
+                // El dedo hacia ARRIBA (TotalY negativo) agranda el sheet; hacia abajo lo achica.
+                // Clamp DURO entre peek y 40%: por mas que arrastre, el mapa sigue visible.
+                var nueva = Math.Clamp(_alturaSheetAlIniciarPan - e.TotalY, altoPeek, altoAbierto);
+                SheetRow.Height = new GridLength(nueva);
+                break;
+
+            case GestureStatus.Completed:
+            case GestureStatus.Canceled:
+                // Snap: decide el estado final. Si el deslizamiento fue marcado (>40px) manda la
+                // direccion; si fue leve, va al detent cuya altura este mas cerca.
+                var actual = SheetRow.Height.IsAbsolute ? SheetRow.Height.Value : altoPeek;
+                Detent destino;
+                if (Math.Abs(e.TotalY) > 40)
+                {
+                    destino = e.TotalY < 0 ? Detent.Abierto : Detent.Peek; // arriba abre, abajo colapsa
+                }
+                else
+                {
+                    var distPeek = Math.Abs(actual - altoPeek);
+                    var distAbierto = Math.Abs(actual - altoAbierto);
+                    destino = distAbierto < distPeek ? Detent.Abierto : Detent.Peek;
+                }
+                _detentActual = destino;
+                AjustarAlturaSheet(animado: true); // asienta el detent con animacion suave
+                break;
+        }
+    }
+
     // Cuando el lienzo ya tiene (o cambia) su tamano real, recoloca los pines con coordenadas
     // absolutas exactas. Esto hace el posicionamiento inmune al timing del layout.
     private void OnMapaLayoutSizeChanged(object? sender, EventArgs e)
@@ -270,6 +326,11 @@ public partial class EventoMapaPage : ContentPage
         if (_evento is not null)
         {
             ReanudarParallax3D();
+            // Al VOLVER de un escenario, el bottom sheet regresa SIEMPRE a su estado normal =
+            // COLAPSADO (mapa completo). Antes se quedaba abierto como lo dejo el usuario, lo que
+            // tapaba el mapa al regresar. Forzamos Peek y re-aplicamos la altura.
+            _detentActual = Detent.Peek;
+            AjustarAlturaSheet(animado: false);
             // Al volver de un detalle/escenario, refleja cambios de favoritos si estamos en Agenda.
             if (_tabActiva == Tab.Agenda)
             {
