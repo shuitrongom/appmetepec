@@ -22,8 +22,8 @@ namespace appmetepec
             builder
                 .UseMauiApp<App>()
                 .UseMauiCommunityToolkit()
-                // Habilita <toolkit:MediaElement> para el reproductor de video de las noticias.
-                .UseMauiCommunityToolkitMediaElement()
+                // MediaElement ya no se usa (truena en Android); los videos van en un WebView con
+                // <video> HTML5. El paquete CommunityToolkit.Maui.MediaElement se quito del csproj.
                 // Notificaciones LOCALES (Plugin.LocalNotification): habilita el centro de
                 // notificaciones para programar/cancelar los recordatorios de actividades
                 // favoritas (ver RecordatoriosService). Es LOCAL en el dispositivo; convive

@@ -1,6 +1,8 @@
 using System.Globalization;
 using appmetepec.Models;
 using Plugin.LocalNotification;
+// v14 (.NET 10): NotificationRequest y su Schedule se movieron a Core.Models.
+using Plugin.LocalNotification.Core.Models;
 
 namespace appmetepec.Services;
 

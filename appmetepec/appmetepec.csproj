@@ -1,10 +1,10 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFrameworks>net9.0-android;net9.0-ios</TargetFrameworks>
-		<TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net9.0-windows10.0.19041.0</TargetFrameworks>
+		<TargetFrameworks>net10.0-android;net10.0-ios</TargetFrameworks>
+		<TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net10.0-windows10.0.19041.0</TargetFrameworks>
 		<!-- Uncomment to also build the tizen app. You will need to install tizen by following this: https://github.com/Samsung/Tizen.NET -->
-		<!-- <TargetFrameworks>$(TargetFrameworks);net9.0-tizen</TargetFrameworks> -->
+		<!-- <TargetFrameworks>$(TargetFrameworks);net10.0-tizen</TargetFrameworks> -->
 
 		<!-- Note for MacCatalyst:
 		The default runtime is maccatalyst-x64, except in Release config, in which case the default is maccatalyst-x64;maccatalyst-arm64.
@@ -38,7 +38,7 @@
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'tizen'">6.5</SupportedOSPlatformVersion>
 	</PropertyGroup>
 
-	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net9.0-android|AnyCPU'">
+	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net10.0-android|AnyCPU'">
 	  <!-- aab: formato que exige Google Play. Para un APK de prueba (instalar a mano), compilar con
 	       -p:AndroidPackageFormat=apk -->
 	  <AndroidPackageFormat>aab</AndroidPackageFormat>
@@ -74,40 +74,45 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
-		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="9.0.0" />
+		<!-- Version fija (no $(MauiVersion)): el workload de VS trae MAUI 10.0.20 y CommunityToolkit.Maui
+		     15.x exige Microsoft.Maui.Controls >= 10.0.90 (si no, NU1605 "degradacion de paquete"). -->
+		<PackageReference Include="Microsoft.Maui.Controls" Version="10.0.110" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.12" />
 		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
-		<PackageReference Include="CommunityToolkit.Maui" Version="11.2.0" />
-		<!-- MediaElement se versiona aparte del toolkit base; habilita el reproductor de video
-		     embebido (detalle de noticia). 6.0.0 es la linea compatible con toolkit 11.x / net9. -->
-		<PackageReference Include="CommunityToolkit.Maui.MediaElement" Version="6.0.0" />
+		<!-- 15.x: linea de .NET 10 (net10.0-android36.0 / net10.0-ios26.0). -->
+		<PackageReference Include="CommunityToolkit.Maui" Version="15.0.1" />
+		<!-- CommunityToolkit.Maui.MediaElement se quito: truena en Android (AbstractMethodError
+		     onSurfaceSizeChanged) y ya no se usa; los videos usan el <video> HTML5 de un WebView
+		     (NewsDetailPage / VideoEvidenciaPage). -->
 		<!-- 4.0.x: reempaqueta los frameworks nativos de Firebase iOS de forma
 		     consistente (Core y Messaging alineados). La 3.1.1 causaba crash al
 		     arranque: "Symbol not found: _OBJC_CLASS_$_FIRDependency". Core y
-		     CloudMessaging DEBEN ir a la par. -->
+		     CloudMessaging DEBEN ir a la par.
+		     Plugin.Firebase NO tiene version para .NET 10 (la ultima apunta a net9.0-android35.0 /
+		     net9.0-ios18.0); un proyecto net10 puede consumirla. Probar push en Android e iOS tras
+		     migrar; si fallara, reemplazar por los bindings nativos (Xamarin.Firebase.Messaging). -->
 		<PackageReference Include="Plugin.Firebase.Core" Version="4.2.0" />
 		<PackageReference Include="Plugin.Firebase.CloudMessaging" Version="4.0.1" />
 		<!-- Notificaciones LOCALES programadas (recordatorios de actividades favoritas del
 		     modulo de Eventos). Libreria estandar y madura para notificaciones locales en
-		     MAUI (iOS + Android). 12.0.2 es de la linea net9: su paquete apunta a
-		     net9.0-android35.0 / net9.0-ios18.0 / net9.0-windows10.0.19041, que coinciden
-		     con los TFM de este proyecto. Es LOCAL en el dispositivo (sin backend ni push
-		     remoto); convive con Plugin.Firebase (push remoto) sin reemplazarlo. -->
-		<PackageReference Include="Plugin.LocalNotification" Version="12.0.2" />
+		     MAUI (iOS + Android). 14.x es la linea de .NET 10 (net10.0-android36.0 /
+		     net10.0-ios26.0). Es LOCAL en el dispositivo (sin backend ni push remoto);
+		     convive con Plugin.Firebase (push remoto) sin reemplazarlo. -->
+		<PackageReference Include="Plugin.LocalNotification" Version="14.1.2" />
 	</ItemGroup>
 
-	<ItemGroup Condition="'$(TargetFramework)'=='net9.0-android'">
+	<ItemGroup Condition="'$(TargetFramework)'=='net10.0-android'">
 		<GoogleServicesJson Include="google-services.json" />
 	</ItemGroup>
 
 	<!-- GoogleService-Info.plist se descarga desde Firebase Console al registrar la app iOS
 	     (bundle id mx.gob.edomex.metepec.gc) y va junto a este csproj. Sin el, Firebase no inicializa. -->
-	<ItemGroup Condition="'$(TargetFramework)'=='net9.0-ios'">
+	<ItemGroup Condition="'$(TargetFramework)'=='net10.0-ios'">
 		<BundleResource Include="GoogleService-Info.plist" Condition="Exists('GoogleService-Info.plist')" />
 	</ItemGroup>
 
 	<!-- aps-environment (push). Debe coincidir con el provisioning profile usado al firmar. -->
-	<PropertyGroup Condition="'$(TargetFramework)'=='net9.0-ios'">
+	<PropertyGroup Condition="'$(TargetFramework)'=='net10.0-ios'">
 		<CodesignEntitlements>Platforms\iOS\Entitlements.plist</CodesignEntitlements>
 		<!-- Xamarin.Build.Download (dependencia de Firebase iOS) necesita 7-Zip en Windows y VS ya no lo incluye. -->
 		<XamarinBuildDownloadUser7ZipPath Condition="Exists('C:\Program Files\7-Zip\7z.exe')">C:\Program Files\7-Zip\7z.exe</XamarinBuildDownloadUser7ZipPath>

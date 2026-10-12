@@ -44,7 +44,9 @@ public partial class PerfilPage : ContentPage
             CorreoEntry.Text = ciudadano.Correoelectronico;
             CurpEntry.Text = ciudadano.Curp;
             CodigoPostalEntry.Text = ciudadano.Codigopostal;
-            FechaNacimientoPicker.Date = ciudadano.Fechanacimiento ?? FechaNacimientoPicker.MaximumDate.AddYears(-18);
+            // MAUI 10: DatePicker.Date / MaximumDate son DateTime? (nulos).
+            FechaNacimientoPicker.Date = ciudadano.Fechanacimiento
+                ?? (FechaNacimientoPicker.MaximumDate ?? DateTime.Today).AddYears(-18);
 
             var direccion = await _api.GetMyDireccionPrincipalAsync();
             DireccionEditor.Text = direccion?.Direccion;
@@ -78,7 +80,8 @@ public partial class PerfilPage : ContentPage
             Telefonomovil = TelefonoMovilEntry.Text?.Trim(),
             Whatsapp = WhatsappEntry.Text?.Trim(),
             Codigopostal = CodigoPostalEntry.Text?.Trim(),
-            Fechanacimiento = FechaNacimientoPicker.Date.ToString("yyyy-MM-dd")
+            // MAUI 10: DatePicker.Date es DateTime? (nulo si no se eligio fecha).
+            Fechanacimiento = FechaNacimientoPicker.Date?.ToString("yyyy-MM-dd")
         };
 
         try
