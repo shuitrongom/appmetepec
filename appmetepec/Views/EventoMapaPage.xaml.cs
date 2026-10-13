@@ -258,10 +258,24 @@ public partial class EventoMapaPage : ContentPage
         _detentActual = Detent.Peek;
 
         PistaPeek.IsVisible = true;
-        if (Height > 0)
+        // Fija la altura de Peek SIEMPRE (118px es constante, no depende del alto de la pagina):
+        // asi, aunque Height aun no sea valido al volver de un escenario, el sheet ya queda
+        // colapsado y el mapa (fila '*') recupera su espacio. Antes esto se condicionaba a
+        // Height>0 y, cuando el alto llegaba tarde, el sheet se quedaba con la altura ABIERTA
+        // anterior -> el mapa se veia "tapado" al regresar. Al ser Peek un valor fijo, no hay
+        // razon para esperar al alto.
+        SheetRow.Height = new GridLength(AltoPeekPx);
+
+        // Re-dimensiona el lienzo del mapa: al volver de un escenario el MapaLayout conservaba su
+        // HeightRequest calculado para el layout anterior; si no se recalcula contra el espacio
+        // que ahora deja el sheet colapsado, el mapa quedaba empujado/tapado. Esta es la causa de
+        // raiz de "al volver del escenario se tapa y no se contrae". Se difiere al proximo ciclo
+        // de layout para que la nueva altura de SheetRow ya este aplicada cuando se mida el Viewport.
+        Dispatcher.Dispatch(() =>
         {
-            SheetRow.Height = new GridLength(AltoPeekPx);
-        }
+            if (_evento is null) return;
+            DimensionarLienzo();
+        });
     }
 
     // Alterna abrir/colapsar (lo usa el tap del handle).

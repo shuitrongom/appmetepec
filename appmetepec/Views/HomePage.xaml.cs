@@ -268,85 +268,95 @@ public partial class HomePage : ContentPage
                 TextColor = Color.FromArgb("#555555")
             });
 
-            // Padding horizontal en la fila: evita que el PRIMER y ULTIMO icono queden pegados
-            // al borde del ScrollView y se vean recortados (la "linea blanca"/corte lateral que
-            // aparecia en los extremos). El Start/End del padding da aire a ambos lados; el
-            // Spacing separa las tarjetas entre si. Alineacion Start en vertical para que todos
-            // los iconos queden a la MISMA altura aunque sus titulos ocupen distinto numero de
-            // lineas (el texto crece hacia abajo, no empuja el icono).
-            var itemsRow = new HorizontalStackLayout
+            // Fila de tarjetas con CollectionView HORIZONTAL (enfoque premium, estandar de la
+            // industria). Reemplaza al HorizontalStackLayout+ScrollView que mostraba medias
+            // tarjetas recortadas en los bordes (las "rayas blancas"). Ventajas:
+            //  - SnapPointsType=Mandatory + alineacion Start: el scroll SIEMPRE se detiene en una
+            //    tarjeta COMPLETA, nunca a media rueda. Fin de las rayas blancas.
+            //  - Virtualizacion y alturas de celda uniformes.
+            //  - Sin padding en el scroll -> no dispara el bug de clip de Android.
+            // ItemsSource son los DATOS (ScreenReport) y el ItemTemplate construye cada tarjeta
+            // desde el binding: asi el CollectionView maneja el reciclaje correctamente (NO se le
+            // pasan Views ya construidas, que no pueden tener dos padres).
+            var fila = new CollectionView
             {
-                Spacing = 14,
-                Padding = new Thickness(4, 0),
-                HorizontalOptions = LayoutOptions.Start
+                ItemsSource = category.Reportes,
+                SelectionMode = SelectionMode.None,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Never,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Never,
+                ItemsLayout = new LinearItemsLayout(ItemsLayoutOrientation.Horizontal)
+                {
+                    ItemSpacing = 10,
+                    SnapPointsType = SnapPointsType.Mandatory,
+                    SnapPointsAlignment = SnapPointsAlignment.Start
+                },
+                // Alto fijo de la fila: icono (90) + hasta 3 lineas de titulo + espaciados.
+                HeightRequest = 152,
+                ItemTemplate = new DataTemplate(CrearPlantillaTarjetaReporte)
             };
 
-            foreach (var report in category.Reportes)
-            {
-                itemsRow.Children.Add(CreateReportItem(report));
-            }
-
-            categoryBlock.Children.Add(new ScrollView
-            {
-                Orientation = ScrollOrientation.Horizontal,
-                HorizontalScrollBarVisibility = ScrollBarVisibility.Never,
-                Content = itemsRow
-            });
+            categoryBlock.Children.Add(fila);
 
             CategoriesHost.Children.Add(categoryBlock);
         }
     }
 
-    // Ancho FIJO de cada tarjeta (icono + titulo) y diametro del icono. El ancho de la tarjeta
-    // es la UNICA fuente de verdad del ancho: tanto el icono como el titulo se centran dentro de
-    // ese ancho. Al ser fijo e igual para todas, la cuadricula queda pareja y el titulo dispone
-    // SIEMPRE del ancho completo de la tarjeta para envolver en varias lineas sin cortarse.
-    // 118px da espacio para 2 lineas de texto comodas (ej. "Atencion a / recoleccion") con el
-    // icono de 76px centrado y aire a los lados.
-    private const double AnchoTarjetaReporte = 118;
-    private const double DiametroIconoReporte = 76;
+    // Ancho FIJO de cada tarjeta (icono + titulo) y diametro del icono. El ancho de la tarjeta es
+    // la UNICA fuente de verdad del ancho: icono y titulo se centran dentro de ese ancho, igual
+    // para todas, asi la cuadricula queda pareja y el titulo dispone del ancho COMPLETO para
+    // envolver en 2-3 lineas sin cortarse. 132px da aire comodo para titulos como "Atencion a
+    // denuncia por..."; el icono de 90px (cercano al tamano original que lucia bien) se centra
+    // con holgura a los lados.
+    private const double AnchoTarjetaReporte = 132;
+    private const double DiametroIconoReporte = 90;
 
-    private View CreateReportItem(ScreenReport report)
+    // Plantilla de UNA tarjeta de reporte para el CollectionView horizontal. Se enlaza por
+    // BindingContext a un ScreenReport (IconSource y Title). El toque navega al reporte: se
+    // resuelve el ScreenReport desde el BindingContext de la celda (no una captura), porque el
+    // CollectionView RECICLA las celdas y el gesto debe usar el item vigente de cada una.
+    private View CrearPlantillaTarjetaReporte()
     {
-        // Icono centrado DENTRO del ancho de la tarjeta (no al ancho del icono): asi el icono
-        // queda centrado respecto al titulo, no pegado a un borde. Un contenedor del ancho de la
-        // tarjeta con el icono centrado evita el recorte lateral que se veia en los extremos.
         var icono = new Image
         {
-            Source = report.IconSource,
             HeightRequest = DiametroIconoReporte,
             WidthRequest = DiametroIconoReporte,
             Aspect = Aspect.AspectFit,
             HorizontalOptions = LayoutOptions.Center
         };
+        icono.SetBinding(Image.SourceProperty, nameof(ScreenReport.IconSource));
 
         var titulo = new Label
         {
-            Text = report.Title,
             FontSize = 12,
             TextColor = Color.FromArgb("#555555"),
             HorizontalTextAlignment = TextAlignment.Center,
-            // El titulo ocupa TODO el ancho de la tarjeta y envuelve en cuantas lineas necesite,
-            // SIN MaxLines ni truncamiento: ningun titulo largo ("Atencion a denuncia por...",
-            // "Atencion a recoleccion") se corta, en ningun dispositivo ni tamano de fuente.
+            // Ocupa TODO el ancho de la tarjeta y envuelve en cuantas lineas necesite, SIN
+            // MaxLines ni truncamiento: ningun titulo largo se corta, en ningun dispositivo.
             LineBreakMode = LineBreakMode.WordWrap,
             HorizontalOptions = LayoutOptions.Fill
         };
+        titulo.SetBinding(Label.TextProperty, nameof(ScreenReport.Title));
 
         var layout = new VerticalStackLayout
         {
             Spacing = 6,
             WidthRequest = AnchoTarjetaReporte,
-            // Start en vertical: el icono queda arriba y el texto fluye hacia abajo. Combinado con
-            // el padding de la fila, los iconos de una misma categoria quedan alineados arriba
-            // aunque los titulos tengan 1, 2 o 3 lineas.
+            // Start en vertical: icono arriba, texto fluyendo abajo -> iconos alineados aunque los
+            // titulos ocupen 1, 2 o 3 lineas.
             VerticalOptions = LayoutOptions.Start,
-            BindingContext = report,
             Children = { icono, titulo }
         };
 
         var tap = new TapGestureRecognizer();
-        tap.Tapped += async (_, _) => await OpenReportAsync(report);
+        tap.Tapped += async (sender, _) =>
+        {
+            // El item vigente de la celda (el CollectionView recicla celdas; usar el
+            // BindingContext garantiza que se abre el reporte correcto, no uno capturado).
+            if ((sender as View)?.BindingContext is ScreenReport report)
+            {
+                await OpenReportAsync(report);
+            }
+        };
         layout.GestureRecognizers.Add(tap);
 
         return layout;
