@@ -262,7 +262,9 @@ public partial class ReportPage : ContentPage
         }
         catch (Exception ex)
         {
-            // No bloquea: si falla, el ciudadano puede escribir la direccion a mano.
+            // No bloquea: si el reverse-geocode falla, el campo de direccion queda vacio pero las
+            // COORDENADAS ya quedaron guardadas, por lo que el reporte se puede enviar igual (la
+            // validacion del envio es por coordenadas, no por el texto de la direccion).
             System.Diagnostics.Debug.WriteLine($"[Ubicacion] Reverse geocode fallo: {ex}");
         }
         finally
@@ -443,21 +445,25 @@ public partial class ReportPage : ContentPage
         var address = AddressEditor.Text?.Trim() ?? "";
         var comments = CommentsEditor.Text?.Trim() ?? "";
 
-        // Se indica exactamente que falta (antes un solo mensaje "telefono y direccion" aunque
-        // el telefono ya estuviera capturado).
-        var faltantes = new List<string>();
-        if (string.IsNullOrWhiteSpace(phone)) faltantes.Add("tu teléfono");
-        if (string.IsNullOrWhiteSpace(address)) faltantes.Add("la dirección");
-        if (faltantes.Count > 0)
+        // Se indica exactamente que falta.
+        if (string.IsNullOrWhiteSpace(phone))
         {
-            var mensaje = $"Captura {string.Join(" y ", faltantes)}.";
-            // Al elegir el punto en el mapa no siempre se llena la direccion (si no se pudo
-            // obtener de la ubicacion): se aclara que hay que escribirla aunque ya haya coordenadas.
-            if (string.IsNullOrWhiteSpace(address) && !string.IsNullOrWhiteSpace(_coordinates))
-            {
-                mensaje += "\n\nLa ubicación ya está marcada en el mapa; escribe también la dirección o una referencia del lugar.";
-            }
-            await DisplayAlert("Campos obligatorios", mensaje, "Aceptar");
+            await DisplayAlert("Campos obligatorios", "Captura tu teléfono.", "Aceptar");
+            return;
+        }
+
+        // UBICACION OBLIGATORIA PARA TODOS LOS REPORTES: la direccion ya NO se escribe a mano (el
+        // campo es de solo lectura), se llena automaticamente al usar "Usar mi ubicacion" o
+        // "Elegir en el mapa". Por eso el requisito real es tener COORDENADAS: si no hay, es que
+        // el ciudadano no uso ninguno de los dos botones. Asi garantizamos que la direccion y las
+        // coordenadas SIEMPRE correspondan al punto real (nunca una direccion escrita sin coords).
+        var (coordLatitud, coordLongitud) = ParseCoordinates(_coordinates);
+        if (coordLatitud is null || coordLongitud is null)
+        {
+            await DisplayAlert(
+                "Ubicación requerida",
+                "Captura la ubicación del reporte con el botón \"Usar mi ubicación\" o \"Elegir en el mapa\". La dirección se completa automáticamente.",
+                "Aceptar");
             return;
         }
 
@@ -477,12 +483,9 @@ public partial class ReportPage : ContentPage
             return;
         }
 
-        var (coordLatitud, coordLongitud) = ParseCoordinates(_coordinates);
-        if (_coberturaGeografica && (coordLatitud is null || coordLongitud is null))
-        {
-            await DisplayAlert("Ubicacion requerida", "Este tipo de reporte solo se puede levantar dentro de una zona de cobertura especifica. Captura tu ubicacion con el boton \"Elige tu direccion en el mapa\" antes de enviarlo.", "Aceptar");
-            return;
-        }
+        // (La validacion de coordenadas ya se hizo arriba para TODOS los reportes; cuando el
+        // servicio es de cobertura geografica, el backend vuelve a validar que el punto caiga
+        // dentro de la zona permitida.)
 
         try
         {
