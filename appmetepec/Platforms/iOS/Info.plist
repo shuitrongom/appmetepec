@@ -17,9 +17,14 @@
 	<array>
 		<string>arm64</string>
 	</array>
+	<!-- Las 4 orientaciones: al soportar iPad (UIDeviceFamily incluye 2), Apple EXIGE declarar
+	     tambien PortraitUpsideDown para el multitasking del iPad (error 90474 al subir). Se agrega
+	     esa cuarta orientacion. La app sigue disenada vertical; esto es un requisito del bundle de
+	     iPad, no un cambio funcional. -->
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
