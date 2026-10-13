@@ -21,8 +21,28 @@ namespace appmetepec.Services;
 // marcar sus favoritos.
 public sealed class RecordatoriosService
 {
-    // Minutos de antelacion del aviso respecto a la hora de inicio de la actividad.
-    private const int MinutosAntelacion = 15;
+    // TRES recordatorios por actividad favorita, a distinta antelacion de la hora de inicio:
+    // un DIA antes, una HORA antes y 15 MINUTOS antes. El ciudadano recibe el aviso con tiempo
+    // para planear (un dia), para trasladarse (una hora) y justo antes de empezar (15 min). Solo
+    // se programan los que caen en el futuro al momento de marcar el favorito (ver Programar...).
+    private sealed record Antelacion(int Offset, TimeSpan Antes, string Titulo, Func<string, string, string> Cuerpo);
+
+    // Offset del NotificationId para que cada antelacion tenga un id UNICO y DETERMINISTA por
+    // actividad: id_notificacion = actividad.Id * MultiplicadorId + Offset. Asi, de la misma
+    // actividad salen tres ids estables y distintos, y se pueden cancelar con exactitud. El
+    // multiplicador deja hueco (10) entre actividades para que los offsets (0,1,2) nunca choquen
+    // con el id base de otra actividad.
+    private const int MultiplicadorId = 10;
+
+    private static readonly Antelacion[] Antelaciones =
+    [
+        new(Offset: 0, Antes: TimeSpan.FromDays(1), Titulo: "Mañana tienes una actividad",
+            Cuerpo: (sede, hora) => $"{sede} · mañana a las {hora}"),
+        new(Offset: 1, Antes: TimeSpan.FromHours(1), Titulo: "Tu actividad es en una hora",
+            Cuerpo: (sede, hora) => $"{sede} · inicia a las {hora}"),
+        new(Offset: 2, Antes: TimeSpan.FromMinutes(15), Titulo: "Tu actividad está por comenzar",
+            Cuerpo: (sede, hora) => $"{sede} · inicia a las {hora}"),
+    ];
 
     // Consulta y, si hace falta, SOLICITA el permiso de notificaciones del sistema. Devuelve
     // true si quedo concedido. En iOS y en Android 13+ (API 33) esto dispara el prompt del
@@ -49,16 +69,18 @@ public sealed class RecordatoriosService
         }
     }
 
-    // Programa el recordatorio LOCAL de una actividad para 15 min antes de su hora de inicio.
+    // Programa los recordatorios LOCALES de una actividad: un DIA antes, una HORA antes y 15 MIN
+    // antes de su hora de inicio.
     //
     // Reglas (documentadas, parte de "a la primera"):
-    //  - Si la actividad NO tiene HoraInicio valida ("HH:mm"), NO se programa: sin hora no hay
-    //    cuando avisar.
-    //  - Se combina el DIA (actividad.Fecha) con la HORA (actividad.HoraInicio) y se resta la
-    //    antelacion. Si la hora resultante del aviso YA PASO (<= ahora), NO se programa: no tiene
-    //    sentido recordar algo cuyo aviso ya quedo en el pasado.
-    //  - Se usa actividad.Id como NotificationId (int) para poder cancelarlo luego de forma
-    //    DETERMINISTICA (misma actividad -> mismo id -> cancelacion exacta).
+    //  - Si la actividad NO tiene HoraInicio valida ("HH:mm"), NO se programa nada: sin hora no
+    //    hay cuando avisar.
+    //  - Para CADA una de las tres antelaciones se calcula su hora de aviso. Solo se programan las
+    //    que caen en el FUTURO (> ahora): si al marcar el favorito faltan 30 min para la actividad,
+    //    el aviso de "un dia antes" y "una hora antes" ya pasaron -> se omiten, y solo entra el de
+    //    15 min. Asi nunca llega un aviso con la hora en el pasado.
+    //  - Cada aviso usa un NotificationId UNICO y DETERMINISTA (actividad.Id * 10 + offset) para
+    //    poder cancelarlo luego con exactitud.
     //  - El cuerpo no incluye datos sensibles: solo la sede y la hora de inicio.
     public async Task ProgramarRecordatorioActividadAsync(BackendActividadDto actividad, string sedeNombre)
     {
@@ -78,56 +100,62 @@ public sealed class RecordatoriosService
 
         // Fecha-hora exacta del inicio = dia de la actividad + hora de inicio.
         var inicio = actividad.Fecha.Date.Add(horaInicio.Value);
-        var horaAviso = inicio.AddMinutes(-MinutosAntelacion);
-
-        if (horaAviso <= DateTime.Now)
-        {
-            // El aviso ya quedo en el pasado: no se programa nada.
-            System.Diagnostics.Debug.WriteLine(
-                $"[Recordatorios] Actividad {actividad.Id}: el aviso ({horaAviso:g}) ya paso; no se programa.");
-            return;
-        }
-
         // Hora de inicio en texto "HH:mm" para el cuerpo del aviso (sin datos sensibles).
         var horaTexto = inicio.ToString("HH:mm", CultureInfo.InvariantCulture);
 
-        var solicitud = new NotificationRequest
+        foreach (var antelacion in Antelaciones)
         {
-            NotificationId = actividad.Id,
-            Title = "Tu actividad está por comenzar",
-            Description = $"{sedeNombre} · inicia a las {horaTexto}",
-            Schedule =
+            var horaAviso = inicio - antelacion.Antes;
+            if (horaAviso <= DateTime.Now)
             {
-                // NotifyTime en v12 es DateTime (hora local del dispositivo).
-                NotifyTime = horaAviso
+                // Este aviso en particular ya quedo en el pasado: se omite (los otros si pueden
+                // entrar; p. ej. el de 15 min aunque el de 1 dia ya haya pasado).
+                continue;
             }
-        };
 
-        try
-        {
-            await LocalNotificationCenter.Current.Show(solicitud);
-        }
-        catch (Exception ex)
-        {
-            // Si el sistema no acepta la notificacion, no rompemos el flujo del favorito.
-            System.Diagnostics.Debug.WriteLine(
-                $"[Recordatorios] No se pudo programar el recordatorio de la actividad {actividad.Id}: {ex}");
+            var solicitud = new NotificationRequest
+            {
+                NotificationId = (actividad.Id * MultiplicadorId) + antelacion.Offset,
+                Title = antelacion.Titulo,
+                Description = antelacion.Cuerpo(sedeNombre, horaTexto),
+                Schedule =
+                {
+                    // NotifyTime en v12 es DateTime (hora local del dispositivo).
+                    NotifyTime = horaAviso
+                }
+            };
+
+            try
+            {
+                await LocalNotificationCenter.Current.Show(solicitud);
+            }
+            catch (Exception ex)
+            {
+                // Si el sistema no acepta una notificacion, no rompemos el flujo del favorito ni
+                // el resto de avisos de la misma actividad.
+                System.Diagnostics.Debug.WriteLine(
+                    $"[Recordatorios] No se pudo programar el aviso ({antelacion.Antes}) de la actividad {actividad.Id}: {ex}");
+            }
         }
     }
 
-    // Cancela el recordatorio programado de una actividad (si existia). Idempotente y seguro:
-    // cancelar un id que no tiene notificacion pendiente no hace nada. Usa el mismo id que
-    // ProgramarRecordatorioActividadAsync (actividad.Id) para una cancelacion deterministica.
+    // Cancela TODOS los recordatorios programados de una actividad (un dia, una hora, 15 min), si
+    // existian. Idempotente y seguro: cancelar un id sin notificacion pendiente no hace nada. Usa
+    // el mismo esquema de ids (actividad.Id * 10 + offset) que al programar, para una cancelacion
+    // deterministica de los tres.
     public void CancelarRecordatorioActividad(int actividadId)
     {
         try
         {
-            LocalNotificationCenter.Current.Cancel(actividadId);
+            foreach (var antelacion in Antelaciones)
+            {
+                LocalNotificationCenter.Current.Cancel((actividadId * MultiplicadorId) + antelacion.Offset);
+            }
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine(
-                $"[Recordatorios] No se pudo cancelar el recordatorio de la actividad {actividadId}: {ex}");
+                $"[Recordatorios] No se pudo cancelar los recordatorios de la actividad {actividadId}: {ex}");
         }
     }
 
