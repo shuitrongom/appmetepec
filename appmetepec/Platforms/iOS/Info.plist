@@ -4,12 +4,14 @@
 <dict>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
-	<!-- Solo iPhone (UIDeviceFamily = 1). Se quito el iPad (2) porque la app es de uso ciudadano
-	     en telefono; asi App Store ya no exige capturas de iPad y la ficha queda coherente. Android
-	     no se ve afectado: este Info.plist es exclusivo de iOS. -->
+	<!-- iPhone (1) + iPad (2). Se RESTAURA el iPad: una version anterior ya publicada en App Store
+	     soportaba iPad, y Apple PROHIBE dejar de soportar un dispositivo previamente soportado
+	     (error 90101 al subir, ver QA1623). Por eso la 1.5.1 debe mantener iPhone+iPad. Android no
+	     se ve afectado: este Info.plist es exclusivo de iOS. -->
 	<key>UIDeviceFamily</key>
 	<array>
 		<integer>1</integer>
+		<integer>2</integer>
 	</array>
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
