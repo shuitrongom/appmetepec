@@ -157,7 +157,15 @@ public partial class EventoMapaPage : ContentPage
         // Cuando la pagina obtiene (o cambia) su alto, reasienta la altura de la fila del sheet al
         // estado actual sin animar. Como _detentActual arranca en Peek, el PRIMER layout deja el
         // sheet COLAPSADO (mapa completo), sin depender del timing del Viewport.
-        SizeChanged += (_, _) => AjustarAlturaSheet(animado: false);
+        // GUARDA: NO reasienta si el usuario esta arrastrando el panel en ese instante (el dedo
+        // manda; un SizeChanged a destiempo pisaba la altura y el panel "saltaba") ni si hay una
+        // animacion de snap en vuelo (la dejaria a medias). Asi el arranque y el regreso de un
+        // escenario quedan estables, sin el "contrae/descontrae" que se veia.
+        SizeChanged += (_, _) =>
+        {
+            if (_arrastrandoSheet || _animandoSheet) return;
+            AjustarAlturaSheet(animado: false);
+        };
     }
 
     // Al cambiar el tamano del area del mapa (orientacion, primer layout, etc.) se recalcula el
@@ -179,6 +187,13 @@ public partial class EventoMapaPage : ContentPage
     // Alto (px) del sheet colapsado: lo justo para el handle + el segmento. Fijo y pequeño; no
     // depende del contenido. Coincide con el Height="118" inicial de SheetRow en el XAML.
     private const double AltoPeekPx = 118;
+
+    // true mientras el usuario arrastra el panel con el dedo: el SizeChanged de la pagina NO debe
+    // tocar la altura en ese momento (el dedo manda). Evita el salto por un layout a destiempo.
+    private bool _arrastrandoSheet;
+    // true mientras corre la animacion de snap del sheet: el SizeChanged tampoco debe reasentar la
+    // altura (dejaria la animacion a medias). Se baja al terminar o invalidarse la animacion.
+    private bool _animandoSheet;
 
     // Aplica la altura de la FILA del sheet (SheetRow) segun el estado actual, usando el alto
     // total de la pagina. El mapa (fila '*') recibe SIEMPRE el resto del alto -> es IMPOSIBLE
@@ -215,12 +230,38 @@ public partial class EventoMapaPage : ContentPage
         var fraccion = Math.Clamp(recorrido / rango, 0, 1);
         var duracion = (uint)(120 + (fraccion * 140)); // 120..260 ms
 
+        _animandoSheet = true;
         var anim = new Animation(v =>
         {
             if (gen != _generacionSheet) return;
             SheetRow.Height = new GridLength(v);
         }, inicio, destino, Easing.CubicOut);
-        anim.Commit(this, "sheetAnim", length: duracion);
+        anim.Commit(this, "sheetAnim", length: duracion, finished: (_, _) =>
+        {
+            // Solo la animacion vigente baja la bandera: si otra mas reciente ya tomo el control
+            // (generacion distinta), esta caducada no la toca.
+            if (gen == _generacionSheet) _animandoSheet = false;
+        });
+    }
+
+    // Reseteo DETERMINISTA del sheet a COLAPSADO (Peek). Se usa al VOLVER de un escenario: cancela
+    // cualquier animacion/arrastre en curso, invalida animaciones viejas y fija la altura exacta
+    // de Peek de inmediato (sin animar), de modo que el panel SIEMPRE queda estable y colapsado al
+    // regresar, sin "contraer/descontraer" ni perder la respuesta del gesto. Si el alto de la
+    // pagina aun no es valido, deja el estado en Peek y el SizeChanged (ya con guarda) lo asienta.
+    private void ResetearSheetAPeek()
+    {
+        _generacionSheet++;      // invalida cualquier animacion de snap en vuelo
+        _animandoSheet = false;
+        _arrastrandoSheet = false;
+        this.AbortAnimation("sheetAnim");
+        _detentActual = Detent.Peek;
+
+        PistaPeek.IsVisible = true;
+        if (Height > 0)
+        {
+            SheetRow.Height = new GridLength(AltoPeekPx);
+        }
     }
 
     // Alterna abrir/colapsar (lo usa el tap del handle).
@@ -285,12 +326,17 @@ public partial class EventoMapaPage : ContentPage
         {
             case GestureStatus.Started:
                 // Altura real de la fila al empezar a arrastrar (base sobre la que sumamos el
-                // desplazamiento del dedo).
-                _alturaSheetAlIniciarPan = SheetRow.Height.IsAbsolute ? SheetRow.Height.Value : altoPeek;
+                // desplazamiento del dedo). Clamp defensivo: si quedo un valor intermedio de una
+                // animacion/layout anterior, se encaja dentro del rango valido para que el
+                // arrastre NUNCA parta de una base fuera de [peek..abierto].
+                var baseInicio = SheetRow.Height.IsAbsolute ? SheetRow.Height.Value : altoPeek;
+                _alturaSheetAlIniciarPan = Math.Clamp(baseInicio, altoPeek, altoAbierto);
                 _panMovioSheet = false;
+                _arrastrandoSheet = true;
                 _panInicioTs = DateTime.UtcNow;
                 // Cancela cualquier animacion de altura en vuelo para que el arrastre mande.
                 _generacionSheet++;
+                _animandoSheet = false;
                 break;
 
             case GestureStatus.Running:
@@ -310,6 +356,7 @@ public partial class EventoMapaPage : ContentPage
 
             case GestureStatus.Completed:
             case GestureStatus.Canceled:
+                _arrastrandoSheet = false;
                 // Si nunca llego a ser arrastre real, fue un tap: no hay snap que hacer (el tap de
                 // la pestaña/handle ya corre por su cuenta).
                 if (!_panMovioSheet)
@@ -374,11 +421,11 @@ public partial class EventoMapaPage : ContentPage
         if (_evento is not null)
         {
             ReanudarParallax3D();
-            // Al VOLVER de un escenario, el bottom sheet regresa SIEMPRE a su estado normal =
-            // COLAPSADO (mapa completo). Antes se quedaba abierto como lo dejo el usuario, lo que
-            // tapaba el mapa al regresar. Forzamos Peek y re-aplicamos la altura.
-            _detentActual = Detent.Peek;
-            AjustarAlturaSheet(animado: false);
+            // Al VOLVER de un escenario, el bottom sheet regresa SIEMPRE a COLAPSADO (mapa
+            // completo), de forma DETERMINISTA: ResetearSheetAPeek cancela animaciones/arrastres en
+            // curso y fija la altura de Peek exacta, sin el "contrae/descontrae" ni la perdida de
+            // funcionalidad del gesto que se veian al regresar.
+            ResetearSheetAPeek();
             // Al volver de un detalle/escenario, refleja cambios de favoritos si estamos en Agenda.
             if (_tabActiva == Tab.Agenda)
             {
@@ -1688,7 +1735,13 @@ public partial class EventoMapaPage : ContentPage
 
         // Invalida y corta cualquier animacion de snap del sheet en vuelo (igual criterio que
         // el parallax): un TranslateTo pendiente no debe reactivarse tras cambiar de pagina.
+        // Ademas baja las banderas de arrastre/animacion para que, si se salio a un escenario a
+        // mitad de un gesto o snap, el estado quede LIMPIO; al volver, ResetearSheetAPeek parte de
+        // cero y el gesto conserva toda su funcionalidad.
         _generacionSheet++;
+        _animandoSheet = false;
+        _arrastrandoSheet = false;
+        this.AbortAnimation("sheetAnim");
         BottomSheet.CancelAnimations();
 
         // Libera los handlers de tamano.

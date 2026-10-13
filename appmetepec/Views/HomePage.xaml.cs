@@ -268,7 +268,18 @@ public partial class HomePage : ContentPage
                 TextColor = Color.FromArgb("#555555")
             });
 
-            var itemsRow = new HorizontalStackLayout { Spacing = 6 };
+            // Padding horizontal en la fila: evita que el PRIMER y ULTIMO icono queden pegados
+            // al borde del ScrollView y se vean recortados (la "linea blanca"/corte lateral que
+            // aparecia en los extremos). El Start/End del padding da aire a ambos lados; el
+            // Spacing separa las tarjetas entre si. Alineacion Start en vertical para que todos
+            // los iconos queden a la MISMA altura aunque sus titulos ocupen distinto numero de
+            // lineas (el texto crece hacia abajo, no empuja el icono).
+            var itemsRow = new HorizontalStackLayout
+            {
+                Spacing = 14,
+                Padding = new Thickness(4, 0),
+                HorizontalOptions = LayoutOptions.Start
+            };
 
             foreach (var report in category.Reportes)
             {
@@ -286,48 +297,53 @@ public partial class HomePage : ContentPage
         }
     }
 
-    // Ancho fijo de cada tarjeta (icono + titulo) en la fila horizontal de una categoria.
-    // Antes era 110 con el icono a 100: el titulo quedaba con apenas ~10px de respiro y en
-    // dispositivos con fuente de sistema grande (ajuste de accesibilidad en iOS/Android) o
-    // densidades distintas el texto no cabia y se recortaba ("Atencion a..."). Se amplia el
-    // contenedor y se reduce un poco el icono para que SIEMPRE quepa el titulo completo en 2-3
-    // lineas, en cualquier equipo.
-    private const double AnchoTarjetaReporte = 128;
-    private const double DiametroIconoReporte = 82;
+    // Ancho FIJO de cada tarjeta (icono + titulo) y diametro del icono. El ancho de la tarjeta
+    // es la UNICA fuente de verdad del ancho: tanto el icono como el titulo se centran dentro de
+    // ese ancho. Al ser fijo e igual para todas, la cuadricula queda pareja y el titulo dispone
+    // SIEMPRE del ancho completo de la tarjeta para envolver en varias lineas sin cortarse.
+    // 118px da espacio para 2 lineas de texto comodas (ej. "Atencion a / recoleccion") con el
+    // icono de 76px centrado y aire a los lados.
+    private const double AnchoTarjetaReporte = 118;
+    private const double DiametroIconoReporte = 76;
 
-    private VerticalStackLayout CreateReportItem(ScreenReport report)
+    private View CreateReportItem(ScreenReport report)
     {
-        var layout = new VerticalStackLayout
-        {
-            Spacing = 6,
-            WidthRequest = AnchoTarjetaReporte,
-            HorizontalOptions = LayoutOptions.Center,
-            BindingContext = report
-        };
-
-        layout.Children.Add(new Image
+        // Icono centrado DENTRO del ancho de la tarjeta (no al ancho del icono): asi el icono
+        // queda centrado respecto al titulo, no pegado a un borde. Un contenedor del ancho de la
+        // tarjeta con el icono centrado evita el recorte lateral que se veia en los extremos.
+        var icono = new Image
         {
             Source = report.IconSource,
             HeightRequest = DiametroIconoReporte,
             WidthRequest = DiametroIconoReporte,
             Aspect = Aspect.AspectFit,
             HorizontalOptions = LayoutOptions.Center
-        });
+        };
 
-        layout.Children.Add(new Label
+        var titulo = new Label
         {
             Text = report.Title,
             FontSize = 12,
             TextColor = Color.FromArgb("#555555"),
             HorizontalTextAlignment = TextAlignment.Center,
-            // Ancho EXPLICITO = el del contenedor (no el del icono): el titulo dispone de todo el
-            // ancho de la tarjeta, no solo del que ocupa el icono. WordWrap sin MaxLines estricto
-            // -> el texto crece hacia abajo cuanto necesite en vez de truncarse. Asi ningun titulo
-            // ("Atencion a semaforos", "Atencion a podas", etc.) se corta en ningun dispositivo.
+            // El titulo ocupa TODO el ancho de la tarjeta y envuelve en cuantas lineas necesite,
+            // SIN MaxLines ni truncamiento: ningun titulo largo ("Atencion a denuncia por...",
+            // "Atencion a recoleccion") se corta, en ningun dispositivo ni tamano de fuente.
+            LineBreakMode = LineBreakMode.WordWrap,
+            HorizontalOptions = LayoutOptions.Fill
+        };
+
+        var layout = new VerticalStackLayout
+        {
+            Spacing = 6,
             WidthRequest = AnchoTarjetaReporte,
-            HorizontalOptions = LayoutOptions.Center,
-            LineBreakMode = LineBreakMode.WordWrap
-        });
+            // Start en vertical: el icono queda arriba y el texto fluye hacia abajo. Combinado con
+            // el padding de la fila, los iconos de una misma categoria quedan alineados arriba
+            // aunque los titulos tengan 1, 2 o 3 lineas.
+            VerticalOptions = LayoutOptions.Start,
+            BindingContext = report,
+            Children = { icono, titulo }
+        };
 
         var tap = new TapGestureRecognizer();
         tap.Tapped += async (_, _) => await OpenReportAsync(report);
