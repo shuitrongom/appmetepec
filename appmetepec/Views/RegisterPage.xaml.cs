@@ -46,13 +46,13 @@ public partial class RegisterPage : ContentPage
 
         if (phone.Length != 10 || !phone.All(char.IsDigit))
         {
-            await DisplayAlert("Telefono invalido", "Captura un numero a 10 digitos.", "Aceptar");
+            await DisplayAlert("Teléfono inválido", "Captura un número a 10 dígitos.", "Aceptar");
             return;
         }
 
         if (string.IsNullOrWhiteSpace(email) || !email.Contains('@') || !email.Contains('.'))
         {
-            await DisplayAlert("Correo invalido", "Captura un correo electronico valido.", "Aceptar");
+            await DisplayAlert("Correo inválido", "Captura un correo electrónico válido.", "Aceptar");
             return;
         }
 
@@ -67,7 +67,7 @@ public partial class RegisterPage : ContentPage
             var solicitud = await _api.SolicitarVerificacionEmailAsync(_email);
             if (solicitud?.Bloqueado == true)
             {
-                await DisplayAlert("No se pudo enviar el codigo", solicitud.Mensaje, "Aceptar");
+                await DisplayAlert("No se pudo enviar el código", solicitud.Mensaje, "Aceptar");
                 return;
             }
 
@@ -78,7 +78,7 @@ public partial class RegisterPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlert("No se pudo enviar el codigo", ErrorMessageHelper.Traducir(ex), "Aceptar");
+            await DisplayAlert("No se pudo enviar el código", ErrorMessageHelper.Traducir(ex), "Aceptar");
         }
         finally
         {
@@ -108,7 +108,7 @@ public partial class RegisterPage : ContentPage
 
             if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
             {
-                await DisplayAlert("Registro completado", "Tu cuenta fue creada. Inicia sesion desde la pantalla de acceso.", "Aceptar");
+                await DisplayAlert("Registro completado", "Tu cuenta fue creada. Inicia sesión desde la pantalla de acceso.", "Aceptar");
                 await Shell.Current.GoToAsync("..");
                 return;
             }
@@ -149,8 +149,8 @@ public partial class RegisterPage : ContentPage
             if (esCorreoDuplicado)
             {
                 var irARecuperar = await DisplayAlert(
-                    "El correo ya esta registrado",
-                    "Ya existe una cuenta con ese correo electronico. Si no recuerdas tu usuario o contrasena, puedes recuperar tu cuenta.",
+                    "El correo ya está registrado",
+                    "Ya existe una cuenta con ese correo electrónico. Si no recuerdas tu usuario o contraseña, puedes recuperar tu cuenta.",
                     "Recuperar cuenta",
                     "Cancelar");
 
@@ -192,7 +192,7 @@ public partial class RegisterPage : ContentPage
         var code = CodeEntry.Text?.Trim() ?? "";
         if (string.IsNullOrWhiteSpace(code))
         {
-            await DisplayAlert("Codigo requerido", "Captura el codigo que recibiste por correo.", "Aceptar");
+            await DisplayAlert("Código requerido", "Captura el código que recibiste por correo.", "Aceptar");
             return;
         }
 
@@ -204,7 +204,7 @@ public partial class RegisterPage : ContentPage
             var valid = await _api.VerificarCodigoEmailAsync(_email, _emailVerificationToken, code);
             if (!valid)
             {
-                await DisplayAlert("Codigo incorrecto", "El codigo de verificacion es incorrecto.", "Aceptar");
+                await DisplayAlert("Código incorrecto", "El código de verificación es incorrecto.", "Aceptar");
                 return;
             }
 
@@ -236,7 +236,7 @@ public partial class RegisterPage : ContentPage
             var solicitud = await _api.SolicitarVerificacionEmailAsync(_email);
             if (solicitud?.Bloqueado == true)
             {
-                await DisplayAlert("No se pudo reenviar el codigo", solicitud.Mensaje, "Aceptar");
+                await DisplayAlert("No se pudo reenviar el código", solicitud.Mensaje, "Aceptar");
                 return;
             }
 
@@ -245,7 +245,7 @@ public partial class RegisterPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlert("No se pudo reenviar el codigo", ErrorMessageHelper.Traducir(ex), "Aceptar");
+            await DisplayAlert("No se pudo reenviar el código", ErrorMessageHelper.Traducir(ex), "Aceptar");
         }
     }
 

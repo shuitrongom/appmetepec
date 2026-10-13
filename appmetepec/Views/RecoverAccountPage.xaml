@@ -14,16 +14,16 @@
             <Label Text="Recuperar cuenta" FontSize="22" FontAttributes="Bold" TextColor="#28113E" HorizontalTextAlignment="Center" />
 
             <VerticalStackLayout x:Name="EmailPanel" Spacing="14">
-                <Label Text="Escribe el correo con el que te registraste. Si existe una cuenta, te enviaremos un codigo de verificacion." FontSize="14" TextColor="#555555" HorizontalTextAlignment="Center" />
+                <Label Text="Escribe el correo con el que te registraste. Si existe una cuenta, te enviaremos un código de verificación." FontSize="14" TextColor="#555555" HorizontalTextAlignment="Center" />
                 <Border Stroke="#DDD" StrokeThickness="1" BackgroundColor="#F4FAFD" Padding="0">
                     <Border.StrokeShape>
                         <RoundRectangle CornerRadius="10" />
                     </Border.StrokeShape>
-                    <Entry x:Name="EmailEntry" Placeholder="Correo Electronico" Keyboard="Email" FontSize="18" BackgroundColor="Transparent" TextColor="#555" HorizontalTextAlignment="Center" HeightRequest="52" />
+                    <Entry x:Name="EmailEntry" Placeholder="Correo Electrónico" Keyboard="Email" FontSize="18" BackgroundColor="Transparent" TextColor="#555" HorizontalTextAlignment="Center" HeightRequest="52" />
                 </Border>
 
                 <Button x:Name="SolicitarButton"
-                        Text="ENVIAR CODIGO"
+                        Text="ENVIAR CÓDIGO"
                         Clicked="OnSolicitarClicked"
                         BackgroundColor="#F89A1C"
                         TextColor="White"
@@ -34,12 +34,12 @@
             </VerticalStackLayout>
 
             <VerticalStackLayout x:Name="CodePanel" Spacing="14" IsVisible="False">
-                <Label Text="Te enviamos un codigo de verificacion a tu correo." FontSize="15" TextColor="#555555" HorizontalTextAlignment="Center" />
+                <Label Text="Te enviamos un código de verificación a tu correo." FontSize="15" TextColor="#555555" HorizontalTextAlignment="Center" />
                 <Border Stroke="#DDD" StrokeThickness="1" BackgroundColor="#F4FAFD" Padding="0">
                     <Border.StrokeShape>
                         <RoundRectangle CornerRadius="10" />
                     </Border.StrokeShape>
-                    <Entry x:Name="CodeEntry" Placeholder="Codigo de verificacion" Keyboard="Numeric" MaxLength="6" FontSize="20" BackgroundColor="Transparent" TextColor="#555" HorizontalTextAlignment="Center" HeightRequest="52" />
+                    <Entry x:Name="CodeEntry" Placeholder="Código de verificación" Keyboard="Numeric" MaxLength="6" FontSize="20" BackgroundColor="Transparent" TextColor="#555" HorizontalTextAlignment="Center" HeightRequest="52" />
                 </Border>
                 <Label x:Name="TimerLabel" Text="0:59" FontSize="28" FontAttributes="Bold" TextColor="#F89A1C" HorizontalTextAlignment="Center" />
 
@@ -52,7 +52,7 @@
                         FontAttributes="Bold"
                         HeightRequest="58" />
 
-                <Label x:Name="ResendLabel" Text="VOLVER A ENVIAR CODIGO" FontSize="13" FontAttributes="Bold" TextColor="#555555" Opacity="0.3" HorizontalTextAlignment="Center">
+                <Label x:Name="ResendLabel" Text="VOLVER A ENVIAR CÓDIGO" FontSize="13" FontAttributes="Bold" TextColor="#555555" Opacity="0.3" HorizontalTextAlignment="Center">
                     <Label.GestureRecognizers>
                         <TapGestureRecognizer Tapped="OnResendTapped" />
                     </Label.GestureRecognizers>
@@ -65,7 +65,7 @@
             </VerticalStackLayout>
 
             <VerticalStackLayout x:Name="NewPasswordPanel" Spacing="14" IsVisible="False">
-                <Label Text="Escribe tu nueva contrasena." FontSize="15" TextColor="#555555" HorizontalTextAlignment="Center" />
+                <Label Text="Escribe tu nueva contraseña." FontSize="15" TextColor="#555555" HorizontalTextAlignment="Center" />
                 <Border Stroke="#DDD" StrokeThickness="1" BackgroundColor="#F4FAFD" Padding="0">
                     <Border.StrokeShape>
                         <RoundRectangle CornerRadius="10" />
@@ -73,7 +73,7 @@
                     <Grid ColumnDefinitions="*,50" HeightRequest="52">
                         <Entry x:Name="NewPasswordEntry"
                                Grid.Column="0"
-                               Placeholder="Nueva contrasena"
+                               Placeholder="Nueva contraseña"
                                IsPassword="True"
                                FontSize="18"
                                BackgroundColor="Transparent"
@@ -100,7 +100,7 @@
                     <Grid ColumnDefinitions="*,50" HeightRequest="52">
                         <Entry x:Name="ConfirmPasswordEntry"
                                Grid.Column="0"
-                               Placeholder="Confirmar contrasena"
+                               Placeholder="Confirmar contraseña"
                                IsPassword="True"
                                FontSize="18"
                                BackgroundColor="Transparent"
@@ -122,7 +122,7 @@
                 </Border>
 
                 <Button x:Name="RestablecerButton"
-                        Text="GUARDAR CONTRASENA"
+                        Text="GUARDAR CONTRASEÑA"
                         Clicked="OnRestablecerClicked"
                         BackgroundColor="#F89A1C"
                         TextColor="White"

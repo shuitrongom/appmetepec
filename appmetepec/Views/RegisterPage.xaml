@@ -29,13 +29,13 @@
                     <Border.StrokeShape>
                         <RoundRectangle CornerRadius="10" />
                     </Border.StrokeShape>
-                    <Entry x:Name="PhoneEntry" Placeholder="Telefono a 10 digitos" Keyboard="Telephone" FontSize="18" BackgroundColor="Transparent" TextColor="#555" HorizontalTextAlignment="Center" HeightRequest="52" />
+                    <Entry x:Name="PhoneEntry" Placeholder="Teléfono a 10 dígitos" Keyboard="Telephone" FontSize="18" BackgroundColor="Transparent" TextColor="#555" HorizontalTextAlignment="Center" HeightRequest="52" />
                 </Border>
                 <Border Stroke="#DDD" StrokeThickness="1" BackgroundColor="#F4FAFD" Padding="0">
                     <Border.StrokeShape>
                         <RoundRectangle CornerRadius="10" />
                     </Border.StrokeShape>
-                    <Entry x:Name="EmailEntry" Placeholder="Correo Electronico" Keyboard="Email" FontSize="18" BackgroundColor="Transparent" TextColor="#555" HorizontalTextAlignment="Center" HeightRequest="52" />
+                    <Entry x:Name="EmailEntry" Placeholder="Correo Electrónico" Keyboard="Email" FontSize="18" BackgroundColor="Transparent" TextColor="#555" HorizontalTextAlignment="Center" HeightRequest="52" />
                 </Border>
                 <Label Text="Tu usuario y contraseña se generan automaticamente; te los mostraremos al terminar el registro." FontSize="12" TextColor="#888888" HorizontalTextAlignment="Center" />
 
@@ -51,12 +51,12 @@
             </VerticalStackLayout>
 
             <VerticalStackLayout x:Name="CodePanel" Spacing="14" IsVisible="False">
-                <Label Text="Te enviamos un codigo de verificacion a tu correo electronico." FontSize="15" TextColor="#555555" HorizontalTextAlignment="Center" />
+                <Label Text="Te enviamos un código de verificación a tu correo electrónico." FontSize="15" TextColor="#555555" HorizontalTextAlignment="Center" />
                 <Border Stroke="#DDD" StrokeThickness="1" BackgroundColor="#F4FAFD" Padding="0">
                     <Border.StrokeShape>
                         <RoundRectangle CornerRadius="10" />
                     </Border.StrokeShape>
-                    <Entry x:Name="CodeEntry" Placeholder="Codigo de verificacion" Keyboard="Numeric" FontSize="20" BackgroundColor="Transparent" TextColor="#555" HorizontalTextAlignment="Center" HeightRequest="52" />
+                    <Entry x:Name="CodeEntry" Placeholder="Código de verificación" Keyboard="Numeric" FontSize="20" BackgroundColor="Transparent" TextColor="#555" HorizontalTextAlignment="Center" HeightRequest="52" />
                 </Border>
                 <Label x:Name="TimerLabel" Text="0:59" FontSize="28" FontAttributes="Bold" TextColor="#F89A1C" HorizontalTextAlignment="Center" />
 
@@ -69,7 +69,7 @@
                         FontAttributes="Bold"
                         HeightRequest="58" />
 
-                <Label x:Name="ResendLabel" Text="VOLVER A ENVIAR CODIGO" FontSize="13" FontAttributes="Bold" TextColor="#555555" Opacity="0.3" HorizontalTextAlignment="Center">
+                <Label x:Name="ResendLabel" Text="VOLVER A ENVIAR CÓDIGO" FontSize="13" FontAttributes="Bold" TextColor="#555555" Opacity="0.3" HorizontalTextAlignment="Center">
                     <Label.GestureRecognizers>
                         <TapGestureRecognizer Tapped="OnResendTapped" />
                     </Label.GestureRecognizers>

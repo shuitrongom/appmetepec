@@ -27,7 +27,7 @@ public partial class LoginPage : ContentPage
 
         if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
         {
-            await DisplayAlert("Datos incompletos", "Captura usuario y contrasena.", "Aceptar");
+            await DisplayAlert("Datos incompletos", "Captura usuario y contraseña.", "Aceptar");
             return;
         }
 
@@ -114,7 +114,7 @@ public partial class LoginPage : ContentPage
                 var saludo = string.IsNullOrWhiteSpace(identidad.NombreCorto) ? "" : $" {identidad.NombreCorto}";
                 var irARecuperar = await DisplayAlert(
                     "Acceso denegado",
-                    $"Usuario o contrasena incorrectos. ¿Eres{saludo}? Si no recuerdas tu contrasena, puedes recuperar tu cuenta.",
+                    $"Usuario o contraseña incorrectos. ¿Eres{saludo}? Si no recuerdas tu contraseña, puedes recuperar tu cuenta.",
                     "Recuperar cuenta",
                     "Cancelar");
 
@@ -131,7 +131,7 @@ public partial class LoginPage : ContentPage
             // Si falla la identificacion (sin conexion, etc.), se cae al mensaje generico de abajo.
         }
 
-        await DisplayAlert("Acceso denegado", "Usuario o contrasena incorrectos.", "Aceptar");
+        await DisplayAlert("Acceso denegado", "Usuario o contraseña incorrectos.", "Aceptar");
     }
 
     // Best-effort: nunca bloquea ni retrasa el login por falta de permiso, GPS apagado o

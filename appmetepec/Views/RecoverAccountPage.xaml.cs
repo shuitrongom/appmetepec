@@ -37,7 +37,7 @@ public partial class RecoverAccountPage : ContentPage
         var email = EmailEntry.Text?.Trim() ?? "";
         if (string.IsNullOrWhiteSpace(email) || !email.Contains('@') || !email.Contains('.'))
         {
-            await DisplayAlert("Correo invalido", "Captura un correo electronico valido.", "Aceptar");
+            await DisplayAlert("Correo inválido", "Captura un correo electrónico válido.", "Aceptar");
             return;
         }
 
@@ -74,7 +74,7 @@ public partial class RecoverAccountPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlert("No se pudo enviar el codigo", ErrorMessageHelper.Traducir(ex), "Aceptar");
+            await DisplayAlert("No se pudo enviar el código", ErrorMessageHelper.Traducir(ex), "Aceptar");
         }
         finally
         {
@@ -88,7 +88,7 @@ public partial class RecoverAccountPage : ContentPage
         var codigo = CodeEntry.Text?.Trim() ?? "";
         if (codigo.Length != 6 || !codigo.All(char.IsDigit))
         {
-            await DisplayAlert("Codigo invalido", "Captura el codigo de 6 digitos que te enviamos por correo.", "Aceptar");
+            await DisplayAlert("Código inválido", "Captura el código de 6 dígitos que te enviamos por correo.", "Aceptar");
             return;
         }
 
@@ -100,7 +100,7 @@ public partial class RecoverAccountPage : ContentPage
             var valido = await _api.VerificarCodigoRecuperacionAsync(_email, _token, codigo);
             if (!valido)
             {
-                await DisplayAlert("Codigo incorrecto", "El codigo es incorrecto o ya expiro.", "Aceptar");
+                await DisplayAlert("Código incorrecto", "El código es incorrecto o ya expiró.", "Aceptar");
                 return;
             }
 
@@ -110,7 +110,7 @@ public partial class RecoverAccountPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlert("No se pudo verificar el codigo", ErrorMessageHelper.Traducir(ex), "Aceptar");
+            await DisplayAlert("No se pudo verificar el código", ErrorMessageHelper.Traducir(ex), "Aceptar");
         }
         finally
         {
@@ -126,13 +126,13 @@ public partial class RecoverAccountPage : ContentPage
 
         if (nueva.Length < 6)
         {
-            await DisplayAlert("Contrasena invalida", "La contrasena debe tener al menos 6 caracteres.", "Aceptar");
+            await DisplayAlert("Contraseña inválida", "La contraseña debe tener al menos 6 caracteres.", "Aceptar");
             return;
         }
 
         if (nueva != confirmar)
         {
-            await DisplayAlert("Las contrasenas no coinciden", "Verifica que ambas contrasenas sean iguales.", "Aceptar");
+            await DisplayAlert("Las contraseñas no coinciden", "Verifica que ambas contraseñas sean iguales.", "Aceptar");
             return;
         }
 
@@ -144,7 +144,7 @@ public partial class RecoverAccountPage : ContentPage
             var error = await _api.RestablecerPasswordAsync(_email, _token, nueva);
             if (error is not null)
             {
-                await DisplayAlert("No se pudo restablecer la contrasena", error, "Aceptar");
+                await DisplayAlert("No se pudo restablecer la contraseña", error, "Aceptar");
                 return;
             }
 
@@ -152,8 +152,8 @@ public partial class RecoverAccountPage : ContentPage
             var login = await _api.LoginAsync(_email, nueva, latitud, longitud);
             if (login is null)
             {
-                // La contrasena si se cambio; solo no se pudo autenticar en automatico.
-                await DisplayAlert("Listo", "Tu contrasena se actualizo correctamente. Inicia sesion con tu usuario y la nueva contrasena.", "Aceptar");
+                // La contraseña si se cambio; solo no se pudo autenticar en automatico.
+                await DisplayAlert("Listo", "Tu contraseña se actualizó correctamente. Inicia sesión con tu usuario y la nueva contraseña.", "Aceptar");
                 await Shell.Current.GoToAsync("..");
                 return;
             }
@@ -170,12 +170,12 @@ public partial class RecoverAccountPage : ContentPage
                 // No bloquea el acceso; ReportPage vuelve a intentarlo antes de crear un ticket.
             }
 
-            await DisplayAlert("Listo", "Tu contrasena se actualizo correctamente.", "Aceptar");
+            await DisplayAlert("Listo", "Tu contraseña se actualizó correctamente.", "Aceptar");
             await Shell.Current.GoToAsync($"//{nameof(HomePage)}");
         }
         catch (Exception ex)
         {
-            await DisplayAlert("No se pudo restablecer la contrasena", ErrorMessageHelper.Traducir(ex), "Aceptar");
+            await DisplayAlert("No se pudo restablecer la contraseña", ErrorMessageHelper.Traducir(ex), "Aceptar");
         }
         finally
         {
@@ -199,7 +199,7 @@ public partial class RecoverAccountPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlert("No se pudo reenviar el codigo", ErrorMessageHelper.Traducir(ex), "Aceptar");
+            await DisplayAlert("No se pudo reenviar el código", ErrorMessageHelper.Traducir(ex), "Aceptar");
         }
     }
 

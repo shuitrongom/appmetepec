@@ -23,8 +23,8 @@
                         <RoundRectangle CornerRadius="8" />
                     </Border.StrokeShape>
                     <VerticalStackLayout Spacing="4">
-                        <Label x:Name="TituloLabel" FontAttributes="Bold" FontSize="17" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" Text="Encuesta de satisfaccion" />
-                        <Label Text="Tu opinion nos ayuda a mejorar el servicio." FontSize="12" TextColor="{AppThemeBinding Light=#8A9BA8, Dark=#B0B8C1}" />
+                        <Label x:Name="TituloLabel" FontAttributes="Bold" FontSize="17" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" Text="Encuesta de satisfacción" />
+                        <Label Text="Tu opinión nos ayuda a mejorar el servicio." FontSize="12" TextColor="{AppThemeBinding Light=#8A9BA8, Dark=#B0B8C1}" />
                     </VerticalStackLayout>
                 </Border>
 

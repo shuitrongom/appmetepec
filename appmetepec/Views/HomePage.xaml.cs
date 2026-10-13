@@ -149,8 +149,8 @@ public partial class HomePage : ContentPage
             }
 
             var deseaContestar = await DisplayAlert(
-                "Tu opinion es importante",
-                "Llevas varios dias usando la app Metepec *7311. ¿Nos ayudas contestando una breve encuesta?",
+                "Tu opinión es importante",
+                "Llevas varios días usando la app Metepec *7311. ¿Nos ayudas contestando una breve encuesta?",
                 "Si", "Ahora no");
 
             if (deseaContestar)
@@ -179,7 +179,7 @@ public partial class HomePage : ContentPage
     {
         var forzar = await DisplayAlert(
             "Modo pruebas",
-            "¿Mostrar ahora la encuesta de experiencia de la app (sin esperar los 8 dias)?",
+            "¿Mostrar ahora la encuesta de experiencia de la app (sin esperar los 8 días)?",
             "Mostrar ahora", "Cancelar");
 
         if (forzar)
@@ -793,7 +793,7 @@ public partial class HomePage : ContentPage
     private async void OnDrawerLogoutTapped(object sender, TappedEventArgs e)
     {
         await CloseDrawerAsync();
-        var confirm = await DisplayAlert("Cerrar sesion", "Se cerrara tu sesion actual.", "Cerrar sesion", "Cancelar");
+        var confirm = await DisplayAlert("Cerrar sesión", "Se cerrará tu sesión actual.", "Cerrar sesión", "Cancelar");
         if (!confirm)
         {
             return;

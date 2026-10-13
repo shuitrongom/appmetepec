@@ -18,7 +18,7 @@
                         <RoundRectangle CornerRadius="10" />
                     </Border.StrokeShape>
                     <Entry x:Name="UsernameEntry"
-                           Placeholder="Usuario o Correo Electronico"
+                           Placeholder="Usuario o Correo Electrónico"
                            FontSize="17"
                            BackgroundColor="Transparent"
                            TextColor="#555"
@@ -35,7 +35,7 @@
                     <Grid ColumnDefinitions="*,44" HeightRequest="48">
                         <Entry x:Name="PasswordEntry"
                                Grid.Column="0"
-                               Placeholder="Contrasena"
+                               Placeholder="Contraseña"
                                FontSize="17"
                                BackgroundColor="Transparent"
                                TextColor="#555"
@@ -103,7 +103,7 @@
             <Label HorizontalTextAlignment="Center" FontSize="14" TextColor="#F89A1C" Margin="0,2,0,0">
                 <Label.FormattedText>
                     <FormattedString>
-                        <Span Text="Olvidaste tu usuario o contrasena? " TextColor="#555" />
+                        <Span Text="Olvidaste tu usuario o contraseña? " TextColor="#555" />
                         <Span Text="Recupera tu cuenta" TextColor="#F89A1C" FontAttributes="Bold" />
                     </FormattedString>
                 </Label.FormattedText>
