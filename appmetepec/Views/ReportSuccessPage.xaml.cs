@@ -39,6 +39,25 @@ public partial class ReportSuccessPage : ContentPage
 
     private async void OnHomeClicked(object sender, EventArgs e)
     {
+        await IrAlInicioAsync();
+    }
+
+    // El UNICO camino de salida de esta pantalla es ir al INICIO (ruta absoluta //HomePage, que
+    // RESETEA el stack de navegacion). Nunca se vuelve a ReportPage: hacerlo mostraba el reporte
+    // con los datos ya capturados y permitia pulsar ENVIAR otra vez, generando tickets DUPLICADOS
+    // en segundos (el bug reportado). Un reporte nuevo debe empezar siempre en blanco.
+    private async Task IrAlInicioAsync()
+    {
         await Shell.Current.GoToAsync($"//{nameof(HomePage)}");
+    }
+
+    // Intercepta el boton/gesto "atras" del sistema (Android) y el gesto de regreso: en vez de
+    // volver a ReportPage con los datos capturados (que permitiria reenviar el mismo ticket), lo
+    // redirige SIEMPRE al inicio. Devolver true indica que ya manejamos el "atras" y Shell NO hace
+    // el pop por defecto. La flecha de la barra de Shell ya se oculto con Shell.NavBarIsVisible.
+    protected override bool OnBackButtonPressed()
+    {
+        _ = IrAlInicioAsync();
+        return true;
     }
 }
