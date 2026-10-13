@@ -123,9 +123,16 @@
                            FontSize="12" TextColor="#9A8AAE"
                            HorizontalTextAlignment="Center" HorizontalOptions="Center" />
                     <Grid.GestureRecognizers>
-                        <!-- Tocar el handle ALTERNA: si esta abierto colapsa (mapa completo), si
-                             esta colapsado abre al 40%. -->
+                        <!-- Tocar la cabecera (handle + pista) ALTERNA abrir/colapsar. -->
                         <TapGestureRecognizer Tapped="OnHandleTapped" />
+                        <!-- Deslizar el dedo (swipe) sobre toda la cabecera arrastra el panel:
+                             arriba abre al 40%, abajo colapsa. El panel sigue al dedo y al soltar
+                             hace snap al detent decidido por VELOCIDAD del flick (o por distancia
+                             si el gesto fue lento). Clampeado al 40% -> el mapa nunca se tapa. El
+                             mismo manejador se engancha tambien en el segmented (CrearSegmented),
+                             asi el panel se arrastra agarrando cualquier parte de su cabecera,
+                             como en las apps de mapas modernas. (Toque premium.) -->
+                        <PanGestureRecognizer PanUpdated="OnSheetPan" />
                     </Grid.GestureRecognizers>
                 </Grid>
 

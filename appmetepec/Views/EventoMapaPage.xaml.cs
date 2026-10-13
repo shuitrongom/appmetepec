@@ -205,12 +205,22 @@ public partial class EventoMapaPage : ContentPage
         // pise una mas reciente.
         var gen = ++_generacionSheet;
         var inicio = SheetRow.Height.IsAbsolute ? SheetRow.Height.Value : destino;
+
+        // Duracion PROPORCIONAL a lo que falta por recorrer: si el dedo ya dejo el panel casi en
+        // su sitio, el asentamiento es cortito; si falta mucho, un poco mas largo. Acotada a
+        // [120..260] ms para que nunca se sienta ni brusca ni perezosa. Asi el snap "acompaña" al
+        // dedo en vez de sentirse como un salto fijo.
+        var recorrido = Math.Abs(destino - inicio);
+        var rango = Math.Max(1, Math.Max(AltoPeekPx, ABIERTO * h) - AltoPeekPx);
+        var fraccion = Math.Clamp(recorrido / rango, 0, 1);
+        var duracion = (uint)(120 + (fraccion * 140)); // 120..260 ms
+
         var anim = new Animation(v =>
         {
             if (gen != _generacionSheet) return;
             SheetRow.Height = new GridLength(v);
         }, inicio, destino, Easing.CubicOut);
-        anim.Commit(this, "sheetAnim", length: 220);
+        anim.Commit(this, "sheetAnim", length: duracion);
     }
 
     // Alterna abrir/colapsar (lo usa el tap del handle).
@@ -239,6 +249,100 @@ public partial class EventoMapaPage : ContentPage
     // Tocar el handle ALTERNA: si esta abierto colapsa (mapa completo), si esta colapsado abre
     // al 40%. Simple y predecible; la altura real de la fila hace el trabajo.
     private void OnHandleTapped(object? sender, TappedEventArgs e) => AlternarSheet();
+
+    // --- Gesto de ARRASTRE (swipe) premium del bottom sheet ---
+    // Permite abrir/colapsar deslizando el dedo, ademas del tap. Durante el arrastre la fila del
+    // sheet SIGUE al dedo (sensacion premium), clampeada SIEMPRE entre el alto de PEEK (118px) y
+    // el ABIERTO (40% del alto) -> el mapa NUNCA se tapa por completo. Al soltar hace snap al
+    // detent destino decidido por VELOCIDAD (flick) o, si el gesto fue lento, por distancia /
+    // cercania. El mismo manejador se engancha en DOS zonas (ver XAML/CrearSegmented): el handle
+    // y el marco del segmented ("Escenarios | Mi agenda"), para que se pueda arrastrar el panel
+    // agarrando cualquier parte de su cabecera, como en las apps de mapas modernas.
+    private double _alturaSheetAlIniciarPan;
+    // Desplazamiento vertical (px) a partir del cual un gesto deja de ser "tap" y se considera
+    // ARRASTRE real. Debajo de esto, un toque sobre el segmented cambia de pestaña; por encima,
+    // mueve el panel y el tap que pudiera llegar despues se ignora (ver _panMovioSheet).
+    private const double UmbralArrastrePx = 8;
+    // Velocidad (px/seg) a partir de la cual un "flick" rapido manda la direccion aunque el
+    // recorrido haya sido corto. Da la respuesta "a la intencion" de un bottom sheet premium.
+    private const double VelocidadFlick = 650;
+    // true si el pan en curso ya supero el umbral de arrastre: lo consulta CambiarTab para NO
+    // cambiar de pestaña cuando el dedo en realidad estaba arrastrando el panel sobre el segmented.
+    private bool _panMovioSheet;
+    // Marca de tiempo al iniciar el pan: con e.TotalY (desplazamiento acumulado desde Started) da
+    // la velocidad del flick al soltar (TotalY / segundos transcurridos).
+    private DateTime _panInicioTs;
+
+    private void OnSheetPan(object? sender, PanUpdatedEventArgs e)
+    {
+        var h = Height;
+        if (h <= 0) return;
+
+        var altoAbierto = Math.Max(AltoPeekPx, ABIERTO * h); // tope duro: 40% del alto
+        var altoPeek = AltoPeekPx;
+
+        switch (e.StatusType)
+        {
+            case GestureStatus.Started:
+                // Altura real de la fila al empezar a arrastrar (base sobre la que sumamos el
+                // desplazamiento del dedo).
+                _alturaSheetAlIniciarPan = SheetRow.Height.IsAbsolute ? SheetRow.Height.Value : altoPeek;
+                _panMovioSheet = false;
+                _panInicioTs = DateTime.UtcNow;
+                // Cancela cualquier animacion de altura en vuelo para que el arrastre mande.
+                _generacionSheet++;
+                break;
+
+            case GestureStatus.Running:
+                // Hasta no superar el umbral, NO tocamos la altura: asi un toque limpio sobre el
+                // segmented (micro-desplazamientos de unos pocos px) se queda como tap y cambia de
+                // pestaña, en vez de "temblar" el panel.
+                if (!_panMovioSheet && Math.Abs(e.TotalY) < UmbralArrastrePx)
+                {
+                    break;
+                }
+                _panMovioSheet = true; // es arrastre real: el tap posterior se ignora en CambiarTab
+                // El dedo hacia ARRIBA (TotalY negativo) agranda el sheet; hacia abajo lo achica.
+                // Clamp DURO entre peek y 40%: por mas que arrastre, el mapa sigue visible.
+                var nueva = Math.Clamp(_alturaSheetAlIniciarPan - e.TotalY, altoPeek, altoAbierto);
+                SheetRow.Height = new GridLength(nueva);
+                break;
+
+            case GestureStatus.Completed:
+            case GestureStatus.Canceled:
+                // Si nunca llego a ser arrastre real, fue un tap: no hay snap que hacer (el tap de
+                // la pestaña/handle ya corre por su cuenta).
+                if (!_panMovioSheet)
+                {
+                    break;
+                }
+
+                // Velocidad del flick: px recorridos / segundos del gesto. Un flick rapido manda la
+                // direccion aunque el recorrido sea corto (respuesta "a la intencion").
+                var seg = Math.Max(0.001, (DateTime.UtcNow - _panInicioTs).TotalSeconds);
+                var velocidad = e.TotalY / seg; // + = hacia abajo, - = hacia arriba
+
+                var actual = SheetRow.Height.IsAbsolute ? SheetRow.Height.Value : altoPeek;
+                Detent destino;
+                if (Math.Abs(velocidad) > VelocidadFlick)
+                {
+                    destino = velocidad < 0 ? Detent.Abierto : Detent.Peek; // flick arriba abre, abajo colapsa
+                }
+                else if (Math.Abs(e.TotalY) > 40)
+                {
+                    destino = e.TotalY < 0 ? Detent.Abierto : Detent.Peek; // recorrido marcado manda la direccion
+                }
+                else
+                {
+                    var distPeek = Math.Abs(actual - altoPeek);
+                    var distAbierto = Math.Abs(actual - altoAbierto);
+                    destino = distAbierto < distPeek ? Detent.Abierto : Detent.Peek; // leve -> al mas cercano
+                }
+                _detentActual = destino;
+                AjustarAlturaSheet(animado: true); // asienta el detent con animacion suave
+                break;
+        }
+    }
 
     // Cuando el lienzo ya tiene (o cambia) su tamano real, recoloca los pines con coordenadas
     // absolutas exactas. Esto hace el posicionamiento inmune al timing del layout.
@@ -270,6 +374,11 @@ public partial class EventoMapaPage : ContentPage
         if (_evento is not null)
         {
             ReanudarParallax3D();
+            // Al VOLVER de un escenario, el bottom sheet regresa SIEMPRE a su estado normal =
+            // COLAPSADO (mapa completo). Antes se quedaba abierto como lo dejo el usuario, lo que
+            // tapaba el mapa al regresar. Forzamos Peek y re-aplicamos la altura.
+            _detentActual = Detent.Peek;
+            AjustarAlturaSheet(animado: false);
             // Al volver de un detalle/escenario, refleja cambios de favoritos si estamos en Agenda.
             if (_tabActiva == Tab.Agenda)
             {
@@ -1210,6 +1319,16 @@ public partial class EventoMapaPage : ContentPage
             Content = contenedor
         };
 
+        // ARRASTRE tambien sobre el segmented (toque premium estilo apps de mapas): deslizar el
+        // dedo verticalmente sobre "Escenarios | Mi agenda" mueve el panel igual que el handle.
+        // Se distingue de un tap por UmbralArrastrePx: un toque limpio cambia de pestaña (los
+        // TapGestureRecognizer de cada label siguen vivos); un arrastre real mueve el panel y
+        // CambiarTab lo ignora via _panMovioSheet. El pan va en el MARCO (no en los labels) para
+        // que convivan: el tap lo capturan los labels, el pan el marco que los contiene.
+        var panSegmented = new PanGestureRecognizer();
+        panSegmented.PanUpdated += OnSheetPan;
+        marco.GestureRecognizers.Add(panSegmented);
+
         SegmentedHost.Children.Clear();
         SegmentedHost.Children.Add(marco);
     }
@@ -1222,6 +1341,15 @@ public partial class EventoMapaPage : ContentPage
     {
         if (_pastillaSegmented is null || _tabEscenariosLabel is null || _tabAgendaLabel is null)
         {
+            return;
+        }
+
+        // Si el dedo venia ARRASTRANDO el panel sobre el segmented (no un tap limpio), ignoramos
+        // el cambio de pestaña: el gesto fue para mover el sheet, no para cambiar de tab. El pan ya
+        // decidio el detent destino en OnSheetPan. Se consume la bandera para el siguiente gesto.
+        if (_panMovioSheet)
+        {
+            _panMovioSheet = false;
             return;
         }
 

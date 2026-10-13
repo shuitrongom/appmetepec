@@ -27,8 +27,13 @@
 		<ApplicationId>mx.gob.edomex.metepec.gc</ApplicationId>
 
 		<!-- Versions -->
-		<ApplicationDisplayVersion>1.5.0</ApplicationDisplayVersion>
-		<ApplicationVersion>80</ApplicationVersion>
+		<!-- 1.5.1: bugfix sobre la 1.5.0 ya publicada (push iOS local, gesto del mapa,
+		     reporte con ubicacion obligatoria, anti-duplicado de tickets). El workflow de iOS
+		     (ios-testflight.yml) sobreescribe DisplayVersion con 1.5.1 y usa un build number por
+		     fecha; aqui se deja 1.5.1/81 para que Android (Play Store) tambien suba de version y
+		     versionCode (Play exige versionCode mayor que el publicado, que era 80). -->
+		<ApplicationDisplayVersion>1.5.1</ApplicationDisplayVersion>
+		<ApplicationVersion>81</ApplicationVersion>
 
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">15.0</SupportedOSPlatformVersion>
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">13.1</SupportedOSPlatformVersion>

@@ -286,12 +286,21 @@ public partial class HomePage : ContentPage
         }
     }
 
+    // Ancho fijo de cada tarjeta (icono + titulo) en la fila horizontal de una categoria.
+    // Antes era 110 con el icono a 100: el titulo quedaba con apenas ~10px de respiro y en
+    // dispositivos con fuente de sistema grande (ajuste de accesibilidad en iOS/Android) o
+    // densidades distintas el texto no cabia y se recortaba ("Atencion a..."). Se amplia el
+    // contenedor y se reduce un poco el icono para que SIEMPRE quepa el titulo completo en 2-3
+    // lineas, en cualquier equipo.
+    private const double AnchoTarjetaReporte = 128;
+    private const double DiametroIconoReporte = 82;
+
     private VerticalStackLayout CreateReportItem(ScreenReport report)
     {
         var layout = new VerticalStackLayout
         {
-            Spacing = 4,
-            WidthRequest = 110,
+            Spacing = 6,
+            WidthRequest = AnchoTarjetaReporte,
             HorizontalOptions = LayoutOptions.Center,
             BindingContext = report
         };
@@ -299,8 +308,8 @@ public partial class HomePage : ContentPage
         layout.Children.Add(new Image
         {
             Source = report.IconSource,
-            HeightRequest = 100,
-            WidthRequest = 100,
+            HeightRequest = DiametroIconoReporte,
+            WidthRequest = DiametroIconoReporte,
             Aspect = Aspect.AspectFit,
             HorizontalOptions = LayoutOptions.Center
         });
@@ -311,8 +320,13 @@ public partial class HomePage : ContentPage
             FontSize = 12,
             TextColor = Color.FromArgb("#555555"),
             HorizontalTextAlignment = TextAlignment.Center,
-            LineBreakMode = LineBreakMode.WordWrap,
-            MaxLines = 4
+            // Ancho EXPLICITO = el del contenedor (no el del icono): el titulo dispone de todo el
+            // ancho de la tarjeta, no solo del que ocupa el icono. WordWrap sin MaxLines estricto
+            // -> el texto crece hacia abajo cuanto necesite en vez de truncarse. Asi ningun titulo
+            // ("Atencion a semaforos", "Atencion a podas", etc.) se corta en ningun dispositivo.
+            WidthRequest = AnchoTarjetaReporte,
+            HorizontalOptions = LayoutOptions.Center,
+            LineBreakMode = LineBreakMode.WordWrap
         });
 
         var tap = new TapGestureRecognizer();
