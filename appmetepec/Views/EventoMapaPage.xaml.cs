@@ -269,12 +269,42 @@ public partial class EventoMapaPage : ContentPage
         // Re-dimensiona el lienzo del mapa: al volver de un escenario el MapaLayout conservaba su
         // HeightRequest calculado para el layout anterior; si no se recalcula contra el espacio
         // que ahora deja el sheet colapsado, el mapa quedaba empujado/tapado. Esta es la causa de
-        // raiz de "al volver del escenario se tapa y no se contrae". Se difiere al proximo ciclo
-        // de layout para que la nueva altura de SheetRow ya este aplicada cuando se mida el Viewport.
+        // raiz de "al volver del escenario se tapa y no se contrae". El redimensionado se engancha
+        // al PROXIMO evento de tamano del Viewport (cuando el Grid YA reasento las filas con el
+        // sheet en Peek), para no recalcular con un alto a destiempo. Si el Viewport no cambia de
+        // tamano, un Dispatch de respaldo lo recalcula igual.
+        ReprogramarDimensionadoMapa();
+    }
+
+    // Garantiza que el lienzo del mapa se re-dimensione contra el tamano CORRECTO del Viewport
+    // tras volver de un escenario. Se suscribe UNA vez al SizeChanged del Viewport (cuando el
+    // Grid reasienta las filas con el sheet en Peek, el Viewport cambia de alto y dispara esto) y
+    // ademas lanza un Dispatch de respaldo por si el tamano no cambia. Ambos caminos llaman a
+    // DimensionarLienzo; la bandera evita doble suscripcion y el handler se auto-remueve.
+    private bool _redimensionadoMapaPendiente;
+    private void ReprogramarDimensionadoMapa()
+    {
+        if (_evento is null) return;
+
+        void Handler(object? s, EventArgs e)
+        {
+            Viewport.SizeChanged -= Handler;
+            if (_evento is not null) DimensionarLienzo();
+        }
+
+        if (!_redimensionadoMapaPendiente)
+        {
+            _redimensionadoMapaPendiente = true;
+            Viewport.SizeChanged += Handler;
+        }
+
+        // Respaldo: si el Viewport NO cambia de tamano (el sheet ya estaba en Peek), el SizeChanged
+        // no se dispara; recalculamos de todos modos en el proximo ciclo del dispatcher.
         Dispatcher.Dispatch(() =>
         {
-            if (_evento is null) return;
-            DimensionarLienzo();
+            _redimensionadoMapaPendiente = false;
+            Viewport.SizeChanged -= Handler;
+            if (_evento is not null) DimensionarLienzo();
         });
     }
 

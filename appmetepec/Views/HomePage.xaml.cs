@@ -286,13 +286,21 @@ public partial class HomePage : ContentPage
                 VerticalScrollBarVisibility = ScrollBarVisibility.Never,
                 ItemsLayout = new LinearItemsLayout(ItemsLayoutOrientation.Horizontal)
                 {
-                    ItemSpacing = 10,
+                    ItemSpacing = 14,
                     SnapPointsType = SnapPointsType.Mandatory,
                     SnapPointsAlignment = SnapPointsAlignment.Start
                 },
                 // Alto fijo de la fila: icono (90) + hasta 3 lineas de titulo + espaciados.
                 HeightRequest = 152,
-                ItemTemplate = new DataTemplate(CrearPlantillaTarjetaReporte)
+                // CLAVE para las "rayas blancas": el CollectionView se extiende a TODO el ancho de
+                // la pantalla con un Margin lateral NEGATIVO que cancela el Padding=28 del
+                // contenedor (ReportsContent). Asi la ultima tarjeta ASOMA desde el borde real de
+                // la pantalla (indicador natural de "hay mas, desliza") en vez de quedar CORTADA
+                // con filo recto contra el padding -> se acaba el corte feo. El aire inicial (que
+                // la primera tarjeta no quede pegada al borde) lo da el Margin de la primera
+                // tarjeta en CrearPlantillaTarjetaReporte.
+                Margin = new Thickness(-PaddingLateralHome, 0, -PaddingLateralHome, 0),
+                ItemTemplate = new DataTemplate(() => CrearPlantillaTarjetaReporte(category.Reportes))
             };
 
             categoryBlock.Children.Add(fila);
@@ -309,12 +317,15 @@ public partial class HomePage : ContentPage
     // con holgura a los lados.
     private const double AnchoTarjetaReporte = 132;
     private const double DiametroIconoReporte = 90;
+    // Padding lateral de la pagina (ReportsContent Padding="28,..."). El CollectionView lo cancela
+    // con Margin negativo para ocupar todo el ancho; la primera/ultima tarjeta recuperan ese aire
+    // con su Margin, para quedar alineadas con el titulo de la categoria y no pegadas al borde.
+    private const double PaddingLateralHome = 28;
 
-    // Plantilla de UNA tarjeta de reporte para el CollectionView horizontal. Se enlaza por
-    // BindingContext a un ScreenReport (IconSource y Title). El toque navega al reporte: se
-    // resuelve el ScreenReport desde el BindingContext de la celda (no una captura), porque el
-    // CollectionView RECICLA las celdas y el gesto debe usar el item vigente de cada una.
-    private View CrearPlantillaTarjetaReporte()
+    // Plantilla de UNA tarjeta de reporte para el CollectionView horizontal. Recibe la lista para
+    // saber si la celda es la PRIMERA o la ULTIMA y darle el aire lateral (margin) que las separa
+    // del borde de la pantalla. Se enlaza por BindingContext a un ScreenReport (IconSource/Title).
+    private View CrearPlantillaTarjetaReporte(IReadOnlyList<ScreenReport> reportes)
     {
         var icono = new Image
         {
@@ -345,6 +356,18 @@ public partial class HomePage : ContentPage
             // titulos ocupen 1, 2 o 3 lineas.
             VerticalOptions = LayoutOptions.Start,
             Children = { icono, titulo }
+        };
+
+        // Aire lateral: la PRIMERA tarjeta recupera el padding de pagina a su izquierda (para
+        // quedar alineada con el titulo de la categoria) y la ULTIMA a su derecha (para no quedar
+        // pegada al borde). El margin se decide por la POSICION del item en la lista, resuelta en
+        // cada bind (el CollectionView recicla celdas, por eso se calcula al enlazar, no fijo).
+        layout.BindingContextChanged += (_, _) =>
+        {
+            var idx = layout.BindingContext is ScreenReport r ? reportes.IndexOf(r) : -1;
+            var izq = idx == 0 ? PaddingLateralHome : 0;
+            var der = idx == reportes.Count - 1 ? PaddingLateralHome : 0;
+            layout.Margin = new Thickness(izq, 0, der, 0);
         };
 
         var tap = new TapGestureRecognizer();
