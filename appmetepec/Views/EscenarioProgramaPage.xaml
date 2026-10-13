@@ -45,29 +45,40 @@
                        LineBreakMode="WordWrap" MaxLines="2" />
             </VerticalStackLayout>
 
-            <!-- Acciones del escenario: "como llegar" (abre Maps con la ruta a la direccion) y
-                 el calendario del mes. Van juntos a la derecha, alineados arriba para que el
-                 nombre/direccion (que ahora puede ocupar varias lineas) crezca sin empujarlos. -->
-            <HorizontalStackLayout Grid.Column="2" Spacing="8" VerticalOptions="Start">
-                <!-- Como llegar: solo visible si el escenario tiene direccion -->
-                <Border x:Name="ComoLlegarBtn" WidthRequest="40" HeightRequest="40" BackgroundColor="#33FFFFFF"
-                        StrokeThickness="0" VerticalOptions="Center"
-                        StrokeShape="RoundRectangle 20">
-                    <Label Text="📍" FontSize="20" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
-                    <Border.GestureRecognizers>
-                        <TapGestureRecognizer Tapped="OnComoLlegarTapped" />
-                    </Border.GestureRecognizers>
-                </Border>
+            <!-- Acciones del escenario: "cómo llegar" (abre Maps con la ruta a la direccion) y
+                 el calendario del mes. Cada boton lleva su ETIQUETA debajo del icono para que se
+                 entienda que hace, sin depender de un texto repetido en la pista inferior (eso
+                 confundia al ciudadano). Van juntos a la derecha, alineados arriba para que el
+                 nombre/direccion (que puede ocupar varias lineas) crezca sin empujarlos. -->
+            <HorizontalStackLayout Grid.Column="2" Spacing="10" VerticalOptions="Start">
+                <!-- Como llegar: icono + etiqueta debajo. Solo visible si el escenario tiene
+                     coordenadas o direccion (el code-behind controla ambos juntos). -->
+                <VerticalStackLayout Spacing="3" VerticalOptions="Start">
+                    <Border x:Name="ComoLlegarBtn" WidthRequest="40" HeightRequest="40" BackgroundColor="#33FFFFFF"
+                            StrokeThickness="0" HorizontalOptions="Center"
+                            StrokeShape="RoundRectangle 20">
+                        <Label Text="📍" FontSize="20" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnComoLlegarTapped" />
+                        </Border.GestureRecognizers>
+                    </Border>
+                    <Label x:Name="ComoLlegarLabel" Text="Cómo llegar" FontSize="10" FontAttributes="Bold"
+                           TextColor="White" HorizontalTextAlignment="Center" HorizontalOptions="Center" />
+                </VerticalStackLayout>
 
-                <!-- Icono de calendario: abre el calendario del mes para elegir otro dia -->
-                <Border WidthRequest="40" HeightRequest="40" BackgroundColor="#33FFFFFF"
-                        StrokeThickness="0" VerticalOptions="Center"
-                        StrokeShape="RoundRectangle 20">
-                    <Label Text="📅" FontSize="20" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
-                    <Border.GestureRecognizers>
-                        <TapGestureRecognizer Tapped="OnCalendarioTapped" />
-                    </Border.GestureRecognizers>
-                </Border>
+                <!-- Calendario: icono + etiqueta debajo. Abre el calendario del mes para elegir otro dia. -->
+                <VerticalStackLayout Spacing="3" VerticalOptions="Start">
+                    <Border WidthRequest="40" HeightRequest="40" BackgroundColor="#33FFFFFF"
+                            StrokeThickness="0" HorizontalOptions="Center"
+                            StrokeShape="RoundRectangle 20">
+                        <Label Text="📅" FontSize="20" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnCalendarioTapped" />
+                        </Border.GestureRecognizers>
+                    </Border>
+                    <Label Text="Otros días" FontSize="10" FontAttributes="Bold"
+                           TextColor="White" HorizontalTextAlignment="Center" HorizontalOptions="Center" />
+                </VerticalStackLayout>
             </HorizontalStackLayout>
         </Grid>
 
