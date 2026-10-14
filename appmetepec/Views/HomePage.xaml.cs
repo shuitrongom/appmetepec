@@ -40,7 +40,7 @@ public partial class HomePage : ContentPage
         DrawerVersionLabel.Text = $"Versión {AppInfo.Current.VersionString}";
         DarkThemeSwitch.IsToggled = _preferences.DarkThemeEnabled;
         SetActiveTab(reportsActive: true);
-        BannerCarousel.ItemsSource = BuildBanners();
+        AsignarBanners([]);
         // "Modo pruebas" (mantener presionado el logo 3 s abre la encuesta de experiencia sin
         // esperar los 8 dias): desactivado para produccion. Para pruebas, descomentar.
         // LogoImage.Behaviors.Add(new TouchBehavior
@@ -206,12 +206,7 @@ public partial class HomePage : ContentPage
                 return true;
             }
 
-            if (BannerCarousel.ItemsSource is not IReadOnlyList<object> banners || banners.Count == 0)
-            {
-                return true;
-            }
-
-            BannerCarousel.Position = (BannerCarousel.Position + 1) % banners.Count;
+            AvanzarBanner();
             return true;
         });
     }
@@ -341,6 +336,107 @@ public partial class HomePage : ContentPage
         
     ];
 
+    // ── Carrusel de arriba (BannerCarousel) ─────────────────────────────────────────────────
+    // Cada elemento (PREDIAL, OPDAPAS y las noticias destacadas) es una MITAD; los slides se
+    // arman encadenados: (P|O) -> (O|N1) -> (N1|N2) -> ... -> (Nn|P). Asi cada avance desplaza una
+    // mitad y se ve como una banda continua.
+    // Avance: Loop nativo + Position + 1 (mecanismo original). Con Loop el carrusel toma el camino
+    // MAS CORTO; con solo 2 slides ir adelante o atras mide lo mismo y alternaba (iba y regresaba),
+    // por eso siempre se dejan al menos MinimoSlidesBanner (repitiendo la secuencia si hace falta).
+    // El usuario puede deslizar a cualquier lado; el avance automatico sigue SIEMPRE hacia la
+    // izquierda a partir del slide donde lo dejo (_posicionBanner, ver OnBannerPositionChanged).
+    // BannerPar/BannerMitad son clases (no records): con records, dos slides repetidos con los
+    // mismos datos eran "iguales" y el carrusel ubicaba mal la posicion al deslizar (tomaba la
+    // primera copia), por eso despues de deslizar avanzaba al reves o se trababa.
+    private int _posicionBanner;
+    private const int MinimoSlidesBanner = 4;
+
+    private static readonly BannerMitad[] MitadesFijas =
+    [
+        new(Color.FromArgb("#B8D927"), "btn_predial.png", "PREDIAL", "PAGO EN LINEA", null),
+        new(Color.FromArgb("#7BCDEB"), "ic_opdapas.png", "OPDAPAS", "PAGO EN LINEA", null),
+    ];
+
+    private void AsignarBanners(IEnumerable<NewsLetter> destacadas)
+    {
+        var mitades = MitadesFijas
+            .Concat(destacadas.Select(n => new BannerMitad(Colors.Transparent, "", "", "", n)))
+            .ToList();
+        // Repetir la secuencia completa (asi sigue encadenada) hasta tener el minimo de slides. Cada
+        // repeticion crea slides NUEVOS (otra instancia), para que ninguno se repita por referencia.
+        var slides = new List<BannerPar>();
+        do
+        {
+            slides.AddRange(mitades.Select((m, i) => new BannerPar(m, mitades[(i + 1) % mitades.Count])));
+        }
+        while (slides.Count < MinimoSlidesBanner);
+
+        _posicionBanner = 0;
+        BannerCarousel.ItemsSource = slides;
+    }
+
+    // Posicion real del carrusel, tanto si avanzo solo como si el usuario lo deslizo.
+    private void OnBannerPositionChanged(object? sender, PositionChangedEventArgs e) =>
+        _posicionBanner = e.CurrentPosition;
+
+    private void AvanzarBanner()
+    {
+        if (BannerCarousel.ItemsSource is not IReadOnlyList<BannerPar> items || items.Count == 0)
+        {
+            return;
+        }
+
+        BannerCarousel.Position = (_posicionBanner + 1) % items.Count;
+    }
+
+    // Toque en una mitad del carrusel: noticia -> su detalle; PREDIAL/OPDAPAS -> pago en linea.
+    private async void OnBannerMitadTapped(object sender, TappedEventArgs e)
+    {
+        if (sender is not VisualElement { BindingContext: BannerMitad mitad }) return;
+
+        if (mitad.Noticia is not null)
+        {
+            await AbrirNoticiaAsync(mitad.Noticia);
+            return;
+        }
+
+        var url = mitad.Titulo switch
+        {
+            "PREDIAL" => AppConstants.PredialUrl,
+            "OPDAPAS" => AppConstants.OpdapasUrl,
+            _ => null
+        };
+        if (url is null) return;
+
+        try
+        {
+            await Launcher.Default.OpenAsync(new Uri(url));
+        }
+        catch
+        {
+            await DisplayAlert("No se pudo abrir", "No se encontró un navegador para abrir la página.", "Aceptar");
+        }
+    }
+
+    // Mitad del carrusel: promocional (Noticia = null) o noticia destacada. Clase (no record) a
+    // proposito: igualdad por referencia, ver comentario de _posicionBanner.
+    public sealed class BannerMitad(Color fondo, string icono, string titulo, string subtitulo, NewsLetter? noticia)
+    {
+        public Color Fondo { get; } = fondo;
+        public string Icono { get; } = icono;
+        public string Titulo { get; } = titulo;
+        public string Subtitulo { get; } = subtitulo;
+        public NewsLetter? Noticia { get; } = noticia;
+        public bool EsNoticia => Noticia is not null;
+        public bool EsPromo => Noticia is null;
+    }
+
+    public sealed class BannerPar(BannerMitad izquierda, BannerMitad derecha)
+    {
+        public BannerMitad Izquierda { get; } = izquierda;
+        public BannerMitad Derecha { get; } = derecha;
+    }
+
     private NewsLetter? _featuredNews;
 
     // El primer intento de red justo despues del arranque en frio de la app a veces falla
@@ -404,10 +500,7 @@ public partial class HomePage : ContentPage
         // news ya viene filtrada a solo vigentes (ver MetepecApiService.GetPublicacionesAsync);
         // aqui ademas se agregan al slider de arriba las que esten marcadas Destacada, despues de
         // los banners promocionales fijos (no los reemplaza).
-        BannerCarousel.ItemsSource = BuildBanners()
-            .Cast<object>()
-            .Concat(news.Where(n => n.destacada))
-            .ToList();
+        AsignarBanners(news.Where(n => n.destacada));
 
         _featuredNews = news.FirstOrDefault(n => n.destacada) ?? news.FirstOrDefault();
 

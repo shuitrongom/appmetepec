@@ -61,6 +61,71 @@
         <views:BannerTemplateSelector x:Key="BannerSelector"
                                        PromoTemplate="{StaticResource PromoBannerTemplate}"
                                        NewsTemplate="{StaticResource NewsBannerTemplate}" />
+
+        <!-- Slide del carrusel = dos mitades encadenadas (BannerPar/BannerMitad, ver
+             HomePage.ArmarSlidesBanner): la derecha de un slide es la izquierda del siguiente, asi el
+             carrusel se ve como una banda continua que avanza en un solo sentido. Cada mitad es un
+             banner promocional (PREDIAL/OPDAPAS) o una noticia destacada. -->
+        <DataTemplate x:Key="BannerParTemplate">
+            <Grid HeightRequest="64" ColumnDefinitions="*,*" ColumnSpacing="0">
+                <!-- Mitad izquierda -->
+                <Grid Grid.Column="0" BindingContext="{Binding Izquierda}">
+                    <Grid.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnBannerMitadTapped" />
+                    </Grid.GestureRecognizers>
+                    <Grid IsVisible="{Binding EsPromo}" BackgroundColor="{Binding Fondo}" Padding="14,0" ColumnDefinitions="42,*">
+                        <Image Source="{Binding Icono}" HeightRequest="42" WidthRequest="42" VerticalOptions="Center" />
+                        <VerticalStackLayout Grid.Column="1" Spacing="0" VerticalOptions="Center">
+                            <Label Text="{Binding Titulo}" FontSize="19" FontAttributes="Bold" TextColor="White" />
+                            <Label Text="{Binding Subtitulo}" FontSize="11" FontAttributes="Bold" TextColor="White" />
+                        </VerticalStackLayout>
+                    </Grid>
+                    <Grid IsVisible="{Binding EsNoticia}" ColumnDefinitions="44,*" ColumnSpacing="8" Padding="10,0"
+                          BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                        <Border StrokeThickness="0" Padding="0" HeightRequest="44" WidthRequest="44" VerticalOptions="Center">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="8" />
+                            </Border.StrokeShape>
+                            <Image Source="{Binding Noticia.image}" Aspect="AspectFill" HeightRequest="44" WidthRequest="44" />
+                        </Border>
+                        <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
+                            <Label Text="NOTICIA" FontSize="9" FontAttributes="Bold" TextColor="#F89A1C" />
+                            <Label Text="{Binding Noticia.title}" FontAttributes="Bold" FontSize="12"
+                                   TextColor="{AppThemeBinding Light=#28113E, Dark=White}"
+                                   LineBreakMode="TailTruncation" MaxLines="2" />
+                        </VerticalStackLayout>
+                    </Grid>
+                </Grid>
+                <!-- Mitad derecha -->
+                <Grid Grid.Column="1" BindingContext="{Binding Derecha}">
+                    <Grid.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnBannerMitadTapped" />
+                    </Grid.GestureRecognizers>
+                    <Grid IsVisible="{Binding EsPromo}" BackgroundColor="{Binding Fondo}" Padding="14,0" ColumnDefinitions="42,*">
+                        <Image Source="{Binding Icono}" HeightRequest="42" WidthRequest="42" VerticalOptions="Center" />
+                        <VerticalStackLayout Grid.Column="1" Spacing="0" VerticalOptions="Center">
+                            <Label Text="{Binding Titulo}" FontSize="19" FontAttributes="Bold" TextColor="White" />
+                            <Label Text="{Binding Subtitulo}" FontSize="11" FontAttributes="Bold" TextColor="White" />
+                        </VerticalStackLayout>
+                    </Grid>
+                    <Grid IsVisible="{Binding EsNoticia}" ColumnDefinitions="44,*" ColumnSpacing="8" Padding="10,0"
+                          BackgroundColor="{AppThemeBinding Light=White, Dark=#2A2A2A}">
+                        <Border StrokeThickness="0" Padding="0" HeightRequest="44" WidthRequest="44" VerticalOptions="Center">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="8" />
+                            </Border.StrokeShape>
+                            <Image Source="{Binding Noticia.image}" Aspect="AspectFill" HeightRequest="44" WidthRequest="44" />
+                        </Border>
+                        <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
+                            <Label Text="NOTICIA" FontSize="9" FontAttributes="Bold" TextColor="#F89A1C" />
+                            <Label Text="{Binding Noticia.title}" FontAttributes="Bold" FontSize="12"
+                                   TextColor="{AppThemeBinding Light=#28113E, Dark=White}"
+                                   LineBreakMode="TailTruncation" MaxLines="2" />
+                        </VerticalStackLayout>
+                    </Grid>
+                </Grid>
+            </Grid>
+        </DataTemplate>
     </ContentPage.Resources>
 
     <Grid RowDefinitions="Auto,*,75">
@@ -92,9 +157,10 @@
                           HeightRequest="64"
                           IsBounceEnabled="True"
                           Loop="True"
+                          PositionChanged="OnBannerPositionChanged"
                           PeekAreaInsets="0"
                           HorizontalScrollBarVisibility="Never"
-                          ItemTemplate="{StaticResource BannerSelector}">
+                          ItemTemplate="{StaticResource BannerParTemplate}">
             </CarouselView>
         </VerticalStackLayout>
 
