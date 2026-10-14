@@ -26,6 +26,13 @@ public static class AppConstants
     public const string TwilioAuthToken = "";
     public const string MetepecBackendUrl = "https://dess-ti.ddns.net:8069/api";
 
+    // Fichas de la app en las tiendas (boton "Actualizar" del aviso de version nueva, ver
+    // SplashViewModel). Android usa el ApplicationId; iOS necesita el ID numerico de App Store
+    // Connect (App Information > Apple ID). Vacio = en iPhone no se muestra el boton.
+    public const string PlayStorePackage = "mx.gob.edomex.metepec.gc";
+    // https://apps.apple.com/mx/app/metepec-7311/id1608414526
+    public const string AppStoreId = "1608414526";
+
     public const string ClaveEstatusResuelto = "RESUELTO";
     public const string ClaveRespuestaPublica = "RPUBLICA";
     public const string ClaveEncuestaSolucionTicket = "ENCUESTA_SOLUCION_TICKET";

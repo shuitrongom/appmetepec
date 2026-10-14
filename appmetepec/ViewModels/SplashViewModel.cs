@@ -50,7 +50,9 @@ public sealed partial class SplashViewModel : ObservableObject
     {
         try
         {
-            var remoto = await _api.GetVersionAppActualAsync("ANDROID");
+            // Cada plataforma tiene su propia version en el catalogo (Version de la app).
+            var plataforma = DeviceInfo.Current.Platform == DevicePlatform.iOS ? "IOS" : "ANDROID";
+            var remoto = await _api.GetVersionAppActualAsync(plataforma);
             if (remoto is null || string.IsNullOrWhiteSpace(remoto.VersionReciente))
             {
                 return;
@@ -66,15 +68,58 @@ public sealed partial class SplashViewModel : ObservableObject
             // contrario, quien lo cierra una vez nunca vuelve a enterarse de que sigue en una
             // version vieja. Solo deja de aparecer cuando de verdad actualiza (AppInfo.VersionString
             // ya no es menor a VersionReciente).
+            var tienda = plataforma == "IOS" ? "App Store" : "Play Store";
             var mensaje = string.IsNullOrWhiteSpace(remoto.Mensaje)
-                ? $"Hay una nueva versión de Metepec *7311 disponible ({remoto.VersionReciente}). Actualízala desde la Play Store para seguir disfrutando de las mejoras."
+                ? $"Hay una nueva versión de Metepec *7311 disponible ({remoto.VersionReciente}). Actualízala desde la {tienda} para seguir disfrutando de las mejoras."
                 : remoto.Mensaje;
 
-            await Shell.Current.DisplayAlert("Nueva versión disponible", mensaje, "Entendido");
+            // Sin ID de App Store configurado no hay a donde mandar al usuario en iPhone: solo aviso.
+            var puedeAbrirTienda = plataforma != "IOS" || !string.IsNullOrWhiteSpace(AppConstants.AppStoreId);
+            if (!puedeAbrirTienda)
+            {
+                await Shell.Current.DisplayAlert("Nueva versión disponible", mensaje, "Entendido");
+                return;
+            }
+
+            var actualizar = await Shell.Current.DisplayAlert("Nueva versión disponible", mensaje, "Actualizar", "Más tarde");
+            if (actualizar)
+            {
+                await AbrirTiendaAsync(plataforma);
+            }
         }
         catch
         {
             // Ignorado a proposito (ver comentario del metodo).
+        }
+    }
+
+    // Abre la ficha de la app en la tienda. Primero la app de la tienda (market:// o itms-apps://);
+    // si no se puede (p. ej. celular sin Play Store), la pagina web de la tienda en el navegador.
+    private static async Task AbrirTiendaAsync(string plataforma)
+    {
+        var (urlApp, urlWeb) = plataforma == "IOS"
+            ? ($"itms-apps://apps.apple.com/app/id{AppConstants.AppStoreId}", $"https://apps.apple.com/app/id{AppConstants.AppStoreId}")
+            : ($"market://details?id={AppConstants.PlayStorePackage}", $"https://play.google.com/store/apps/details?id={AppConstants.PlayStorePackage}");
+
+        try
+        {
+            if (await Launcher.Default.TryOpenAsync(new Uri(urlApp)))
+            {
+                return;
+            }
+        }
+        catch
+        {
+            // Se intenta con la pagina web.
+        }
+
+        try
+        {
+            await Browser.Default.OpenAsync(new Uri(urlWeb), BrowserLaunchMode.External);
+        }
+        catch
+        {
+            // Sin navegador ni tienda: no hay nada mas que hacer; el aviso vuelve a salir al abrir la app.
         }
     }
 

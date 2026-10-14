@@ -33,5 +33,10 @@
 		<intent>
 			<action android:name="android.media.action.VIDEO_CAPTURE" />
 		</intent>
+		<!-- Boton "Actualizar" del aviso de version nueva: abrir la ficha en Play Store (market://). -->
+		<intent>
+			<action android:name="android.intent.action.VIEW" />
+			<data android:scheme="market" />
+		</intent>
 	</queries>
 </manifest>

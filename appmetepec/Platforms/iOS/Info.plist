@@ -42,5 +42,10 @@
 	<array>
 		<string>remote-notification</string>
 	</array>
+	<!-- Boton "Actualizar" del aviso de version nueva: abrir la ficha en App Store (itms-apps://). -->
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>itms-apps</string>
+	</array>
 </dict>
 </plist>
