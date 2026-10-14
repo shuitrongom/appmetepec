@@ -290,8 +290,10 @@ public partial class HomePage : ContentPage
                     SnapPointsType = SnapPointsType.Mandatory,
                     SnapPointsAlignment = SnapPointsAlignment.Start
                 },
-                // Alto fijo de la fila: icono (90) + hasta 3 lineas de titulo + espaciados.
-                HeightRequest = 152,
+                // Alto fijo de la fila: icono (90) + spacing + hasta 3 lineas de titulo (12pt).
+                // 168 deja espacio holgado para las 3 lineas en iOS y Android sin recortar el
+                // texto por abajo (en iOS el alto de celda es estricto; si queda corto, trunca).
+                HeightRequest = 168,
                 // CLAVE para las "rayas blancas": el CollectionView se extiende a TODO el ancho de
                 // la pantalla con un Margin lateral NEGATIVO que cancela el Padding=28 del
                 // contenedor (ReportsContent). Asi la ultima tarjeta ASOMA desde el borde real de
@@ -343,10 +345,16 @@ public partial class HomePage : ContentPage
             FontSize = 12,
             TextColor = Color.FromArgb("#555555"),
             HorizontalTextAlignment = TextAlignment.Center,
-            // Ocupa TODO el ancho de la tarjeta y envuelve en cuantas lineas necesite, SIN
-            // MaxLines ni truncamiento: ningun titulo largo se corta, en ningun dispositivo.
+            // ANCHO EXPLICITO (= ancho de la tarjeta), no solo Fill: en iOS un Label dentro de una
+            // celda de CollectionView horizontal SIN ancho explicito no sabe donde envolver y
+            // TRUNCA a una linea (en Android si envolvia). Fijando el ancho, el Label conoce su
+            // limite y envuelve en varias lineas en AMBAS plataformas, identico. MaxLines=3 acota
+            // el alto para que la cuadricula quede pareja; con 3 lineas entra cualquier titulo del
+            // catalogo.
+            WidthRequest = AnchoTarjetaReporte,
             LineBreakMode = LineBreakMode.WordWrap,
-            HorizontalOptions = LayoutOptions.Fill
+            MaxLines = 3,
+            HorizontalOptions = LayoutOptions.Center
         };
         titulo.SetBinding(Label.TextProperty, nameof(ScreenReport.Title));
 
