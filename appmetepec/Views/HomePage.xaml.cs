@@ -325,7 +325,9 @@ public partial class HomePage : ContentPage
     // Plantilla de UNA tarjeta de reporte para el CollectionView horizontal. Recibe la lista para
     // saber si la celda es la PRIMERA o la ULTIMA y darle el aire lateral (margin) que las separa
     // del borde de la pantalla. Se enlaza por BindingContext a un ScreenReport (IconSource/Title).
-    private View CrearPlantillaTarjetaReporte(IReadOnlyList<ScreenReport> reportes)
+    // El tipo es IList<ScreenReport> (el de DependenciaCategoria.Reportes): tiene IndexOf y evita
+    // una conversion.
+    private View CrearPlantillaTarjetaReporte(IList<ScreenReport> reportes)
     {
         var icono = new Image
         {
