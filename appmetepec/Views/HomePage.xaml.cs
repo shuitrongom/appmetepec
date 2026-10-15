@@ -345,28 +345,40 @@ public partial class HomePage : ContentPage
             FontSize = 12,
             TextColor = Color.FromArgb("#555555"),
             HorizontalTextAlignment = TextAlignment.Center,
-            // ANCHO EXPLICITO (= ancho de la tarjeta), no solo Fill: en iOS un Label dentro de una
-            // celda de CollectionView horizontal SIN ancho explicito no sabe donde envolver y
-            // TRUNCA a una linea (en Android si envolvia). Fijando el ancho, el Label conoce su
-            // limite y envuelve en varias lineas en AMBAS plataformas, identico. MaxLines=3 acota
-            // el alto para que la cuadricula quede pareja; con 3 lineas entra cualquier titulo del
-            // catalogo.
-            WidthRequest = AnchoTarjetaReporte,
             LineBreakMode = LineBreakMode.WordWrap,
             MaxLines = 3,
-            HorizontalOptions = LayoutOptions.Center
+            // Fill DENTRO de una celda de Grid de ancho fijo (ver abajo): el Grid restringe el
+            // ancho de verdad en la medicion, por lo que el Label envuelve. NO se usa WidthRequest
+            // aqui porque en iOS, dentro de un StackLayout de celda de CollectionView, el ancho se
+            // mide como infinito y el Label NO envolvia (truncaba a 1 linea) aunque tuviera
+            // WidthRequest; metido en un Grid de ancho fijo, iOS si aplica la restriccion.
+            HorizontalOptions = LayoutOptions.Fill,
+            VerticalOptions = LayoutOptions.Start
         };
         titulo.SetBinding(Label.TextProperty, nameof(ScreenReport.Title));
 
-        var layout = new VerticalStackLayout
+        // CONTENEDOR = Grid de ANCHO FIJO (no VerticalStackLayout). Esta es la correccion del
+        // truncado iOS-vs-Android: en iOS la celda del CollectionView horizontal mide a su hijo
+        // con ancho INFINITO, y un Label dentro de un StackLayout no recibe un ancho real que lo
+        // obligue a envolver -> truncaba a una linea (en Android si envolvia). Un Grid con
+        // WidthRequest fijo restringe el ancho de sus hijos DURANTE la medicion en ambas
+        // plataformas, asi el Label envuelve identico en iOS y Android. Fila 0 = icono, fila 1 =
+        // titulo (RowSpacing 6).
+        var layout = new Grid
         {
-            Spacing = 6,
             WidthRequest = AnchoTarjetaReporte,
-            // Start en vertical: icono arriba, texto fluyendo abajo -> iconos alineados aunque los
-            // titulos ocupen 1, 2 o 3 lineas.
+            RowSpacing = 6,
             VerticalOptions = LayoutOptions.Start,
-            Children = { icono, titulo }
+            RowDefinitions =
+            {
+                new RowDefinition { Height = GridLength.Auto },
+                new RowDefinition { Height = GridLength.Auto }
+            }
         };
+        Grid.SetRow(icono, 0);
+        Grid.SetRow(titulo, 1);
+        layout.Children.Add(icono);
+        layout.Children.Add(titulo);
 
         // Aire lateral: la PRIMERA tarjeta recupera el padding de pagina a su izquierda (para
         // quedar alineada con el titulo de la categoria) y la ULTIMA a su derecha (para no quedar
