@@ -287,8 +287,13 @@ public partial class HomePage : ContentPage
                 ItemsLayout = new LinearItemsLayout(ItemsLayoutOrientation.Horizontal)
                 {
                     ItemSpacing = 14,
-                    SnapPointsType = SnapPointsType.Mandatory,
-                    SnapPointsAlignment = SnapPointsAlignment.Start
+                    // SIN snap mandatorio: el snap forzaba el scroll a dejar la ULTIMA tarjeta
+                    // pegada al borde derecho, y como el titulo es mas ancho que el icono, su texto
+                    // se cortaba contra el filo de la pantalla (habia que empujar la lista para
+                    // leerlo). Con scroll libre + el margen final (AireFinalDerecho) de la ultima
+                    // tarjeta, el titulo se ve completo. Las "rayas blancas" NO vuelven: eso lo
+                    // resuelve el margin negativo + el aire lateral, no el snap.
+                    SnapPointsType = SnapPointsType.None
                 },
                 // Alto fijo de la fila: icono (90) + spacing + hasta 3 lineas de titulo (12pt).
                 // 168 deja espacio holgado para las 3 lineas en iOS y Android sin recortar el
@@ -323,6 +328,10 @@ public partial class HomePage : ContentPage
     // con Margin negativo para ocupar todo el ancho; la primera/ultima tarjeta recuperan ese aire
     // con su Margin, para quedar alineadas con el titulo de la categoria y no pegadas al borde.
     private const double PaddingLateralHome = 28;
+    // Margen derecho de la ULTIMA tarjeta. Mayor que el padding de pagina porque el titulo es mas
+    // ancho que el icono (132 vs 90): este aire extra evita que el titulo de la ultima tarjeta se
+    // corte contra el borde derecho (antes habia que empujar la lista con el dedo para leerlo).
+    private const double AireFinalDerecho = 48;
 
     // Plantilla de UNA tarjeta de reporte para el CollectionView horizontal. Recibe la lista para
     // saber si la celda es la PRIMERA o la ULTIMA y darle el aire lateral (margin) que las separa
@@ -381,14 +390,17 @@ public partial class HomePage : ContentPage
         layout.Children.Add(titulo);
 
         // Aire lateral: la PRIMERA tarjeta recupera el padding de pagina a su izquierda (para
-        // quedar alineada con el titulo de la categoria) y la ULTIMA a su derecha (para no quedar
-        // pegada al borde). El margin se decide por la POSICION del item en la lista, resuelta en
-        // cada bind (el CollectionView recicla celdas, por eso se calcula al enlazar, no fijo).
+        // quedar alineada con el titulo de la categoria) y la ULTIMA a su derecha. La ultima lleva
+        // un margen derecho MAYOR (AireFinalDerecho) porque el TITULO es mas ancho que el icono
+        // (usa los 132px de la tarjeta vs 90px del icono): con solo el padding de pagina el titulo
+        // de la ultima tarjeta quedaba cortado contra el borde y habia que empujarlo con el dedo
+        // para verlo. El margen extra deja que el titulo completo respire sin empujar.
+        // El margin se calcula por POSICION del item en cada bind (el CollectionView recicla celdas).
         layout.BindingContextChanged += (_, _) =>
         {
             var idx = layout.BindingContext is ScreenReport r ? reportes.IndexOf(r) : -1;
             var izq = idx == 0 ? PaddingLateralHome : 0;
-            var der = idx == reportes.Count - 1 ? PaddingLateralHome : 0;
+            var der = idx == reportes.Count - 1 ? AireFinalDerecho : 0;
             layout.Margin = new Thickness(izq, 0, der, 0);
         };
 
