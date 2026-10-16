@@ -3,6 +3,10 @@ using appmetepec.Models;
 using appmetepec.Services;
 using Microsoft.Maui.Devices.Sensors;
 using Microsoft.Maui.Layouts;
+// NOTA: el enum BottomSheetState vive en el namespace 'Plugin.BottomSheet' (no 'Plugin.Maui.
+// BottomSheet'). NO se importa con 'using' porque ese namespace tambien define Thickness/Rect que
+// chocarian con los de MAUI usados en esta pagina; se referencia calificado: Plugin.BottomSheet.
+// BottomSheetState.
 
 namespace appmetepec.Views;
 
@@ -48,18 +52,16 @@ public partial class EventoMapaPage : ContentPage
     private readonly FavoritosService _favoritos;
     private readonly RecordatoriosService _recordatorios;
 
-    // --- Estado del bottom sheet (FASE 4, rediseño por ALTURA DE FILA) ---
-    // DOS ESTADOS: PEEK (colapsado, solo handle+segmento) y ABIERTO (40% del alto de la pagina).
-    // La altura REAL del sheet es la de la fila 2 del Grid raiz (SheetRow); el mapa (fila '*')
-    // recibe SIEMPRE el resto -> el mapa NUNCA se tapa. ABIERTO = 0.40 (criterio del cliente:
-    // "60% mapa, 40% agenda/escenarios").
-    private const double ABIERTO = 0.40;
-    private enum Detent { Peek, Abierto }
-    // Estado INICIAL = Peek: al entrar se ve el mapa completo y el panel abajo colapsado.
-    private Detent _detentActual = Detent.Peek;
-    // Generacion de la animacion de altura: una animacion vieja que siga en vuelo no pisa una mas
-    // reciente (mismo patron que _generacionLoop del parallax).
-    private int _generacionSheet;
+    // Alto (px) que el mapa RESERVA abajo mientras el panel esta abierto, para que el mapa se
+    // encoja y la imagen completa (con sus numeros) quede visible ARRIBA del panel, sin taparse.
+    // 0 = panel cerrado (mapa usa todo el alto). Lo fija OnAbrirPanelTapped/OnPanelCerrado y lo
+    // consume DimensionarLienzo. Es el efecto "el mapa se hace chico al abrir el panel".
+    private double _reservaInferiorMapa;
+
+    // --- Estado del bottom sheet (FASE 4, control NATIVO Plugin.Maui.BottomSheet) ---
+    // El panel es el control nativo PanelInferior (ver XAML). Sus estados (Peek/Large) y su altura
+    // los gestiona la libreria; aqui solo cambiamos PanelInferior.CurrentState. Ya no hay altura de
+    // fila ni animaciones/gestos manuales que mantener.
 
     // Pestaña activa del sheet.
     private enum Tab { Escenarios, Agenda }
@@ -154,91 +156,23 @@ public partial class EventoMapaPage : ContentPage
         _favoritos = favoritos;
         _recordatorios = recordatorios;
 
-        // Cuando la pagina obtiene (o cambia) su alto, reasienta la altura de la fila del sheet al
-        // estado actual sin animar. Como _detentActual arranca en Peek, el PRIMER layout deja el
-        // sheet COLAPSADO (mapa completo), sin depender del timing del Viewport.
-        SizeChanged += (_, _) => AjustarAlturaSheet(animado: false);
+        // El bottom sheet es ahora el control nativo PanelInferior: gestiona su propia altura y
+        // ciclo de vida, por lo que ya no hace falta reasentar nada en SizeChanged.
     }
 
     // Al cambiar el tamano del area del mapa (orientacion, primer layout, etc.) se recalcula el
-    // lienzo para que la imagen siga entrando entera, y los detents del sheet (su unica fuente de
-    // alto es Viewport.Height). El reposicionamiento de los pines se dispara solo cuando el
-    // MapaLayout cambia de tamano (OnMapaLayoutSizeChanged).
+    // lienzo para que la imagen siga entrando entera. El reposicionamiento de los pines se dispara
+    // solo cuando el MapaLayout cambia de tamano (OnMapaLayoutSizeChanged).
     private void OnViewportSizeChanged(object? sender, EventArgs e)
     {
         if (_evento is null) return;
         DimensionarLienzo();
-        // Reasienta la altura de la fila del sheet al estado actual (sin animar) ahora que ya hay
-        // alto valido. Esto GARANTIZA que al entrar quede COLAPSADO (mapa completo) aunque en el
-        // primer frame el alto llegara en 0.
-        AjustarAlturaSheet(animado: false);
     }
 
-    // --- Bottom sheet por ALTURA DE FILA (rediseño de raiz) ---
-
-    // Alto (px) del sheet colapsado: lo justo para el handle + el segmento. Fijo y pequeño; no
-    // depende del contenido. Coincide con el Height="118" inicial de SheetRow en el XAML.
-    private const double AltoPeekPx = 118;
-
-    // Aplica la altura de la FILA del sheet (SheetRow) segun el estado actual, usando el alto
-    // total de la pagina. El mapa (fila '*') recibe SIEMPRE el resto del alto -> es IMPOSIBLE
-    // taparlo. Deterministico: no depende de timing de layout ni de TranslationY. Guarda si aun
-    // no hay alto valido (se reintenta en SizeChanged). Reemplaza al viejo RecalcularDetents.
-    private void AjustarAlturaSheet(bool animado)
-    {
-        var h = Height; // alto total de la pagina (ContentPage)
-        if (h <= 0) return;
-
-        var destino = _detentActual == Detent.Abierto
-            ? Math.Max(AltoPeekPx, ABIERTO * h) // ABIERTO = 40% del alto -> mapa conserva 60%
-            : AltoPeekPx;                        // COLAPSADO = solo el peek (mapa casi completo)
-
-        PistaPeek.IsVisible = _detentActual == Detent.Peek;
-
-        if (!animado)
-        {
-            SheetRow.Height = new GridLength(destino);
-            return;
-        }
-
-        // Animacion suave de la altura de la fila. Generacion para que una animacion vieja no
-        // pise una mas reciente.
-        var gen = ++_generacionSheet;
-        var inicio = SheetRow.Height.IsAbsolute ? SheetRow.Height.Value : destino;
-        var anim = new Animation(v =>
-        {
-            if (gen != _generacionSheet) return;
-            SheetRow.Height = new GridLength(v);
-        }, inicio, destino, Easing.CubicOut);
-        anim.Commit(this, "sheetAnim", length: 220);
-    }
-
-    // Alterna abrir/colapsar (lo usa el tap del handle).
-    private void AlternarSheet()
-    {
-        _detentActual = _detentActual == Detent.Abierto ? Detent.Peek : Detent.Abierto;
-        AjustarAlturaSheet(animado: true);
-    }
-
-    // Abre el sheet al 40% si no lo estaba (lo usa cambiar de pestaña).
-    private void AbrirSheet()
-    {
-        if (_detentActual == Detent.Abierto) return;
-        _detentActual = Detent.Abierto;
-        AjustarAlturaSheet(animado: true);
-    }
-
-    // Colapsa el sheet dejando el mapa completo (lo usa el toggle de pestaña activa).
-    private void ColapsarSheet()
-    {
-        if (_detentActual == Detent.Peek) return;
-        _detentActual = Detent.Peek;
-        AjustarAlturaSheet(animado: true);
-    }
-
-    // Tocar el handle ALTERNA: si esta abierto colapsa (mapa completo), si esta colapsado abre
-    // al 40%. Simple y predecible; la altura real de la fila hace el trabajo.
-    private void OnHandleTapped(object? sender, TappedEventArgs e) => AlternarSheet();
+    // --- Bottom sheet NATIVO (Plugin.Maui.BottomSheet) ---
+    // Ya no hay maquinaria manual de altura/gesto: el control nativo PanelInferior gestiona sus
+    // estados (Peek/Large), el arrastre, el handle y el snap. Colapsar -> CurrentState = Peek;
+    // expandir -> CurrentState = Large. Ver CambiarTab y OnAppearing.
 
     // Cuando el lienzo ya tiene (o cambia) su tamano real, recoloca los pines con coordenadas
     // absolutas exactas. Esto hace el posicionamiento inmune al timing del layout.
@@ -270,6 +204,12 @@ public partial class EventoMapaPage : ContentPage
         if (_evento is not null)
         {
             ReanudarParallax3D();
+            // Al VOLVER de un escenario, el panel nativo queda CERRADO y el mapa completo. El panel
+            // ya no es permanente: se abre con el boton flotante (OnAbrirPanelTapped). Cerrarlo al
+            // volver es determinista y elimina de raiz el bug del panel manual (que no se colapsaba
+            // y tapaba el mapa). Si estaba abierto cuando el usuario entro al escenario, al volver
+            // lo encontramos cerrado -> mapa limpio.
+            PanelInferior.IsOpen = false;
             // Al volver de un detalle/escenario, refleja cambios de favoritos si estamos en Agenda.
             if (_tabActiva == Tab.Agenda)
             {
@@ -345,11 +285,10 @@ public partial class EventoMapaPage : ContentPage
             // del mismo _evento.Escenarios que los pines, en el mismo punto del ciclo de vida.
             DibujarListaEscenarios();
 
-            // Construye el segmented 'Escenarios | Mi agenda ⭐' (idempotente) y deja el sheet
-            // COLAPSADO; la altura real de la fila la fija AjustarAlturaSheet cuando la pagina ya
-            // mide >0 (OnViewportSizeChanged), garantizando que al entrar se vea el mapa completo.
+            // Construye el segmented 'Escenarios | Mi agenda ⭐' (idempotente). El panel arranca
+            // CERRADO (IsOpen="False" en el XAML): el mapa se ve completo y el usuario abre el
+            // panel con el boton flotante. No forzamos estado aqui.
             CrearSegmented();
-            _detentActual = Detent.Peek;
 
             // El mapa arranca INVISIBLE: la entrada premium (AnimarEntradaMapaAsync) lo revela
             // con fade al final. Asi, cuando hay intro de portada, al ocultarse el overlay NO se
@@ -411,7 +350,12 @@ public partial class EventoMapaPage : ContentPage
         // Tamano disponible del area del mapa. Si aun no esta medido, se difiere (SizeChanged
         // volvera a llamar cuando ya tenga dimensiones reales).
         var dispW = Viewport.Width;
-        var dispH = Viewport.Height;
+        // Al alto disponible se le RESTA la reserva inferior = el alto que ocupa el panel cuando
+        // esta abierto. Asi el mapa se "fitBounds" al espacio que queda ARRIBA del panel y la
+        // imagen completa (con sus 13 numeros) SIEMPRE se ve, sin que el panel la tape. Con el
+        // panel cerrado la reserva es 0 y el mapa usa todo el alto. Es el efecto "el mapa se hace
+        // chico cuando abre el panel".
+        var dispH = Viewport.Height - _reservaInferiorMapa;
         if (dispW <= 0 || dispH <= 0)
         {
             return;
@@ -1132,6 +1076,11 @@ public partial class EventoMapaPage : ContentPage
 
     private async Task AbrirProgramacionAsync(BackendEscenarioDto escenario)
     {
+        // CIERRA el panel ANTES de navegar al escenario: si se queda abierto, el bottom sheet
+        // nativo se superpone sobre la pantalla de programacion del escenario (se veian las dos
+        // cosas a la vez, confundiendo al usuario). Al cerrarlo aqui, la navegacion muestra el
+        // escenario limpio, y al VOLVER el panel sigue cerrado (mapa completo).
+        PanelInferior.IsOpen = false;
         _navigationState.SelectedEscenario = escenario;
         await Shell.Current.GoToAsync(nameof(EscenarioProgramaPage));
     }
@@ -1210,13 +1159,17 @@ public partial class EventoMapaPage : ContentPage
             Content = contenedor
         };
 
+        // El arrastre del panel ahora es NATIVO (IsDraggable del control); ya no se engancha un
+        // PanGestureRecognizer manual al segmented. El tap de cada label (cambiar de pestaña) sigue
+        // intacto.
+
         SegmentedHost.Children.Clear();
         SegmentedHost.Children.Add(marco);
     }
 
-    // Cambia de pestaña: anima la pastilla a su columna, togglea la visibilidad de los scrolls y,
-    // si el sheet esta en PEEK, lo ABRE al 40% para revelar el contenido (elegir una pestaña =
-    // abrir). Si ya estaba abierto y se toca la MISMA pestaña, colapsa (toggle). Al pasar a
+    // Cambia de pestaña: anima la pastilla a su columna, togglea la visibilidad de los scrolls y
+    // EXPANDE el panel nativo a Large para revelar el contenido (elegir una pestaña = expandir).
+    // Si ya estaba expandido y se toca la MISMA pestaña, colapsa a Peek (toggle). Al pasar a
     // Agenda, refresca Mi agenda.
     private async void CambiarTab(Tab destino)
     {
@@ -1225,13 +1178,13 @@ public partial class EventoMapaPage : ContentPage
             return;
         }
 
-        // TOGGLE para contraer: si se toca la pestaña que YA esta activa y el sheet esta ABIERTO,
-        // se colapsa (deja el mapa completo). Asi el usuario puede contraer tocando la propia
-        // pestaña, ademas de con el handle. (El cliente reporto que "si quiero contraer escenarios
-        // o la agenda no me deja".)
-        if (destino == _tabActiva && _detentActual == Detent.Abierto)
+        // TOGGLE para cerrar: si se toca la pestaña que YA esta activa, se CIERRA el panel (deja
+        // el mapa completo). Como el panel ya no es permanente, "contraer" = cerrar (IsOpen=false);
+        // el usuario lo vuelve a abrir con el boton flotante. Asi puede cerrar tocando la propia
+        // pestaña, ademas del gesto nativo hacia abajo.
+        if (destino == _tabActiva)
         {
-            ColapsarSheet();
+            PanelInferior.IsOpen = false;
             return;
         }
 
@@ -1248,9 +1201,6 @@ public partial class EventoMapaPage : ContentPage
         {
             RefrescarMiAgenda();
         }
-
-        // Elegir una pestaña ABRE el panel al 40% (si estaba colapsado).
-        AbrirSheet();
 
         // Traslada la pastilla a la columna destino (ancho de una columna = mitad del contenedor).
         var destinoX = esAgenda ? _pastillaSegmented.Width : 0;
@@ -1544,7 +1494,46 @@ public partial class EventoMapaPage : ContentPage
 
     private async void OnBackTapped(object sender, TappedEventArgs e)
     {
+        // CIERRA el bottom sheet nativo ANTES de navegar hacia atras. En iOS el BottomSheet
+        // nativo, mientras esta presentado, se superpone y BLOQUEA el pop de Shell: al tocar la
+        // flecha de volver no pasaba nada (en Android si retrocedia, porque alla el panel no usa
+        // la presentacion nativa que intercepta la navegacion). Es el MISMO motivo por el que
+        // AbrirProgramacionAsync cierra el panel antes de ir a un escenario. Cerrarlo aqui deja la
+        // pagina lista para que Shell haga el pop al inicio/lista de eventos en ambas plataformas.
+        PanelInferior.IsOpen = false;
         await Shell.Current.GoToAsync("..");
+    }
+
+    // Boton flotante "Escenarios / Mi agenda": TOGGLE. Si el panel esta cerrado lo abre; si esta
+    // abierto lo cierra. Asi el usuario puede contraerlo TOCANDO el boton (ademas del gesto nativo
+    // hacia abajo), que era justo lo que pedia ("si presionan aparte se contraiga").
+    // Fraccion del ALTO DE LA PAGINA que el mapa reserva abajo cuando el panel abre. Se usa un
+    // PORCENTAJE (no px fijos) para que funcione igual en cualquier tamano de pantalla. 0.52 deja
+    // el mapa en el ~48% superior: suficiente para que la imagen completa con TODOS los numeros
+    // (incluidos los de abajo: 9, 11, 12) quede claramente ARRIBA del panel, sin tocarlo. Un poco
+    // mas que el 40% del panel para dar aire entre el ultimo numero y el borde del panel.
+    private const double FraccionReservaPanel = 0.52;
+
+    private void OnAbrirPanelTapped(object sender, TappedEventArgs e)
+    {
+        var abrir = !PanelInferior.IsOpen;
+        PanelInferior.IsOpen = abrir;
+        // Mientras el panel esta abierto, el boton flotante se oculta (no estorba); al cerrarse,
+        // OnPanelCerrado lo vuelve a mostrar.
+        BotonAbrirPanel.IsVisible = !abrir;
+        // Encoge/agranda el mapa segun el panel: al abrir reserva una fraccion del alto (el mapa
+        // se hace chico y entero arriba, con aire sobre el panel); al cerrar libera la reserva.
+        _reservaInferiorMapa = abrir ? Height * FraccionReservaPanel : 0;
+        DimensionarLienzo();
+    }
+
+    // El panel nativo se cerro (por gesto hacia abajo, por el boton o al navegar). Reaparece el
+    // boton flotante y el mapa recupera TODO el alto (reserva = 0), volviendo a su tamano grande.
+    private void OnPanelCerrado(object? sender, EventArgs e)
+    {
+        BotonAbrirPanel.IsVisible = true;
+        _reservaInferiorMapa = 0;
+        DimensionarLienzo();
     }
 
     protected override void OnDisappearing()
@@ -1558,10 +1547,9 @@ public partial class EventoMapaPage : ContentPage
         // Detiene el efecto parallax y libera el acelerometro (importante para la bateria).
         DetenerParallax3D();
 
-        // Invalida y corta cualquier animacion de snap del sheet en vuelo (igual criterio que
-        // el parallax): un TranslateTo pendiente no debe reactivarse tras cambiar de pagina.
-        _generacionSheet++;
-        BottomSheet.CancelAnimations();
+        // El bottom sheet nativo gestiona su propio ciclo de vida; no requiere limpieza manual
+        // aqui (antes se cancelaban animaciones/banderas del panel por altura de fila, ya
+        // eliminadas).
 
         // Libera los handlers de tamano.
         if (_viewportSuscrito)
