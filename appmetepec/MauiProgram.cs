@@ -5,6 +5,7 @@ using CommunityToolkit.Maui;
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.LifecycleEvents;
 using Plugin.LocalNotification;
+using Plugin.Maui.BottomSheet.Hosting;
 #if ANDROID
 using Plugin.Firebase.Core.Platforms.Android;
 #elif IOS
@@ -30,6 +31,12 @@ namespace appmetepec
                 // con el push remoto de Firebase (ConfigureLifecycleEvents mas abajo) sin
                 // reemplazarlo. No reordenar el registro de Firebase.
                 .UseLocalNotification()
+                // Bottom sheet NATIVO (Plugin.Maui.BottomSheet): panel inferior deslizable con
+                // estados (Peek/Medium/Large) implementado de forma nativa en iOS y Android. Se
+                // usa en el mapa de Eventos (EventoMapaPage) para el panel Escenarios/Mi agenda,
+                // en reemplazo del panel manual por altura de fila (que en Android no se encogia
+                // de forma fiable al volver de un escenario, dejando el panel tapando el mapa).
+                .UseBottomSheet()
                 .ConfigureFonts(fonts =>
                 {
                     fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");

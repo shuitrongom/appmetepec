@@ -87,15 +87,18 @@ public partial class EscenarioProgramaPage : ContentPage
         EscenarioDireccion.IsVisible = !string.IsNullOrWhiteSpace(_escenario.Direccion);
 
         // "Como llegar" tiene sentido si el escenario trae coordenadas (punto exacto) o,
-        // en su defecto, una direccion en texto para que el mapa la geolocalice.
-        ComoLlegarBtn.IsVisible = TieneCoordenadas() || !string.IsNullOrWhiteSpace(_escenario.Direccion);
+        // en su defecto, una direccion en texto para que el mapa la geolocalice. El boton de
+        // arriba lleva su propia etiqueta "Cómo llegar" debajo (ver XAML), por lo que ya se
+        // entiende sin repetirlo en la pista inferior; su visibilidad la controla la misma
+        // bandera (ComoLlegarBtn + etiqueta ocultos juntos cuando no aplica).
+        var muestraComoLlegar = TieneCoordenadas() || !string.IsNullOrWhiteSpace(_escenario.Direccion);
+        ComoLlegarBtn.IsVisible = muestraComoLlegar;
+        ComoLlegarLabel.IsVisible = muestraComoLlegar;
 
-        // Micro-ayuda tenue: solo menciona acciones que REALMENTE existen en esta pantalla.
-        // Tocar una actividad y el calendario 📅 siempre estan; el fragmento 📍 "como llegar"
-        // se omite cuando el escenario no tiene coordenadas ni direccion (boton oculto).
-        PistaAcciones.Text = ComoLlegarBtn.IsVisible
-            ? "Toca una actividad para ver su detalle · 📅 otros días · 📍 cómo llegar"
-            : "Toca una actividad para ver su detalle · 📅 otros días";
+        // Micro-ayuda tenue: solo menciona acciones que REALMENTE existen aqui. Ya NO repite
+        // "📍 cómo llegar" (confundia porque el pin con su etiqueta propia esta arriba): la pista
+        // de abajo se queda con tocar una actividad y el calendario 📅.
+        PistaAcciones.Text = "Toca una actividad para ver su detalle · 📅 otros días";
 
         // Imagen propia de la sede (opcional, la sube el admin): si viene, se muestra a la
         // derecha de la programacion como ilustracion premium de la sede.

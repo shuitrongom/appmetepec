@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:bottomsheet="http://pluginmauibottomsheet.com"
+             xmlns:androidBottomsheet="http://pluginmauibottomsheet.com/platformconfiguration/android"
              x:Class="appmetepec.Views.EventoMapaPage"
              Shell.NavBarIsVisible="False"
              BackgroundColor="White">
@@ -12,37 +14,37 @@
         </Style>
     </ContentPage.Resources>
 
-    <!-- FASE 4 (estilo Google/Apple Maps) REDISEÑADA DE RAIZ: TRES filas reales.
+    <!-- FASE 4 (estilo Google/Apple Maps) con BOTTOM SHEET NATIVO (Plugin.Maui.BottomSheet):
+         DOS filas reales.
          Fila 0 (Auto): encabezado.
-         Fila 1 (*): el MAPA (Viewport). Ocupa TODO el espacio que la fila del sheet NO usa, asi
-                     que el mapa SIEMPRE es visible y nunca lo tapa el sheet (el Grid reparte el
-                     alto: lo que crece el sheet lo cede el mapa, nunca al reves porque el sheet
-                     tiene tope).
-         Fila 2 (Auto): el BOTTOM SHEET. Su altura REAL la controla el code-behind via
-                        SheetRow.Height (NO TranslationY): COLAPSADO = solo handle+segmento
-                        (~peek), ABIERTO = 40% del alto. Como es alto de FILA de Grid, el mapa
-                        recibe el resto garantizado (>=60%). Determinista, sin depender de timing
-                        ni de translations. El contenido del sheet (listas) scrollea DENTRO de su
-                        fila fija, nunca empuja al mapa. -->
+         Fila 1 (*): el MAPA (Viewport). Ocupa TODO el espacio bajo el encabezado; el bottom sheet
+                     nativo flota ENCIMA como overlay anclado abajo (no ocupa fila del Grid), por lo
+                     que en estado Peek solo cubre PeekHeight px desde abajo y el mapa queda completo
+                     detras. El control nativo gestiona sus propios estados (Peek/Large), lo que
+                     elimina de raiz el bug del Border manual (que al volver de un escenario no se
+                     re-restringia a la nueva altura de fila en Android y tapaba el mapa). -->
     <Grid x:Name="RaizGrid">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
-            <!-- Fila del sheet: ARRANCA FIJA en 118px (alto de PEEK) DESDE EL XAML, para que en el
-                 PRIMER frame el sheet ya sea pequeño y el mapa grande, sin esperar al code-behind
-                 (evita el "abre tapando todo"). Despues AjustarAlturaSheet la ajusta (118 o 40%)
-                 segun el estado. NUNCA es 'Auto' -> el contenido jamas estira la fila. -->
-            <RowDefinition x:Name="SheetRow" Height="118" />
         </Grid.RowDefinitions>
 
         <!-- Encabezado -->
         <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Padding="12,10" BackgroundColor="White">
-            <Label Grid.Column="0" Text="&#8592;" FontSize="26" TextColor="#5B2A86"
-                   VerticalOptions="Center" WidthRequest="34">
-                <Label.GestureRecognizers>
+            <!-- Boton VOLVER: el TapGestureRecognizer va sobre un Border con AREA TACTIL real
+                 (44x44, el minimo recomendado por Apple) y BackgroundColor explicito (Transparent
+                 cuenta como superficie tocable). Antes el gesto estaba sobre el Label de la flecha,
+                 cuya area tocable en iOS es SOLO el glifo (minusculo) y la zona vacia alrededor NO
+                 captaba el toque -> en iOS el back no respondia (en Android si, por eso solo fallaba
+                 en iOS). Con el Border, todo el cuadro de 44x44 recibe el toque en ambas plataformas. -->
+            <Border Grid.Column="0" BackgroundColor="Transparent" StrokeThickness="0"
+                    WidthRequest="44" HeightRequest="44" VerticalOptions="Center" HorizontalOptions="Start">
+                <Label Text="&#8592;" FontSize="26" TextColor="#5B2A86"
+                       HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+                <Border.GestureRecognizers>
                     <TapGestureRecognizer Tapped="OnBackTapped" />
-                </Label.GestureRecognizers>
-            </Label>
+                </Border.GestureRecognizers>
+            </Border>
             <Label Grid.Column="1" x:Name="TitleLabel" Text="Eventos" FontSize="18" FontAttributes="Bold"
                    VerticalOptions="Center" HorizontalOptions="Center" TextColor="#5B2A86"
                    LineBreakMode="TailTruncation" />
@@ -94,73 +96,99 @@
                 <Button Text="Reintentar" Clicked="OnReintentarClicked"
                         BackgroundColor="#5B2A86" TextColor="White" CornerRadius="18" Padding="22,6" />
             </VerticalStackLayout>
+
+            <!-- Boton flotante que ABRE el bottom sheet nativo (Escenarios / Mi agenda). El panel
+                 ya no es permanente: el mapa se ve completo y, al tocar este boton, el sheet sube
+                 (patron de las apps de mapas modernas). Pastilla morada anclada abajo-centro con
+                 sombra. El code-behind (OnAbrirPanelTapped) hace PanelInferior.IsOpen=true. -->
+            <Border x:Name="BotonAbrirPanel" VerticalOptions="End" HorizontalOptions="Center"
+                    Margin="0,0,0,24" BackgroundColor="#5B2A86" StrokeThickness="0"
+                    Padding="24,13" StrokeShape="RoundRectangle 28">
+                <Border.Shadow>
+                    <Shadow Brush="Black" Opacity="0.25" Radius="12" Offset="0,4" />
+                </Border.Shadow>
+                <HorizontalStackLayout Spacing="9">
+                    <Label Text="&#128205;" FontSize="17" VerticalTextAlignment="Center" />
+                    <Label Text="Toca para ver escenarios y tu agenda ⭐" FontSize="13.5"
+                           FontAttributes="Bold" TextColor="White" VerticalTextAlignment="Center" />
+                </HorizontalStackLayout>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnAbrirPanelTapped" />
+                </Border.GestureRecognizers>
+            </Border>
         </Grid>
 
-        <!-- ══ BOTTOM SHEET (fila propia del Grid) ══
-             Panel propio (CERO dependencias NuGet). Vive en la FILA 2 del Grid raiz; su altura
-             la controla el code-behind cambiando SheetRow.Height (NO TranslationY): el mapa (fila
-             *) recibe SIEMPRE el resto del alto, asi que NUNCA se tapa. Arranca COLAPSADO. El
-             handle alterna colapsar/expandir; el contenido scrollea dentro de la fila fija. -->
-        <Border Grid.Row="2" x:Name="BottomSheet"
-                HorizontalOptions="Fill" VerticalOptions="Fill"
-                BackgroundColor="#FFFFFF" StrokeThickness="0"
-                StrokeShape="RoundRectangle 20,20,0,0">
-            <Border.Shadow>
-                <Shadow Brush="Black" Opacity="0.12" Radius="12" Offset="0,-3" />
-            </Border.Shadow>
+        <!-- ══ BOTTOM SHEET NATIVO (Plugin.Maui.BottomSheet v10) ══
+             Reemplaza al Border manual por altura de fila. Es un panel NO-MODAL (IsModal=False)
+             que flota sobre el mapa sin oscurecerlo ni bloquear el toque de los pines. Se declara
+             como hijo del Grid raiz SIN Grid.Row: el control nativo se ancla al primer Layout de
+             la pagina y se renderiza en su propia capa de plataforma, anclado abajo. Dos estados:
+             Peek (colapsado, solo pista + segmento, ~PeekHeight px) y Large (expandido, pantalla
+             casi completa para ver las listas). IsCancelable=False -> nunca se cierra del todo
+             (siempre visible en Peek). IsDraggable=True -> arrastre nativo entre Peek/Large
+             (reemplaza el OnSheetPan manual). HasHandle=True -> handle nativo. IsOpen=True al
+             cargar. El contenido va con Content DIRECTO (no ContentTemplate) porque el code-behind
+             rellena los hijos por x:Name (CrearSegmented, DibujarListaEscenarios, RefrescarMiAgenda)
+             y deben existir siempre. -->
+        <bottomsheet:BottomSheet x:Name="PanelInferior"
+                                 IsOpen="False"
+                                 IsModal="False"
+                                 IsCancelable="True"
+                                 IsDraggable="True"
+                                 HasHandle="True"
+                                 CornerRadius="20"
+                                 States="Peek,Large"
+                                 CurrentState="Peek"
+                                 PeekHeight="320"
+                                 androidBottomsheet:BottomSheet.HalfExpandedRatio="0.42"
+                                 Closed="OnPanelCerrado"
+                                 BackgroundColor="#FFFFFF">
+            <bottomsheet:BottomSheetContent>
+                <bottomsheet:BottomSheetContent.Content>
+                    <Grid RowDefinitions="Auto,Auto,*">
+                        <!-- Fila 0: la pista se oculta (la leyenda ya vive en el boton flotante del
+                             mapa). Se conserva el x:Name y el elemento porque el code-behind lo
+                             referencia; IsVisible=False evita el texto duplicado dentro del panel. -->
+                        <Label Grid.Row="0" x:Name="PistaPeek"
+                               Text="Escenarios · Mi agenda ⭐" IsVisible="False"
+                               FontSize="12" TextColor="#9A8AAE"
+                               HorizontalTextAlignment="Center" HorizontalOptions="Center"
+                               Padding="0,8,0,6" />
 
-            <Grid RowDefinitions="Auto,Auto,*">
+                        <!-- Fila 1: segmented 'Escenarios | Mi agenda ⭐' (sus hijos se crean en CrearSegmented). -->
+                        <Grid Grid.Row="1" x:Name="SegmentedHost" Padding="16,2,16,8" />
 
-                <!-- Fila 0: handle + pista. Tocar aqui ALTERNA abrir/colapsar (OnHandleTapped). -->
-                <Grid Grid.Row="0" x:Name="SheetHandleYCabecera" Padding="0,8,0,6"
-                      BackgroundColor="Transparent" RowDefinitions="Auto,Auto" RowSpacing="4">
-                    <Border Grid.Row="0" WidthRequest="36" HeightRequest="5"
-                            BackgroundColor="#cfc3dd" StrokeThickness="0"
-                            StrokeShape="RoundRectangle 2.5"
-                            HorizontalOptions="Center" VerticalOptions="Center" />
-                    <Label Grid.Row="1" x:Name="PistaPeek"
-                           Text="Escenarios · Mi agenda ⭐"
-                           FontSize="12" TextColor="#9A8AAE"
-                           HorizontalTextAlignment="Center" HorizontalOptions="Center" />
-                    <Grid.GestureRecognizers>
-                        <!-- Tocar el handle ALTERNA: si esta abierto colapsa (mapa completo), si
-                             esta colapsado abre al 40%. -->
-                        <TapGestureRecognizer Tapped="OnHandleTapped" />
-                    </Grid.GestureRecognizers>
-                </Grid>
+                        <!-- Fila 2: contenido con DOS scrolls superpuestos (uno visible a la vez). -->
+                        <Grid Grid.Row="2">
+                            <ScrollView x:Name="EscenariosScroll" Padding="16,0,16,12"
+                                        VerticalScrollBarVisibility="Default">
+                                <VerticalStackLayout x:Name="ListaEscenariosHost" Spacing="8">
+                                    <!-- Subtitulo tenue (PistaSuperior): primer hijo del host; el metodo
+                                         DibujarListaEscenarios lo respeta por ReferenceEquals. -->
+                                    <Label x:Name="PistaSuperior"
+                                           Text="Pica un número para ver las actividades del escenario"
+                                           FontSize="12" TextColor="#9A8AAE"
+                                           MaxLines="2" LineBreakMode="WordWrap" />
+                                </VerticalStackLayout>
+                            </ScrollView>
 
-                <!-- Fila 1: segmented 'Escenarios | Mi agenda ⭐' (sus hijos se crean en CrearSegmented). -->
-                <Grid Grid.Row="1" x:Name="SegmentedHost" Padding="16,2,16,8" />
-
-                <!-- Fila 2: contenido con DOS scrolls superpuestos (uno visible a la vez). -->
-                <Grid Grid.Row="2">
-                    <ScrollView x:Name="EscenariosScroll" Padding="16,0,16,12"
-                                VerticalScrollBarVisibility="Default">
-                        <VerticalStackLayout x:Name="ListaEscenariosHost" Spacing="8">
-                            <!-- Subtitulo tenue (PistaSuperior): primer hijo del host; el metodo
-                                 DibujarListaEscenarios lo respeta por ReferenceEquals. -->
-                            <Label x:Name="PistaSuperior"
-                                   Text="Pica un número para ver las actividades del escenario"
-                                   FontSize="12" TextColor="#9A8AAE"
-                                   MaxLines="2" LineBreakMode="WordWrap" />
-                        </VerticalStackLayout>
-                    </ScrollView>
-
-                    <ScrollView x:Name="AgendaScroll" IsVisible="False" Padding="16,0,16,12"
-                                VerticalScrollBarVisibility="Default">
-                        <VerticalStackLayout x:Name="AgendaHost" Spacing="4" />
-                    </ScrollView>
-                </Grid>
-            </Grid>
-        </Border>
+                            <ScrollView x:Name="AgendaScroll" IsVisible="False" Padding="16,0,16,12"
+                                        VerticalScrollBarVisibility="Default">
+                                <VerticalStackLayout x:Name="AgendaHost" Spacing="4" />
+                            </ScrollView>
+                        </Grid>
+                    </Grid>
+                </bottomsheet:BottomSheetContent.Content>
+            </bottomsheet:BottomSheetContent>
+        </bottomsheet:BottomSheet>
 
         <!-- ══ INTRO DE PORTADA (overlay) ══
              Cubre toda la pantalla (las 2 filas) y se muestra UNA sola vez al abrir el
              evento si este trae imagenPortadaUrl. Fade + zoom suave; se puede saltar con un
              toque. El code-behind la oculta tras ~2.2 s o al tocar. Si no hay portada, nunca
              se hace visible y el flujo va directo al mapa. Declarado al final -> mayor Z ->
-             cubre encabezado, mapa y sheet durante la intro. -->
-        <Grid Grid.Row="0" Grid.RowSpan="3" x:Name="IntroOverlay" IsVisible="False"
+             cubre encabezado y mapa durante la intro. -->
+        <Grid Grid.Row="0" Grid.RowSpan="2" x:Name="IntroOverlay" IsVisible="False"
               InputTransparent="False" BackgroundColor="Transparent">
             <Image x:Name="PortadaImagen" Aspect="AspectFill"
                    HorizontalOptions="Fill" VerticalOptions="Fill" />
