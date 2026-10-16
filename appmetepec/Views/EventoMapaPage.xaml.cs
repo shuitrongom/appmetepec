@@ -1494,6 +1494,13 @@ public partial class EventoMapaPage : ContentPage
 
     private async void OnBackTapped(object sender, TappedEventArgs e)
     {
+        // CIERRA el bottom sheet nativo ANTES de navegar hacia atras. En iOS el BottomSheet
+        // nativo, mientras esta presentado, se superpone y BLOQUEA el pop de Shell: al tocar la
+        // flecha de volver no pasaba nada (en Android si retrocedia, porque alla el panel no usa
+        // la presentacion nativa que intercepta la navegacion). Es el MISMO motivo por el que
+        // AbrirProgramacionAsync cierra el panel antes de ir a un escenario. Cerrarlo aqui deja la
+        // pagina lista para que Shell haga el pop al inicio/lista de eventos en ambas plataformas.
+        PanelInferior.IsOpen = false;
         await Shell.Current.GoToAsync("..");
     }
 
