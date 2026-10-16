@@ -41,20 +41,22 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      # El workload ".NET for iOS 26.5" exige Xcode 26.5. Preferimos el bundle
-      # "Xcode_26.5.app" (instalacion completa) sobre "Xcode_26.5.0.app", que en
+      # El workload ".NET for iOS 26.5.10318" (ver "Install MAUI workloads") exige
+      # Xcode 26.6, que es la version MAS NUEVA disponible en el runner macos-26
+      # (no hay Xcode 27, que pediria el workload 27.0.x). Preferimos el bundle
+      # "Xcode_26.6.app" (instalacion completa) sobre "Xcode_26.6.0.app", que en
       # el runner puede estar incompleto (le falta MacOSX.sdk que usa actool).
       # Apuntamos a Contents/Developer y forzamos runFirstLaunch para activar
       # los componentes/SDKs. Verificamos que el SDK de macOS exista.
-      - name: Select Xcode 26.5
+      - name: Select Xcode 26.6
         run: |
           echo "Versiones de Xcode disponibles:"
           ls -d /Applications/Xcode_*.app || true
           XC=""
-          for cand in /Applications/Xcode_26.5.app /Applications/Xcode_26.5.0.app; do
+          for cand in /Applications/Xcode_26.6.app /Applications/Xcode_26.6.0.app; do
             if [ -d "$cand" ]; then XC="$cand"; break; fi
           done
-          if [ -z "$XC" ]; then XC="$(ls -d /Applications/Xcode_26.5*.app 2>/dev/null | sort -V | head -n 1)"; fi
+          if [ -z "$XC" ]; then XC="$(ls -d /Applications/Xcode_26.6*.app 2>/dev/null | sort -V | head -n 1)"; fi
           echo "Usando $XC"
           sudo xcode-select -s "$XC/Contents/Developer"
           sudo xcodebuild -runFirstLaunch || true
@@ -64,12 +66,17 @@ jobs:
           echo "Verificando SDK de macOS (necesario para actool):"
           ls "$XC/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/" || true
 
-      # Con .NET 10 + Xcode 26, 'workload restore' instala los workloads que el
-      # proyecto declara (maui: android + ios) en la version compatible con el
-      # SDK .NET 10 y Xcode 26. Al final lista lo instalado para verificar.
+      # Workloads MAUI FIJADOS al workload set 10.0.401. Ese set instala
+      # Microsoft.iOS 26.5.10318, que es la version de .NET for iOS que empareja
+      # con Xcode 26.6 (el Xcode mas nuevo disponible en el runner macos-26).
+      # NO usar 'dotnet workload restore' sin version: trae el ultimo set, que
+      # instala iOS 27.0.10722 y exige Xcode 27.0 (no disponible en el runner) ->
+      # el build fallaba con "requires Xcode 27.0". Al pinear 10.0.401 el workload
+      # queda alineado con el Xcode 26.6 seleccionado arriba. Ref: dotnet/macios
+      # ".NET 10 - Xcode 26.6 support (26.5.10318)".
       - name: Install MAUI workloads
         run: |
-          dotnet workload restore ${{ env.PROJECT }}
+          dotnet workload install maui --version 10.0.401
           dotnet workload list
 
       # --- Firma de codigo -------------------------------------------------
