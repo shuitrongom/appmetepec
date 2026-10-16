@@ -15,7 +15,7 @@ public static class AppConstants
     // Aviso de Privacidad: ruta publica de la web (front-end/public/legal/aviso-privacidad.html).
     // Antes apuntaba a https://metepec7311.com/privacidad/, dominio que no existe. Al pasar a
     // produccion, cambiar al dominio de la web de produccion (la misma URL va en Google Play).
-    public const string PrivacyUrl = "https://dess-ti.ddns.net:8067/#/aviso-privacidad";
+    public const string PrivacyUrl = "https://sites.google.com/view/metepec7311-aviso-privacidad";
     public const string SamUrl = "https://rebrand.ly/uqqh70m";
     // Banners "PAGO EN LINEA" del carrusel de Inicio (HomePage.OnPromoBannerTapped).
     public const string PredialUrl = "https://recaudacion.tesoreriametepec.com.mx/";
