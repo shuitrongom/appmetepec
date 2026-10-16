@@ -263,55 +263,152 @@ public partial class HomePage : ContentPage
                 TextColor = Color.FromArgb("#555555")
             });
 
-            var itemsRow = new HorizontalStackLayout { Spacing = 6 };
-
-            foreach (var report in category.Reportes)
+            // Fila de tarjetas con CollectionView HORIZONTAL (enfoque premium, estandar de la
+            // industria). Reemplaza al HorizontalStackLayout+ScrollView que mostraba medias
+            // tarjetas recortadas en los bordes (las "rayas blancas"). Ventajas:
+            //  - Scroll libre + margenes laterales: la ultima tarjeta ASOMA desde el borde real
+            //    (indicador natural de "hay mas, desliza") en vez de quedar cortada con filo recto.
+            //  - Virtualizacion y alturas de celda uniformes.
+            //  - Sin padding en el scroll -> no dispara el bug de clip de Android.
+            // ItemsSource son los DATOS (ScreenReport) y el ItemTemplate construye cada tarjeta
+            // desde el binding: asi el CollectionView maneja el reciclaje correctamente (NO se le
+            // pasan Views ya construidas, que no pueden tener dos padres).
+            var fila = new CollectionView
             {
-                itemsRow.Children.Add(CreateReportItem(report));
-            }
-
-            categoryBlock.Children.Add(new ScrollView
-            {
-                Orientation = ScrollOrientation.Horizontal,
+                ItemsSource = category.Reportes,
+                SelectionMode = SelectionMode.None,
                 HorizontalScrollBarVisibility = ScrollBarVisibility.Never,
-                Content = itemsRow
-            });
+                VerticalScrollBarVisibility = ScrollBarVisibility.Never,
+                ItemsLayout = new LinearItemsLayout(ItemsLayoutOrientation.Horizontal)
+                {
+                    ItemSpacing = 14,
+                    // SIN snap mandatorio: el snap forzaba el scroll a dejar la ULTIMA tarjeta
+                    // pegada al borde derecho, y como el titulo es mas ancho que el icono, su texto
+                    // se cortaba contra el filo de la pantalla (habia que empujar la lista para
+                    // leerlo). Con scroll libre + el margen final (AireFinalDerecho) de la ultima
+                    // tarjeta, el titulo se ve completo. Las "rayas blancas" NO vuelven: eso lo
+                    // resuelve el margin negativo + el aire lateral, no el snap.
+                    SnapPointsType = SnapPointsType.None
+                },
+                // Alto fijo de la fila: icono (90) + spacing + hasta 3 lineas de titulo (12pt).
+                // 168 deja espacio holgado para las 3 lineas en iOS y Android sin recortar el
+                // texto por abajo (en iOS el alto de celda es estricto; si queda corto, trunca).
+                HeightRequest = 168,
+                // CLAVE para las "rayas blancas": el CollectionView se extiende a TODO el ancho de
+                // la pantalla con un Margin lateral NEGATIVO que cancela el Padding=28 del
+                // contenedor (ReportsContent). Asi la ultima tarjeta ASOMA desde el borde real de
+                // la pantalla (indicador natural de "hay mas, desliza") en vez de quedar CORTADA
+                // con filo recto contra el padding -> se acaba el corte feo. El aire inicial (que
+                // la primera tarjeta no quede pegada al borde) lo da el Margin de la primera
+                // tarjeta en CrearPlantillaTarjetaReporte.
+                Margin = new Thickness(-PaddingLateralHome, 0, -PaddingLateralHome, 0),
+                ItemTemplate = new DataTemplate(() => CrearPlantillaTarjetaReporte(category.Reportes))
+            };
+
+            categoryBlock.Children.Add(fila);
 
             CategoriesHost.Children.Add(categoryBlock);
         }
     }
 
-    private VerticalStackLayout CreateReportItem(ScreenReport report)
-    {
-        var layout = new VerticalStackLayout
-        {
-            Spacing = 4,
-            WidthRequest = 110,
-            HorizontalOptions = LayoutOptions.Center,
-            BindingContext = report
-        };
+    // Ancho FIJO de cada tarjeta (icono + titulo) y diametro del icono. El ancho de la tarjeta es
+    // la UNICA fuente de verdad del ancho: icono y titulo se centran dentro de ese ancho, igual
+    // para todas, asi la cuadricula queda pareja y el titulo dispone del ancho COMPLETO para
+    // envolver en 2-3 lineas sin cortarse. 132px da aire comodo para titulos como "Atencion a
+    // denuncia por..."; el icono de 90px (cercano al tamano original que lucia bien) se centra
+    // con holgura a los lados.
+    private const double AnchoTarjetaReporte = 132;
+    private const double DiametroIconoReporte = 90;
+    // Padding lateral de la pagina (ReportsContent Padding="28,..."). El CollectionView lo cancela
+    // con Margin negativo para ocupar todo el ancho; la primera/ultima tarjeta recuperan ese aire
+    // con su Margin, para quedar alineadas con el titulo de la categoria y no pegadas al borde.
+    private const double PaddingLateralHome = 28;
+    // Margen derecho de la ULTIMA tarjeta. Mayor que el padding de pagina porque el titulo es mas
+    // ancho que el icono (132 vs 90): este aire extra evita que el titulo de la ultima tarjeta se
+    // corte contra el borde derecho (antes habia que empujar la lista con el dedo para leerlo).
+    private const double AireFinalDerecho = 48;
 
-        layout.Children.Add(new Image
+    // Plantilla de UNA tarjeta de reporte para el CollectionView horizontal. Recibe la lista para
+    // saber si la celda es la PRIMERA o la ULTIMA y darle el aire lateral (margin) que las separa
+    // del borde de la pantalla. Se enlaza por BindingContext a un ScreenReport (IconSource/Title).
+    // El tipo es IList<ScreenReport> (el de DependenciaCategoria.Reportes): tiene IndexOf y evita
+    // una conversion.
+    private View CrearPlantillaTarjetaReporte(IList<ScreenReport> reportes)
+    {
+        var icono = new Image
         {
-            Source = report.IconSource,
-            HeightRequest = 100,
-            WidthRequest = 100,
+            HeightRequest = DiametroIconoReporte,
+            WidthRequest = DiametroIconoReporte,
             Aspect = Aspect.AspectFit,
             HorizontalOptions = LayoutOptions.Center
-        });
+        };
+        icono.SetBinding(Image.SourceProperty, nameof(ScreenReport.IconSource));
 
-        layout.Children.Add(new Label
+        var titulo = new Label
         {
-            Text = report.Title,
             FontSize = 12,
             TextColor = Color.FromArgb("#555555"),
             HorizontalTextAlignment = TextAlignment.Center,
             LineBreakMode = LineBreakMode.WordWrap,
-            MaxLines = 4
-        });
+            MaxLines = 3,
+            // Fill DENTRO de una celda de Grid de ancho fijo (ver abajo): el Grid restringe el
+            // ancho de verdad en la medicion, por lo que el Label envuelve. NO se usa WidthRequest
+            // aqui porque en iOS, dentro de un StackLayout de celda de CollectionView, el ancho se
+            // mide como infinito y el Label NO envolvia (truncaba a 1 linea) aunque tuviera
+            // WidthRequest; metido en un Grid de ancho fijo, iOS si aplica la restriccion.
+            HorizontalOptions = LayoutOptions.Fill,
+            VerticalOptions = LayoutOptions.Start
+        };
+        titulo.SetBinding(Label.TextProperty, nameof(ScreenReport.Title));
+
+        // CONTENEDOR = Grid de ANCHO FIJO (no VerticalStackLayout). Esta es la correccion del
+        // truncado iOS-vs-Android: en iOS la celda del CollectionView horizontal mide a su hijo
+        // con ancho INFINITO, y un Label dentro de un StackLayout no recibe un ancho real que lo
+        // obligue a envolver -> truncaba a una linea (en Android si envolvia). Un Grid con
+        // WidthRequest fijo restringe el ancho de sus hijos DURANTE la medicion en ambas
+        // plataformas, asi el Label envuelve identico en iOS y Android. Fila 0 = icono, fila 1 =
+        // titulo (RowSpacing 6).
+        var layout = new Grid
+        {
+            WidthRequest = AnchoTarjetaReporte,
+            RowSpacing = 6,
+            VerticalOptions = LayoutOptions.Start,
+            RowDefinitions =
+            {
+                new RowDefinition { Height = GridLength.Auto },
+                new RowDefinition { Height = GridLength.Auto }
+            }
+        };
+        Grid.SetRow(icono, 0);
+        Grid.SetRow(titulo, 1);
+        layout.Children.Add(icono);
+        layout.Children.Add(titulo);
+
+        // Aire lateral: la PRIMERA tarjeta recupera el padding de pagina a su izquierda (para
+        // quedar alineada con el titulo de la categoria) y la ULTIMA a su derecha. La ultima lleva
+        // un margen derecho MAYOR (AireFinalDerecho) porque el TITULO es mas ancho que el icono
+        // (usa los 132px de la tarjeta vs 90px del icono): con solo el padding de pagina el titulo
+        // de la ultima tarjeta quedaba cortado contra el borde y habia que empujarlo con el dedo
+        // para verlo. El margen extra deja que el titulo completo respire sin empujar.
+        // El margin se calcula por POSICION del item en cada bind (el CollectionView recicla celdas).
+        layout.BindingContextChanged += (_, _) =>
+        {
+            var idx = layout.BindingContext is ScreenReport r ? reportes.IndexOf(r) : -1;
+            var izq = idx == 0 ? PaddingLateralHome : 0;
+            var der = idx == reportes.Count - 1 ? AireFinalDerecho : 0;
+            layout.Margin = new Thickness(izq, 0, der, 0);
+        };
 
         var tap = new TapGestureRecognizer();
-        tap.Tapped += async (_, _) => await OpenReportAsync(report);
+        tap.Tapped += async (sender, _) =>
+        {
+            // El item vigente de la celda (el CollectionView recicla celdas; usar el
+            // BindingContext garantiza que se abre el reporte correcto, no uno capturado).
+            if ((sender as View)?.BindingContext is ScreenReport report)
+            {
+                await OpenReportAsync(report);
+            }
+        };
         layout.GestureRecognizers.Add(tap);
 
         return layout;

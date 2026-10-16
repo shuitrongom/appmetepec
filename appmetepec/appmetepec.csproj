@@ -99,6 +99,16 @@
 		     net10.0-ios26.0). Es LOCAL en el dispositivo (sin backend ni push remoto);
 		     convive con Plugin.Firebase (push remoto) sin reemplazarlo. -->
 		<PackageReference Include="Plugin.LocalNotification" Version="14.1.2" />
+		<!-- BottomSheet NATIVO para el mapa de Eventos (panel inferior "escenarios y tu agenda").
+		     Libreria gratuita y madura (lucacivale/Maui.BottomSheet). Es la MISMA 10.0.7 ya
+		     validada en TestFlight (iOS) y emulador (Android): el paquete es MULTI-TARGET e incluye
+		     grupos net10.0-android36.0 / net10.0-ios26.0 (depende de Microsoft.Maui.Controls 10.0.10,
+		     compatible con el 10.0.110 de este proyecto), por lo que sirve igual en .NET 10. Su
+		     cadena transitiva (Plugin.BottomSheet.Core/.Android/.iOSMacCatalyst 10.0.7) es coherente.
+		     NO usar la 11.0.0: su nuspec apunta por error a Plugin.BottomSheet 1.0.0, que choca con
+		     la cadena 10.x y provoca NU1605 (degradacion de paquete). Se habilita con
+		     .UseBottomSheet() en MauiProgram. -->
+		<PackageReference Include="Plugin.Maui.BottomSheet" Version="10.0.7" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(TargetFramework)'=='net10.0-android'">

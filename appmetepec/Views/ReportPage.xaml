@@ -53,9 +53,14 @@
                         <Border.StrokeShape>
                             <RoundRectangle CornerRadius="8" />
                         </Border.StrokeShape>
-                        <Editor x:Name="AddressEditor" Placeholder="Direccion" FontSize="12" AutoSize="TextChanges" HeightRequest="110" BackgroundColor="Transparent" TextColor="{AppThemeBinding Light=#333, Dark=White}" HorizontalTextAlignment="Center" />
+                        <!-- SOLO LECTURA (IsReadOnly): la direccion NO se escribe a mano; se llena
+                             AUTOMATICAMENTE al usar "Usar mi ubicacion" o "Elegir en el mapa", para
+                             que la direccion SIEMPRE corresponda a las coordenadas reales del GPS/mapa.
+                             Asi se evita que el ciudadano escriba una direccion que no coincide con el
+                             punto, o que no haya coordenadas. -->
+                        <Editor x:Name="AddressEditor" IsReadOnly="True" Placeholder="Usa un botón de abajo para capturar tu ubicación" FontSize="12" AutoSize="TextChanges" HeightRequest="110" BackgroundColor="Transparent" TextColor="{AppThemeBinding Light=#333, Dark=White}" HorizontalTextAlignment="Center" />
                     </Border>
-                    <Button Text="Usar mi ubicacion" Clicked="OnUseLocationClicked" ImageSource="ic_marker.png" BackgroundColor="#A6CE39" TextColor="White" FontSize="10" WidthRequest="140" HeightRequest="36" HorizontalOptions="Start" VerticalOptions="End" />
+                    <Button Text="Usar mi ubicación" Clicked="OnUseLocationClicked" ImageSource="ic_marker.png" BackgroundColor="#A6CE39" TextColor="White" FontSize="10" WidthRequest="140" HeightRequest="36" HorizontalOptions="Start" VerticalOptions="End" />
                     <Button Text="Elegir en el mapa" Clicked="OnPickOnMapClicked" ImageSource="ic_marker.png" BackgroundColor="#F89A1C" TextColor="White" FontSize="10" WidthRequest="140" HeightRequest="36" HorizontalOptions="End" VerticalOptions="End" />
                 </Grid>
                 <Label x:Name="CoordinatesLabel" TextColor="{AppThemeBinding Light=#28113E, Dark=White}" FontSize="12" />
