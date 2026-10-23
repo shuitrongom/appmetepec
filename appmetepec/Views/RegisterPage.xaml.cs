@@ -87,7 +87,7 @@ public partial class RegisterPage : ContentPage
         }
     }
 
-    private async Task CompleteRegistrationAsync()
+    private async Task CompleteRegistrationAsync(bool confirmarVinculacion = false)
     {
         try
         {
@@ -100,7 +100,8 @@ public partial class RegisterPage : ContentPage
                 Token = _emailVerificationToken,
                 Nombre = NombreEntry.Text?.Trim() ?? "",
                 Apaterno = ApellidoEntry.Text?.Trim() ?? "",
-                Telefonomovil = _phone
+                Telefonomovil = _phone,
+                ConfirmarVinculacion = confirmarVinculacion
             });
 
             var username = registro?.IdentityUser.Username ?? "";
@@ -137,6 +138,31 @@ public partial class RegisterPage : ContentPage
             }
 
             await Shell.Current.GoToAsync($"//{nameof(HomePage)}");
+        }
+        catch (VinculacionRequeridaException ex)
+        {
+            // Ya existe un ciudadano dado de alta en la web con este correo (sin cuenta de la app).
+            // Nunca se vincula sin preguntar: si es el, se reintenta vinculando (conserva sus
+            // reportes); si no, debe registrarse con otro correo.
+            var esElCiudadano = await DisplayAlert(
+                "¿Eres tú?",
+                $"Ya existe un registro con este correo a nombre de {ex.NombreEnmascarado}.¿Eres tú? Si confirmas, tu cuenta quedará vinculada a ese registro y podrás ver tus reportes.",
+                "Sí, soy yo",
+                "No soy yo");
+
+            if (esElCiudadano)
+            {
+                await CompleteRegistrationAsync(confirmarVinculacion: true);
+                return;
+            }
+
+            StopCodeTimer();
+            CodePanel.IsVisible = false;
+            FormPanel.IsVisible = true;
+            await DisplayAlert(
+                "Usa otro correo",
+                "Este correo ya pertenece a otro ciudadano. Para registrarte, captura un correo electrónico diferente.",
+                "Aceptar");
         }
         catch (Exception ex)
         {

@@ -124,6 +124,8 @@ public sealed class MetepecApiService
         if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
         {
             var body = await ReadJsonAsync<ErrorResponse>(response, cancellationToken);
+            if (body?.requiereVinculacion == true)
+                throw new VinculacionRequeridaException(body.nombre ?? "", body.error ?? "");
             throw new InvalidOperationException(body?.error ?? "No se pudo completar el registro.");
         }
 
