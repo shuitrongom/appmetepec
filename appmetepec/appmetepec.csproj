@@ -27,7 +27,9 @@
 		<ApplicationId>mx.gob.edomex.metepec.gc</ApplicationId>
 
 		<!-- Versions -->
-		<ApplicationDisplayVersion>1.5.1</ApplicationDisplayVersion>
+		<!-- 1.5.1 es la version PUBLICADA en App Store. Esta build de QA (backend 8070) sube a 1.5.2
+		     para no chocar con la de tienda en TestFlight. -->
+		<ApplicationDisplayVersion>1.5.2</ApplicationDisplayVersion>
 		<ApplicationVersion>83</ApplicationVersion>
 
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">15.0</SupportedOSPlatformVersion>

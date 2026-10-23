@@ -24,7 +24,9 @@ public static class AppConstants
     // TODO: configurar antes de produccion (Account SID / Auth Token de Twilio); sin esto, el envio real de SMS devuelve 401.
     public const string TwilioAccountSid = "";
     public const string TwilioAuthToken = "";
-    public const string MetepecBackendUrl = "https://dess-ti.ddns.net:8069/api";
+    // Backend: 8069 = PRODUCTIVO, 8070 = QA/pruebas. Ahora apunta a QA para validar en TestFlight;
+    // revertir a 8069 antes de generar una build de produccion.
+    public const string MetepecBackendUrl = "https://dess-ti.ddns.net:8070/api";
 
     // Fichas de la app en las tiendas (boton "Actualizar" del aviso de version nueva, ver
     // SplashViewModel). Android usa el ApplicationId; iOS necesita el ID numerico de App Store
