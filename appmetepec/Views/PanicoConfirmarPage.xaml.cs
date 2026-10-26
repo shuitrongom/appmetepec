@@ -10,6 +10,11 @@ namespace appmetepec.Views;
 // de todas formas.
 public partial class PanicoConfirmarPage : ContentPage
 {
+    // Aviso de un solo boton con el estilo de la app (DialogoPage). Naranja con "!" por defecto.
+    private Task AvisoAsync(string titulo, string? mensaje, string? nota = null, string icono = "!",
+        (Color Acento, Color Tenue)? colores = null, string boton = "Entendido") =>
+        DialogoPage.MostrarAsync(Navigation, titulo, mensaje ?? "", boton, nota: nota, icono: icono, colores: colores);
+
     private readonly PreferencesService _preferences;
     private readonly MetepecApiService _api;
     private readonly NavigationState _navigationState;
@@ -67,15 +72,33 @@ public partial class PanicoConfirmarPage : ContentPage
             }
             catch (Exception ex)
             {
-                await DisplayAlert("No se pudo iniciar la llamada", ErrorMessageHelper.Traducir(ex), "Aceptar");
+                await AvisoAsync("No se pudo iniciar la llamada", ErrorMessageHelper.Traducir(ex), nota: "Marca directamente al 911 si la emergencia continúa.", colores: DialogoPage.Rojo);
             }
 
             _navigationState.PanicoDatos = null;
 
-            var mensaje = ticketId is not null
-                ? $"Se notificó a C2 y se generó el folio {ticketId}."
-                : "No se pudo registrar el ticket, pero se inició la llamada de emergencia.";
-            await DisplayAlert("Emergencia reportada", mensaje, "Aceptar");
+            // Con folio: exito (verde, folio destacado). Sin folio: aviso (rojo), la llamada si se hizo.
+            if (ticketId is not null)
+            {
+                await DialogoPage.MostrarAsync(
+                    Navigation,
+                    titulo: "Emergencia reportada",
+                    mensaje: "Se notificó a C2 con tu ubicación y datos de contacto. Tu folio es:",
+                    destacado: $"{ticketId}",
+                    botonPrincipal: "Entendido",
+                    icono: "✓",
+                    colores: DialogoPage.Verde);
+            }
+            else
+            {
+                await DialogoPage.MostrarAsync(
+                    Navigation,
+                    titulo: "Emergencia reportada",
+                    mensaje: "No se pudo registrar el ticket, pero se inició la llamada de emergencia.",
+                    botonPrincipal: "Entendido",
+                    icono: "!",
+                    colores: DialogoPage.Rojo);
+            }
             await Shell.Current.GoToAsync($"//{nameof(HomePage)}");
         }
         finally

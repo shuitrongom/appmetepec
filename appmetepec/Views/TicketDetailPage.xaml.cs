@@ -5,6 +5,11 @@ namespace appmetepec.Views;
 
 public partial class TicketDetailPage : ContentPage
 {
+    // Aviso de un solo boton con el estilo de la app (DialogoPage). Naranja con "!" por defecto.
+    private Task AvisoAsync(string titulo, string? mensaje, string? nota = null, string icono = "!",
+        (Color Acento, Color Tenue)? colores = null, string boton = "Entendido") =>
+        DialogoPage.MostrarAsync(Navigation, titulo, mensaje ?? "", boton, nota: nota, icono: icono, colores: colores);
+
     private static readonly TimeSpan EsperaEncuestaPendiente = TimeSpan.FromMinutes(2);
 
     private readonly MetepecApiService _api;
@@ -149,7 +154,7 @@ public partial class TicketDetailPage : ContentPage
         catch (Exception ex)
         {
             BindableLayout.SetItemsSource(ObservacionesView, Array.Empty<BackendTicketObservacionDto>());
-            await DisplayAlert("No se pudieron cargar las respuestas", ErrorMessageHelper.Traducir(ex), "Aceptar");
+            await AvisoAsync("No se pudieron cargar las respuestas", ErrorMessageHelper.Traducir(ex), nota: "Revisa tu conexión a internet e intenta de nuevo.");
         }
         finally
         {
@@ -204,7 +209,7 @@ public partial class TicketDetailPage : ContentPage
         catch
         {
             _volviendoDeGaleria = false;
-            await DisplayAlert("No se pudo abrir", "No se encontró una aplicación para abrir el archivo.", "Aceptar");
+            await AvisoAsync("No se pudo abrir el archivo", "No se encontró una aplicación en tu teléfono para abrir este archivo.");
         }
         finally
         {
@@ -249,7 +254,7 @@ public partial class TicketDetailPage : ContentPage
         }
         catch
         {
-            await DisplayAlert("No se pudo abrir", "No se encontró una aplicación para abrir el enlace.", "Aceptar");
+            await AvisoAsync("No se pudo abrir el enlace", "No se encontró una aplicación en tu teléfono para abrir este enlace.");
         }
     }
 

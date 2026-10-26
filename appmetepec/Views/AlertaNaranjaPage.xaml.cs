@@ -5,6 +5,11 @@ namespace appmetepec.Views;
 
 public partial class AlertaNaranjaPage : ContentPage
 {
+    // Aviso de un solo boton con el estilo de la app (DialogoPage). Naranja con "!" por defecto.
+    private Task AvisoAsync(string titulo, string? mensaje, string? nota = null, string icono = "!",
+        (Color Acento, Color Tenue)? colores = null, string boton = "Entendido") =>
+        DialogoPage.MostrarAsync(Navigation, titulo, mensaje ?? "", boton, nota: nota, icono: icono, colores: colores);
+
     private readonly PreferencesService _preferences;
     private readonly MetepecApiService _api;
     private string _coordinates = "";
@@ -38,7 +43,7 @@ public partial class AlertaNaranjaPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlert("Ubicacion", ErrorMessageHelper.Traducir(ex), "Aceptar");
+            await AvisoAsync("No se obtuvo tu ubicación", ErrorMessageHelper.Traducir(ex), nota: "Verifica que el GPS esté activado y que la app tenga permiso de ubicación.");
         }
     }
 
@@ -46,7 +51,7 @@ public partial class AlertaNaranjaPage : ContentPage
     {
         _preferences.NaranjaName = NameEntry.Text?.Trim() ?? "";
         _preferences.CurrentUser = new UserProfile(_preferences.NaranjaName, EmailEntry.Text?.Trim() ?? "", PhoneEntry.Text?.Trim() ?? "");
-        await DisplayAlert("Alerta", "Datos guardados.", "Aceptar");
+        await AvisoAsync("¡Datos guardados!", "Tus datos de contacto para la Alerta Naranja se guardaron correctamente.", icono: "✓", colores: DialogoPage.Verde);
     }
 
     private async void OnActivateClicked(object sender, EventArgs e)
@@ -62,7 +67,7 @@ public partial class AlertaNaranjaPage : ContentPage
 
             if (_preferences.CiudadanoId == 0)
             {
-                await DisplayAlert("No se pudo identificar tu cuenta", "Vuelve a iniciar sesion e intenta de nuevo.", "Aceptar");
+                await AvisoAsync("No se pudo identificar tu cuenta", "Vuelve a iniciar sesión e intenta de nuevo.", colores: DialogoPage.Rojo);
                 return;
             }
 
@@ -110,11 +115,18 @@ public partial class AlertaNaranjaPage : ContentPage
             };
 
             var ticketId = await _api.CreateTicketAsync(request);
-            await DisplayAlert("Alerta enviada", $"Las autoridades locales se pondran en contacto a la brevedad.\nFolio: {ticketId}", "Aceptar");
+            await DialogoPage.MostrarAsync(
+                Navigation,
+                titulo: "Alerta enviada",
+                mensaje: "Las autoridades locales se pondrán en contacto contigo a la brevedad. Tu folio es:",
+                destacado: $"{ticketId}",
+                botonPrincipal: "Entendido",
+                icono: "✓",
+                colores: DialogoPage.Verde);
         }
         catch (Exception ex)
         {
-            await DisplayAlert("No se pudo enviar", ErrorMessageHelper.Traducir(ex), "Aceptar");
+            await AvisoAsync("No se pudo enviar la alerta", ErrorMessageHelper.Traducir(ex), nota: "Si es una emergencia, marca directamente al 911.", colores: DialogoPage.Rojo);
         }
         finally
         {

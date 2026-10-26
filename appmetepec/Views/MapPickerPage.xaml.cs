@@ -11,6 +11,11 @@ public sealed record MapLocation(double Latitud, double Longitud, string Direcci
 // null si el ciudadano cancela.
 public partial class MapPickerPage : ContentPage
 {
+    // Aviso de un solo boton con el estilo de la app (DialogoPage). Naranja con "!" por defecto.
+    private Task AvisoAsync(string titulo, string? mensaje, string? nota = null, string icono = "!",
+        (Color Acento, Color Tenue)? colores = null, string boton = "Entendido") =>
+        DialogoPage.MostrarAsync(Navigation, titulo, mensaje ?? "", boton, nota: nota, icono: icono, colores: colores);
+
     private const int ZoomConMarcador = 17;
 
     private readonly GeocodingService _geocoding;
@@ -215,7 +220,7 @@ public partial class MapPickerPage : ContentPage
             var resultado = await _geocoding.SearchAddressAsync(q);
             if (resultado is null)
             {
-                await DisplayAlert("Buscar direccion", "No se encontro la direccion. Intenta con otra o toca el mapa.", "Aceptar");
+                await AvisoAsync("No encontramos la dirección", "Intenta escribirla de otra forma o toca el mapa para marcar el punto.", icono: "?");
                 return;
             }
 

@@ -8,6 +8,11 @@ namespace appmetepec.Views;
 // en el back-end -- no se puede tocar Activo/Idusuario/Idestado/Curp desde aqui).
 public partial class PerfilPage : ContentPage
 {
+    // Aviso de un solo boton con el estilo de la app (DialogoPage). Naranja con "!" por defecto.
+    private Task AvisoAsync(string titulo, string? mensaje, string? nota = null, string icono = "!",
+        (Color Acento, Color Tenue)? colores = null, string boton = "Entendido") =>
+        DialogoPage.MostrarAsync(Navigation, titulo, mensaje ?? "", boton, nota: nota, icono: icono, colores: colores);
+
     private readonly MetepecApiService _api;
 
     public PerfilPage(MetepecApiService api)
@@ -31,7 +36,7 @@ public partial class PerfilPage : ContentPage
             var ciudadano = await _api.GetMyCiudadanoDetailsAsync();
             if (ciudadano is null)
             {
-                await DisplayAlert("Mi perfil", "No se encontró tu información de ciudadano.", "Aceptar");
+                await AvisoAsync("No encontramos tu perfil", "No se encontró tu información de ciudadano.", nota: "Cierra sesión y vuelve a entrar; si continúa, contáctanos.", colores: DialogoPage.Rojo);
                 await Shell.Current.GoToAsync("..");
                 return;
             }
@@ -53,7 +58,7 @@ public partial class PerfilPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlert("Mi perfil", ErrorMessageHelper.Traducir(ex), "Aceptar");
+            await AvisoAsync("No se pudo cargar tu perfil", ErrorMessageHelper.Traducir(ex), nota: "Revisa tu conexión a internet e intenta de nuevo.");
         }
         finally
         {
@@ -67,7 +72,7 @@ public partial class PerfilPage : ContentPage
         var apaterno = ApaternoEntry.Text?.Trim() ?? "";
         if (string.IsNullOrWhiteSpace(nombre) || string.IsNullOrWhiteSpace(apaterno))
         {
-            await DisplayAlert("Datos requeridos", "Captura al menos tu nombre y apellido paterno.", "Aceptar");
+            await AvisoAsync("Datos incompletos", "Captura al menos tu nombre y tu apellido paterno.");
             return;
         }
 
@@ -89,11 +94,11 @@ public partial class PerfilPage : ContentPage
             BusyIndicator.IsRunning = BusyIndicator.IsVisible = true;
             await _api.UpdateMyCiudadanoAsync(request);
             await _api.UpdateMyDireccionPrincipalAsync(new BackendActualizarMiDireccionRequest { Direccion = DireccionEditor.Text?.Trim() });
-            await DisplayAlert("Mi perfil", "Tus datos se actualizaron correctamente.", "Aceptar");
+            await AvisoAsync("¡Datos actualizados!", "Tus datos se guardaron correctamente.", icono: "✓", colores: DialogoPage.Verde);
         }
         catch (Exception ex)
         {
-            await DisplayAlert("Mi perfil", ErrorMessageHelper.Traducir(ex), "Aceptar");
+            await AvisoAsync("No se pudieron guardar tus datos", ErrorMessageHelper.Traducir(ex), colores: DialogoPage.Rojo);
         }
         finally
         {

@@ -13,6 +13,11 @@ namespace appmetepec.Views;
 // dia actual. Diseno premium: el usuario ve "hoy" al frente y explora con un toque.
 public partial class EscenarioProgramaPage : ContentPage
 {
+    // Aviso de un solo boton con el estilo de la app (DialogoPage). Naranja con "!" por defecto.
+    private Task AvisoAsync(string titulo, string? mensaje, string? nota = null, string icono = "!",
+        (Color Acento, Color Tenue)? colores = null, string boton = "Entendido") =>
+        DialogoPage.MostrarAsync(Navigation, titulo, mensaje ?? "", boton, nota: nota, icono: icono, colores: colores);
+
     private readonly NavigationState _navigationState;
     private readonly FavoritosService _favoritos;
     private readonly RecordatoriosService _recordatorios;
@@ -156,7 +161,7 @@ public partial class EscenarioProgramaPage : ContentPage
 
         if (dias.Count == 0)
         {
-            await DisplayAlert("Calendario", "Este escenario aún no tiene eventos programados.", "Aceptar");
+            await AvisoAsync("Sin eventos programados", "Este escenario aún no tiene eventos programados.", nota: "Vuelve a consultarlo más adelante.", icono: "i");
             return;
         }
 
@@ -220,8 +225,7 @@ public partial class EscenarioProgramaPage : ContentPage
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[ComoLlegar] No se pudo abrir el mapa: {ex}");
-            await DisplayAlert("Cómo llegar",
-                "No se pudo abrir la aplicación de mapas en este dispositivo.", "Aceptar");
+            await AvisoAsync("No se pudo abrir el mapa", "No se pudo abrir la aplicación de mapas en este dispositivo.", nota: "Instala o habilita Google Maps e intenta de nuevo.");
         }
     }
 

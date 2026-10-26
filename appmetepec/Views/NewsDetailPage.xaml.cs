@@ -7,6 +7,11 @@ namespace appmetepec.Views;
 
 public partial class NewsDetailPage : ContentPage
 {
+    // Aviso de un solo boton con el estilo de la app (DialogoPage). Naranja con "!" por defecto.
+    private Task AvisoAsync(string titulo, string? mensaje, string? nota = null, string icono = "!",
+        (Color Acento, Color Tenue)? colores = null, string boton = "Entendido") =>
+        DialogoPage.MostrarAsync(Navigation, titulo, mensaje ?? "", boton, nota: nota, icono: icono, colores: colores);
+
     private static readonly CultureInfo SpanishCulture = new("es-MX");
 
     private readonly NavigationState _navigationState;
@@ -220,7 +225,7 @@ public partial class NewsDetailPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlert("No se pudieron cargar los comentarios", ErrorMessageHelper.Traducir(ex), "Aceptar");
+            await AvisoAsync("No se pudieron cargar los comentarios", ErrorMessageHelper.Traducir(ex), nota: "Revisa tu conexión a internet e intenta de nuevo.");
         }
         finally
         {
@@ -251,7 +256,7 @@ public partial class NewsDetailPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlert("No se pudo publicar el comentario", ErrorMessageHelper.Traducir(ex), "Aceptar");
+            await AvisoAsync("No se pudo publicar tu comentario", ErrorMessageHelper.Traducir(ex), nota: "Revisa tu conexión a internet e intenta de nuevo.");
         }
         finally
         {
@@ -305,7 +310,15 @@ public partial class NewsDetailPage : ContentPage
         var idCiudadano = _preferences.CiudadanoId;
         if (idCiudadano <= 0) return;
 
-        var confirmar = await DisplayAlert("Eliminar comentario", "¿Quieres eliminar este comentario?", "Eliminar", "Cancelar");
+        var confirmar = await DialogoPage.MostrarAsync(
+            Navigation,
+            titulo: "¿Eliminar comentario?",
+            mensaje: "Tu comentario se eliminará de esta publicación.",
+            nota: "Esta acción no se puede deshacer.",
+            botonPrincipal: "Eliminar",
+            botonSecundario: "Cancelar",
+            icono: "!",
+            colores: DialogoPage.Rojo);
         if (!confirmar) return;
 
         try
@@ -315,7 +328,7 @@ public partial class NewsDetailPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlert("No se pudo eliminar el comentario", ErrorMessageHelper.Traducir(ex), "Aceptar");
+            await AvisoAsync("No se pudo eliminar el comentario", ErrorMessageHelper.Traducir(ex), colores: DialogoPage.Rojo);
         }
     }
 

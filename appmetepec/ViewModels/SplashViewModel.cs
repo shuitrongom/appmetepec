@@ -70,18 +70,28 @@ public sealed partial class SplashViewModel : ObservableObject
             // ya no es menor a VersionReciente).
             var tienda = plataforma == "IOS" ? "App Store" : "Play Store";
             var mensaje = string.IsNullOrWhiteSpace(remoto.Mensaje)
-                ? $"Hay una nueva versión de Metepec *7311 disponible ({remoto.VersionReciente}). Actualízala desde la {tienda} para seguir disfrutando de las mejoras."
+                ? "Hay una nueva versión de Metepec *7311 con mejoras para ti."
                 : remoto.Mensaje;
+            var nota = $"Actualízala desde la {tienda} para seguir disfrutando de las mejoras.";
 
             // Sin ID de App Store configurado no hay a donde mandar al usuario en iPhone: solo aviso.
+            // Mismo dialogo con estilo de la app que el registro/login (DialogoPage), version destacada.
             var puedeAbrirTienda = plataforma != "IOS" || !string.IsNullOrWhiteSpace(AppConstants.AppStoreId);
+            var actualizar = await DialogoPage.MostrarAsync(
+                Shell.Current.Navigation,
+                titulo: "Nueva versión disponible",
+                mensaje: mensaje,
+                destacado: $"Versión {remoto.VersionReciente}",
+                nota: nota,
+                botonPrincipal: puedeAbrirTienda ? "Actualizar" : "Entendido",
+                botonSecundario: puedeAbrirTienda ? "Más tarde" : null,
+                icono: "↑",
+                colores: DialogoPage.Verde);
             if (!puedeAbrirTienda)
             {
-                await Shell.Current.DisplayAlert("Nueva versión disponible", mensaje, "Entendido");
                 return;
             }
 
-            var actualizar = await Shell.Current.DisplayAlert("Nueva versión disponible", mensaje, "Actualizar", "Más tarde");
             if (actualizar)
             {
                 await AbrirTiendaAsync(plataforma);

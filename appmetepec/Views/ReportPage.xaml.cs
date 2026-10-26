@@ -226,7 +226,7 @@ public partial class ReportPage : ContentPage
             var location = await Geolocation.Default.GetLocationAsync(new GeolocationRequest(GeolocationAccuracy.Medium, TimeSpan.FromSeconds(10)));
             if (location is null)
             {
-                await DisplayAlert("Ubicacion", "No fue posible obtener la ubicacion.", "Aceptar");
+                await AvisoAsync("No se obtuvo tu ubicación", "No fue posible obtener tu ubicación en este momento.", nota: "Verifica que el GPS esté activado o elige el punto con \"Elegir en el mapa\".");
                 return;
             }
 
@@ -242,7 +242,7 @@ public partial class ReportPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlert("Ubicacion", ErrorMessageHelper.Traducir(ex), "Aceptar");
+            await AvisoAsync("No se obtuvo tu ubicación", ErrorMessageHelper.Traducir(ex), nota: "Verifica que el GPS esté activado y que la app tenga permiso de ubicación.");
         }
     }
 
@@ -415,9 +415,14 @@ public partial class ReportPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlert("No se pudo agregar la evidencia", ErrorMessageHelper.Traducir(ex), "Aceptar");
+            await AvisoAsync("No se pudo agregar la evidencia", ErrorMessageHelper.Traducir(ex), colores: DialogoPage.Rojo);
         }
     }
+
+    // Aviso de un solo boton con el estilo de la app (DialogoPage). Naranja con "!" por defecto.
+    private Task AvisoAsync(string titulo, string? mensaje, string? nota = null, string icono = "!",
+        (Color Acento, Color Tenue)? colores = null, string boton = "Entendido") =>
+        DialogoPage.MostrarAsync(Navigation, titulo, mensaje ?? "", boton, nota: nota, icono: icono, colores: colores);
 
     private void OnRemoveEvidenciaTapped(object sender, TappedEventArgs e)
     {
@@ -448,7 +453,7 @@ public partial class ReportPage : ContentPage
         // Se indica exactamente que falta.
         if (string.IsNullOrWhiteSpace(phone))
         {
-            await DisplayAlert("Campos obligatorios", "Captura tu teléfono.", "Aceptar");
+            await AvisoAsync("Falta tu teléfono", "Captura tu número de teléfono para que podamos contactarte sobre tu reporte.");
             return;
         }
 
@@ -460,16 +465,16 @@ public partial class ReportPage : ContentPage
         var (coordLatitud, coordLongitud) = ParseCoordinates(_coordinates);
         if (coordLatitud is null || coordLongitud is null)
         {
-            await DisplayAlert(
+            await AvisoAsync(
                 "Ubicación requerida",
-                "Captura la ubicación del reporte con el botón \"Usar mi ubicación\" o \"Elegir en el mapa\". La dirección se completa automáticamente.",
-                "Aceptar");
+                "Indica dónde está el problema con el botón \"Usar mi ubicación\" o \"Elegir en el mapa\".",
+                nota: "La dirección se completa automáticamente.");
             return;
         }
 
         if (_evidenciaObligatoria && _evidencias.Count == 0)
         {
-            await DisplayAlert("Evidencia requerida", "Este tipo de reporte requiere que agregues una foto o video de evidencia antes de enviarlo.", "Aceptar");
+            await AvisoAsync("Evidencia requerida", "Este tipo de reporte requiere una foto o video de evidencia.", nota: "Agrégala antes de enviar tu reporte.");
             return;
         }
 
@@ -479,7 +484,7 @@ public partial class ReportPage : ContentPage
         var evidenciaDescripcion = EvidenciaDescripcionEntry.Text?.Trim() ?? "";
         if (_evidenciaObligatoria && string.IsNullOrWhiteSpace(comments) && string.IsNullOrWhiteSpace(evidenciaDescripcion))
         {
-            await DisplayAlert("Descripción requerida", "Este tipo de reporte requiere que describas el problema: agrega comentarios o una descripción de la evidencia antes de enviarlo.", "Aceptar");
+            await AvisoAsync("Descripción requerida", "Este tipo de reporte requiere que describas el problema.", nota: "Agrega comentarios o una descripción de la evidencia antes de enviarlo.");
             return;
         }
 
@@ -500,7 +505,7 @@ public partial class ReportPage : ContentPage
 
             if (_preferences.CiudadanoId == 0)
             {
-                await DisplayAlert("No se pudo identificar tu cuenta", "Vuelve a iniciar sesion e intenta de nuevo.", "Aceptar");
+                await AvisoAsync("No se pudo identificar tu cuenta", "Vuelve a iniciar sesión e intenta de nuevo.", colores: DialogoPage.Rojo);
                 return;
             }
 
@@ -629,11 +634,15 @@ public partial class ReportPage : ContentPage
         catch (Exception ex)
         {
             var mensajeError = ErrorMessageHelper.Traducir(ex);
-            var guardar = await DisplayAlert(
-                "No se pudo enviar",
-                $"{mensajeError}\n\n¿Quieres guardar este reporte para volver a intentarlo despues?",
-                "Guardar",
-                "Cancelar");
+            var guardar = await DialogoPage.MostrarAsync(
+                Navigation,
+                titulo: "No se pudo enviar tu reporte",
+                mensaje: mensajeError,
+                nota: "¿Quieres guardarlo para volver a intentarlo después? Lo encontrarás en \"Mis reportes\".",
+                botonPrincipal: "Guardar reporte",
+                botonSecundario: "Cancelar",
+                icono: "!",
+                colores: DialogoPage.Rojo);
 
             if (guardar)
             {
@@ -683,10 +692,11 @@ public partial class ReportPage : ContentPage
         }
 
         await _pendingTickets.SaveAsync(submission);
-        await DisplayAlert(
+        await AvisoAsync(
             "Reporte guardado",
-            "Lo encontraras en \"Mis reportes\" para reintentar el envio cuando tengas conexion.",
-            "Aceptar");
+            "Lo encontrarás en \"Mis reportes\" para reintentar el envío cuando tengas conexión.",
+            icono: "✓",
+            colores: DialogoPage.Verde);
         await Shell.Current.GoToAsync("..");
     }
 

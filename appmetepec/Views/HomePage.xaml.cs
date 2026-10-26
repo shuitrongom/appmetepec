@@ -148,10 +148,14 @@ public partial class HomePage : ContentPage
                 return;
             }
 
-            var deseaContestar = await DisplayAlert(
-                "Tu opinión es importante",
-                "Llevas varios días usando la app Metepec *7311. ¿Nos ayudas contestando una breve encuesta?",
-                "Si", "Ahora no");
+            var deseaContestar = await DialogoPage.MostrarAsync(
+                Navigation,
+                titulo: "Tu opinión es importante",
+                mensaje: "Llevas varios días usando la app Metepec *7311. ¿Nos ayudas contestando una breve encuesta?",
+                nota: "Te tomará menos de un minuto.",
+                botonPrincipal: "Sí, claro",
+                botonSecundario: "Ahora no",
+                icono: "★");
 
             if (deseaContestar)
             {
@@ -177,10 +181,13 @@ public partial class HomePage : ContentPage
 
     private async void OnLogoLongPressed()
     {
-        var forzar = await DisplayAlert(
-            "Modo pruebas",
-            "¿Mostrar ahora la encuesta de experiencia de la app (sin esperar los 8 días)?",
-            "Mostrar ahora", "Cancelar");
+        var forzar = await DialogoPage.MostrarAsync(
+            Navigation,
+            titulo: "Modo pruebas",
+            mensaje: "¿Mostrar ahora la encuesta de experiencia de la app (sin esperar los 8 días)?",
+            botonPrincipal: "Mostrar ahora",
+            botonSecundario: "Cancelar",
+            icono: "?");
 
         if (forzar)
         {
@@ -511,7 +518,7 @@ public partial class HomePage : ContentPage
         }
         catch
         {
-            await DisplayAlert("No se pudo abrir", "No se encontró un navegador para abrir la página.", "Aceptar");
+            await AvisoAsync("No se pudo abrir", "No se encontró un navegador para abrir la página.", nota: "Instala o habilita un navegador en tu teléfono e intenta de nuevo.");
         }
     }
 
@@ -678,7 +685,7 @@ public partial class HomePage : ContentPage
         }
         catch
         {
-            await DisplayAlert("No se pudo abrir", "No se encontró un navegador para abrir la página.", "Aceptar");
+            await AvisoAsync("No se pudo abrir", "No se encontró un navegador para abrir la página.", nota: "Instala o habilita un navegador en tu teléfono e intenta de nuevo.");
         }
     }
 
@@ -775,7 +782,7 @@ public partial class HomePage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlert("No se pudo iniciar la llamada", ErrorMessageHelper.Traducir(ex), "Aceptar");
+            await AvisoAsync("No se pudo iniciar la llamada", ErrorMessageHelper.Traducir(ex), colores: DialogoPage.Rojo);
         }
     }
 
@@ -805,9 +812,14 @@ public partial class HomePage : ContentPage
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[Menu] Error al abrir/cerrar el drawer: {ex}");
-            await DisplayAlert("Menu", ErrorMessageHelper.Traducir(ex), "Aceptar");
+            await AvisoAsync("No se pudo abrir el menú", ErrorMessageHelper.Traducir(ex), colores: DialogoPage.Rojo);
         }
     }
+
+    // Aviso de un solo boton con el estilo de la app (DialogoPage). Naranja con "!" por defecto.
+    private Task AvisoAsync(string titulo, string? mensaje, string? nota = null, string icono = "!",
+        (Color Acento, Color Tenue)? colores = null, string boton = "Entendido") =>
+        DialogoPage.MostrarAsync(Navigation, titulo, mensaje ?? "", boton, nota: nota, icono: icono, colores: colores);
 
     private async void OnDrawerBackdropTapped(object sender, TappedEventArgs e)
     {
@@ -983,7 +995,15 @@ public partial class HomePage : ContentPage
     private async void OnDrawerLogoutTapped(object sender, TappedEventArgs e)
     {
         await CloseDrawerAsync();
-        var confirm = await DisplayAlert("Cerrar sesión", "Se cerrará tu sesión actual.", "Cerrar sesión", "Cancelar");
+        var confirm = await DialogoPage.MostrarAsync(
+            Navigation,
+            titulo: "¿Cerrar sesión?",
+            mensaje: "Se cerrará tu sesión en este teléfono.",
+            nota: "Para volver a entrar necesitarás tu usuario y contraseña.",
+            botonPrincipal: "Cerrar sesión",
+            botonSecundario: "Cancelar",
+            icono: "!",
+            colores: DialogoPage.Rojo);
         if (!confirm)
         {
             return;
