@@ -8,6 +8,11 @@ namespace appmetepec.Views;
 // la pantalla de confirmacion.
 public partial class PanicoPage : ContentPage
 {
+    // Aviso de un solo boton con el estilo de la app (DialogoPage). Naranja con "!" por defecto.
+    private Task AvisoAsync(string titulo, string? mensaje, string? nota = null, string icono = "!",
+        (Color Acento, Color Tenue)? colores = null, string boton = "Entendido") =>
+        DialogoPage.MostrarAsync(Navigation, titulo, mensaje ?? "", boton, nota: nota, icono: icono, colores: colores);
+
     private readonly PreferencesService _preferences;
     private readonly NavigationState _navigationState;
     private readonly GeocodingService _geocoding;
@@ -56,7 +61,7 @@ public partial class PanicoPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlert("Ubicacion", ErrorMessageHelper.Traducir(ex), "Aceptar");
+            await AvisoAsync("No se obtuvo tu ubicación", ErrorMessageHelper.Traducir(ex), nota: "Verifica que el GPS esté activado y que la app tenga permiso de ubicación.");
         }
     }
 
@@ -65,7 +70,7 @@ public partial class PanicoPage : ContentPage
         var phone = PhoneEntry.Text?.Trim() ?? "";
         if (string.IsNullOrWhiteSpace(phone))
         {
-            await DisplayAlert("Dato requerido", "Captura un telefono de contacto antes de continuar.", "Aceptar");
+            await AvisoAsync("Falta tu teléfono", "Captura un teléfono de contacto antes de continuar.", nota: "Lo necesitamos para comunicarnos contigo durante la emergencia.");
             return;
         }
 

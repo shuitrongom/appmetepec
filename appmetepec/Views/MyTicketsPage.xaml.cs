@@ -5,6 +5,11 @@ namespace appmetepec.Views;
 
 public partial class MyTicketsPage : ContentPage
 {
+    // Aviso de un solo boton con el estilo de la app (DialogoPage). Naranja con "!" por defecto.
+    private Task AvisoAsync(string titulo, string? mensaje, string? nota = null, string icono = "!",
+        (Color Acento, Color Tenue)? colores = null, string boton = "Entendido") =>
+        DialogoPage.MostrarAsync(Navigation, titulo, mensaje ?? "", boton, nota: nota, icono: icono, colores: colores);
+
     private readonly MetepecApiService _api;
     private readonly NavigationState _navigationState;
     private readonly PendingTicketsService _pendingTickets;
@@ -54,7 +59,7 @@ public partial class MyTicketsPage : ContentPage
         {
             TicketsView.ItemsSource = Array.Empty<BackendTicketDto>();
             ReportsCountLabel.Text = string.Empty;
-            await DisplayAlert("No se pudieron cargar tus reportes", ErrorMessageHelper.Traducir(ex), "Aceptar");
+            await AvisoAsync("No se pudieron cargar tus reportes", ErrorMessageHelper.Traducir(ex), nota: "Revisa tu conexión a internet e intenta de nuevo.");
         }
         finally
         {
@@ -113,7 +118,7 @@ public partial class MyTicketsPage : ContentPage
 
             if (_preferences.CiudadanoId == 0)
             {
-                await DisplayAlert("No se pudo identificar tu cuenta", "Vuelve a iniciar sesion e intenta de nuevo.", "Aceptar");
+                await AvisoAsync("No se pudo identificar tu cuenta", "Vuelve a iniciar sesión e intenta de nuevo.", colores: DialogoPage.Rojo);
                 return;
             }
 
@@ -205,7 +210,7 @@ public partial class MyTicketsPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlert("No se pudo enviar", ErrorMessageHelper.Traducir(ex), "Aceptar");
+            await AvisoAsync("No se pudo enviar tu reporte", ErrorMessageHelper.Traducir(ex), nota: "Sigue guardado en tu teléfono; puedes reintentarlo más tarde.", colores: DialogoPage.Rojo);
         }
         finally
         {
@@ -222,7 +227,16 @@ public partial class MyTicketsPage : ContentPage
             return;
         }
 
-        var confirm = await DisplayAlert("Descartar reporte", $"Se eliminara \"{pending.Title}\" guardado localmente.", "Descartar", "Cancelar");
+        var confirm = await DialogoPage.MostrarAsync(
+            Navigation,
+            titulo: "¿Descartar reporte?",
+            mensaje: "Se eliminará de tu teléfono el reporte guardado:",
+            destacado: pending.Title,
+            nota: "Esta acción no se puede deshacer.",
+            botonPrincipal: "Descartar",
+            botonSecundario: "Cancelar",
+            icono: "!",
+            colores: DialogoPage.Rojo);
         if (!confirm)
         {
             return;

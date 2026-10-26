@@ -138,6 +138,7 @@ namespace appmetepec
             builder.Services.AddSingleton<MetepecApiService>();
             builder.Services.AddSingleton<PushRegistrationService>();
             builder.Services.AddSingleton<NavigationState>();
+            builder.Services.AddSingleton<AperturaTicketPushService>();
             builder.Services.AddSingleton<PendingTicketsService>();
             builder.Services.AddSingleton<GeocodingService>();
             builder.Services.AddSingleton<EvidencePhotoService>();

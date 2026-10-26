@@ -52,7 +52,7 @@ public partial class EncuestaPage : ContentPage
             _tipoEncuesta = await _api.GetTipoEncuestaByClaveAsync(clave);
             if (_tipoEncuesta is null)
             {
-                await DisplayAlert("Encuesta no disponible", "No se encontro configurada la encuesta de solucion de reportes.", "Aceptar");
+                await AvisoAsync("Encuesta no disponible", "Por el momento la encuesta de solución de reportes no está disponible.", nota: "Intenta de nuevo más tarde.");
                 await Shell.Current.GoToAsync("..");
                 return;
             }
@@ -80,7 +80,7 @@ public partial class EncuestaPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlert("No se pudo cargar la encuesta", ErrorMessageHelper.Traducir(ex), "Aceptar");
+            await AvisoAsync("No se pudo cargar la encuesta", ErrorMessageHelper.Traducir(ex), nota: "Revisa tu conexión a internet e intenta de nuevo.");
         }
         finally
         {
@@ -223,7 +223,7 @@ public partial class EncuestaPage : ContentPage
 
         if (_ticket is not null && _ticketResuelto is null)
         {
-            await DisplayAlert("Falta un dato", "Indica si tu problema se resolvió antes de enviar.", "Aceptar");
+            await AvisoAsync("Falta un dato", "Antes de enviar, indícanos si tu problema se resolvió.", icono: "?");
             return;
         }
 
@@ -285,28 +285,28 @@ public partial class EncuestaPage : ContentPage
                 }
                 catch (Exception ex)
                 {
-                    await DisplayAlert("Encuesta enviada", $"Tu encuesta se registro, pero no se pudo confirmar el cierre del reporte: {ErrorMessageHelper.Traducir(ex)}", "Aceptar");
+                    await AvisoAsync("Encuesta enviada", "Tu encuesta se registró, pero no se pudo confirmar el cierre de tu reporte.", nota: ErrorMessageHelper.Traducir(ex));
                     await Shell.Current.GoToAsync("..");
                     return;
                 }
 
-                await DisplayAlert("Gracias", "Tu encuesta fue registrada y tu reporte quedo cerrado.", "Aceptar");
+                await AvisoAsync("¡Gracias por tu opinión!", "Tu encuesta fue registrada y tu reporte quedó cerrado.", icono: "✓", colores: DialogoPage.Verde, boton: "Aceptar");
                 await Shell.Current.GoToAsync("..");
             }
             else if (_ticket is not null && _ticketResuelto == false)
             {
-                await DisplayAlert("Gracias", "Tu encuesta fue registrada. Levanta un reporte nuevo para el problema que sigue pendiente.", "Aceptar");
+                await AvisoAsync("¡Gracias por tu opinión!", "Tu encuesta fue registrada.", nota: "Levanta un reporte nuevo para el problema que sigue pendiente y le daremos seguimiento.", icono: "✓", colores: DialogoPage.Verde, boton: "Aceptar");
                 await Shell.Current.GoToAsync($"//{nameof(HomePage)}");
             }
             else
             {
-                await DisplayAlert("Gracias", "Tu encuesta fue registrada correctamente.", "Aceptar");
+                await AvisoAsync("¡Gracias por tu opinión!", "Tu encuesta fue registrada correctamente.", icono: "✓", colores: DialogoPage.Verde, boton: "Aceptar");
                 await Shell.Current.GoToAsync("..");
             }
         }
         catch (Exception ex)
         {
-            await DisplayAlert("No se pudo enviar la encuesta", ErrorMessageHelper.Traducir(ex), "Aceptar");
+            await AvisoAsync("No se pudo enviar la encuesta", ErrorMessageHelper.Traducir(ex), colores: DialogoPage.Rojo);
         }
         finally
         {
@@ -318,6 +318,11 @@ public partial class EncuestaPage : ContentPage
     {
         await Shell.Current.GoToAsync("..");
     }
+
+    // Aviso de un solo boton con el estilo de la app (DialogoPage). Naranja con "!" por defecto.
+    private Task AvisoAsync(string titulo, string? mensaje, string? nota = null, string icono = "!",
+        (Color Acento, Color Tenue)? colores = null, string boton = "Entendido") =>
+        DialogoPage.MostrarAsync(Navigation, titulo, mensaje ?? "", boton, nota: nota, icono: icono, colores: colores);
 
     private async void OnCancelarClicked(object sender, EventArgs e)
     {

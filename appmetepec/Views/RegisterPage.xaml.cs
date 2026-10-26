@@ -32,7 +32,7 @@ public partial class RegisterPage : ContentPage
 
         if (string.IsNullOrWhiteSpace(nombre) || string.IsNullOrWhiteSpace(apellido))
         {
-            await DisplayAlert("Datos incompletos", "Captura tu nombre y apellido paterno.", "Aceptar");
+            await AvisoAsync("Datos incompletos", "Captura tu nombre y tu apellido paterno para continuar.");
             return;
         }
 
@@ -40,19 +40,25 @@ public partial class RegisterPage : ContentPage
         // 2 caracteres.
         if (nombre.Length < 2 || apellido.Length < 2)
         {
-            await DisplayAlert("Datos incompletos", "El nombre y el apellido paterno deben tener al menos 2 letras.", "Aceptar");
+            await AvisoAsync("Datos incompletos", "Tu nombre y tu apellido paterno deben tener al menos 2 letras.");
             return;
         }
 
         if (phone.Length != 10 || !phone.All(char.IsDigit))
         {
-            await DisplayAlert("Teléfono inválido", "Captura un número a 10 dígitos.", "Aceptar");
+            await DialogoPage.MostrarAsync(
+                Navigation,
+                titulo: "Teléfono inválido",
+                mensaje: "Captura tu número de celular a 10 dígitos, sin espacios ni guiones.",
+                nota: "Ejemplo: 7221234567",
+                botonPrincipal: "Entendido",
+                icono: "!");
             return;
         }
 
         if (string.IsNullOrWhiteSpace(email) || !email.Contains('@') || !email.Contains('.'))
         {
-            await DisplayAlert("Correo inválido", "Captura un correo electrónico válido.", "Aceptar");
+            await AvisoAsync("Correo inválido", "Captura un correo electrónico válido. Ahí te enviaremos tu código de verificación.", nota: "Ejemplo: nombre@correo.com");
             return;
         }
 
@@ -67,7 +73,7 @@ public partial class RegisterPage : ContentPage
             var solicitud = await _api.SolicitarVerificacionEmailAsync(_email);
             if (solicitud?.Bloqueado == true)
             {
-                await DisplayAlert("No se pudo enviar el código", solicitud.Mensaje, "Aceptar");
+                await AvisoAsync("No se pudo enviar el código", solicitud.Mensaje, colores: DialogoPage.Rojo);
                 return;
             }
 
@@ -78,7 +84,7 @@ public partial class RegisterPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlert("No se pudo enviar el código", ErrorMessageHelper.Traducir(ex), "Aceptar");
+            await AvisoAsync("No se pudo enviar el código", ErrorMessageHelper.Traducir(ex), nota: "Revisa tu conexión a internet e intenta de nuevo.");
         }
         finally
         {
@@ -87,7 +93,7 @@ public partial class RegisterPage : ContentPage
         }
     }
 
-    private async Task CompleteRegistrationAsync()
+    private async Task CompleteRegistrationAsync(bool confirmarVinculacion = false)
     {
         try
         {
@@ -100,7 +106,8 @@ public partial class RegisterPage : ContentPage
                 Token = _emailVerificationToken,
                 Nombre = NombreEntry.Text?.Trim() ?? "",
                 Apaterno = ApellidoEntry.Text?.Trim() ?? "",
-                Telefonomovil = _phone
+                Telefonomovil = _phone,
+                ConfirmarVinculacion = confirmarVinculacion
             });
 
             var username = registro?.IdentityUser.Username ?? "";
@@ -108,7 +115,7 @@ public partial class RegisterPage : ContentPage
 
             if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
             {
-                await DisplayAlert("Registro completado", "Tu cuenta fue creada. Inicia sesión desde la pantalla de acceso.", "Aceptar");
+                await AvisoAsync("¡Registro completado!", "Tu cuenta fue creada correctamente. Inicia sesión desde la pantalla de acceso.", icono: "✓", colores: DialogoPage.Verde, boton: "Ir a iniciar sesión");
                 await Shell.Current.GoToAsync("..");
                 return;
             }
@@ -138,6 +145,38 @@ public partial class RegisterPage : ContentPage
 
             await Shell.Current.GoToAsync($"//{nameof(HomePage)}");
         }
+        catch (VinculacionRequeridaException ex)
+        {
+            // Ya existe un ciudadano dado de alta en la web con este correo (sin cuenta de la app).
+            // Nunca se vincula sin preguntar: si es el, se reintenta vinculando (conserva sus
+            // reportes); si no, debe registrarse con otro correo.
+            var esElCiudadano = await DialogoPage.MostrarAsync(
+                Navigation,
+                titulo: "Encontramos un registro",
+                mensaje: "Este correo electrónico ya está asociado a un registro en la Gerencia de la Ciudad a nombre de:",
+                destacado: ex.NombreEnmascarado,
+                nota: "Si eres tú, vincularemos tu cuenta a este registro y podrás consultar los reportes que ya tienes.",
+                botonPrincipal: "Sí, soy yo",
+                botonSecundario: "No, no soy yo",
+                icono: "?");
+
+            if (esElCiudadano)
+            {
+                await CompleteRegistrationAsync(confirmarVinculacion: true);
+                return;
+            }
+
+            StopCodeTimer();
+            CodePanel.IsVisible = false;
+            FormPanel.IsVisible = true;
+            await DialogoPage.MostrarAsync(
+                Navigation,
+                titulo: "Usa otro correo",
+                mensaje: "Este correo electrónico pertenece a otro ciudadano. Para continuar con tu registro, captura un correo diferente.",
+                botonPrincipal: "Entendido",
+                icono: "!",
+                colores: DialogoPage.Rojo);
+        }
         catch (Exception ex)
         {
             // Heuristica sobre el mensaje del backend (identityResult.Errors de ASP.NET Identity,
@@ -148,11 +187,15 @@ public partial class RegisterPage : ContentPage
 
             if (esCorreoDuplicado)
             {
-                var irARecuperar = await DisplayAlert(
-                    "El correo ya está registrado",
-                    "Ya existe una cuenta con ese correo electrónico. Si no recuerdas tu usuario o contraseña, puedes recuperar tu cuenta.",
-                    "Recuperar cuenta",
-                    "Cancelar");
+                var irARecuperar = await DialogoPage.MostrarAsync(
+                    Navigation,
+                    titulo: "El correo ya está registrado",
+                    mensaje: "Ya existe una cuenta con este correo electrónico:",
+                    destacado: EmailEntry.Text?.Trim(),
+                    nota: "Si es tuya y no recuerdas tu usuario o contraseña, puedes recuperar tu cuenta.",
+                    botonPrincipal: "Recuperar cuenta",
+                    botonSecundario: "Cancelar",
+                    icono: "?");
 
                 if (irARecuperar)
                 {
@@ -162,7 +205,7 @@ public partial class RegisterPage : ContentPage
             }
             else
             {
-                await DisplayAlert("No se pudo completar el registro", ErrorMessageHelper.Traducir(ex), "Aceptar");
+                await AvisoAsync("No se pudo completar el registro", ErrorMessageHelper.Traducir(ex), colores: DialogoPage.Rojo);
             }
         }
         finally
@@ -192,7 +235,7 @@ public partial class RegisterPage : ContentPage
         var code = CodeEntry.Text?.Trim() ?? "";
         if (string.IsNullOrWhiteSpace(code))
         {
-            await DisplayAlert("Código requerido", "Captura el código que recibiste por correo.", "Aceptar");
+            await AvisoAsync("Código requerido", "Captura el código de verificación que te enviamos por correo electrónico.", nota: "Si no lo ves, revisa tu carpeta de correo no deseado.");
             return;
         }
 
@@ -204,7 +247,7 @@ public partial class RegisterPage : ContentPage
             var valid = await _api.VerificarCodigoEmailAsync(_email, _emailVerificationToken, code);
             if (!valid)
             {
-                await DisplayAlert("Código incorrecto", "El código de verificación es incorrecto.", "Aceptar");
+                await AvisoAsync("Código incorrecto", "El código de verificación no coincide. Revisa el correo que te enviamos e intenta de nuevo.", colores: DialogoPage.Rojo);
                 return;
             }
 
@@ -215,7 +258,7 @@ public partial class RegisterPage : ContentPage
             StopCodeTimer();
             CodePanel.IsVisible = false;
             FormPanel.IsVisible = true;
-            await DisplayAlert("No se pudo completar el registro", ErrorMessageHelper.Traducir(ex), "Aceptar");
+            await AvisoAsync("No se pudo completar el registro", ErrorMessageHelper.Traducir(ex), colores: DialogoPage.Rojo);
         }
         finally
         {
@@ -236,7 +279,7 @@ public partial class RegisterPage : ContentPage
             var solicitud = await _api.SolicitarVerificacionEmailAsync(_email);
             if (solicitud?.Bloqueado == true)
             {
-                await DisplayAlert("No se pudo reenviar el código", solicitud.Mensaje, "Aceptar");
+                await AvisoAsync("No se pudo reenviar el código", solicitud.Mensaje, colores: DialogoPage.Rojo);
                 return;
             }
 
@@ -245,9 +288,14 @@ public partial class RegisterPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlert("No se pudo reenviar el código", ErrorMessageHelper.Traducir(ex), "Aceptar");
+            await AvisoAsync("No se pudo reenviar el código", ErrorMessageHelper.Traducir(ex), nota: "Revisa tu conexión a internet e intenta de nuevo.");
         }
     }
+
+    // Aviso de un solo boton con el estilo de la app (DialogoPage). Naranja con "!" por defecto.
+    private Task AvisoAsync(string titulo, string? mensaje, string? nota = null, string icono = "!",
+        (Color Acento, Color Tenue)? colores = null, string boton = "Entendido") =>
+        DialogoPage.MostrarAsync(Navigation, titulo, mensaje ?? "", boton, nota: nota, icono: icono, colores: colores);
 
     private void OnModifyTapped(object sender, TappedEventArgs e)
     {

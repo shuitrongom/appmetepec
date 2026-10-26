@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:ios="clr-namespace:Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific;assembly=Microsoft.Maui.Controls"
+             x:Class="appmetepec.Views.DialogoPage"
+             Shell.NavBarIsVisible="False"
+             ios:Page.UseSafeArea="True"
+             BackgroundColor="#8C000000">
+
+    <!-- Dialogo de confirmacion con estilo propio (en vez de DisplayAlert): scrim semitransparente
+         + tarjeta blanca centrada con icono (con halo), titulo, mensaje, dato destacado opcional,
+         nota y botones de color. Fuente institucional "Como". Mismo patron de modal que
+         ActividadDetallePage. -->
+    <ContentPage.Resources>
+        <Style TargetType="Label">
+            <Setter Property="FontFamily" Value="Como" />
+        </Style>
+    </ContentPage.Resources>
+
+    <Grid Padding="24" VerticalOptions="Center">
+        <Border x:Name="Tarjeta" BackgroundColor="White" StrokeThickness="0"
+                StrokeShape="RoundRectangle 28" HorizontalOptions="Center" Padding="26,30,26,24">
+            <Border.Shadow>
+                <Shadow Brush="#000000" Opacity="0.28" Radius="34" Offset="0,12" />
+            </Border.Shadow>
+
+            <VerticalStackLayout Spacing="0">
+
+                <!-- Icono: circulo de acento solido con glifo blanco, dentro de un halo tenue. -->
+                <Border x:Name="IconoHalo" WidthRequest="88" HeightRequest="88" StrokeThickness="0"
+                        StrokeShape="RoundRectangle 44" HorizontalOptions="Center" BackgroundColor="#FDEBD3">
+                    <Border x:Name="IconoFondo" WidthRequest="60" HeightRequest="60" StrokeThickness="0"
+                            StrokeShape="RoundRectangle 30" HorizontalOptions="Center" VerticalOptions="Center"
+                            BackgroundColor="#F89A1C">
+                        <Label x:Name="IconoLabel" Text="?" FontFamily="ComoBold" FontSize="32" TextColor="White"
+                               HorizontalOptions="Center" VerticalOptions="Center" />
+                    </Border>
+                </Border>
+
+                <Label x:Name="TituloLabel" FontFamily="ComoBold" FontSize="21" TextColor="#28113E"
+                       HorizontalTextAlignment="Center" Margin="0,20,0,0" />
+
+                <Label x:Name="MensajeLabel" FontSize="15" TextColor="#5A5A5A" LineHeight="1.25"
+                       HorizontalTextAlignment="Center" Margin="0,10,0,0" />
+
+                <!-- Dato destacado (p. ej. el nombre enmascarado del registro encontrado). -->
+                <Border x:Name="DestacadoContenedor" IsVisible="False" StrokeThickness="1" Stroke="#E6E0EE"
+                        StrokeShape="RoundRectangle 14" BackgroundColor="#F7F4FA" Padding="16,14" Margin="0,14,0,0">
+                    <Label x:Name="DestacadoLabel" FontFamily="ComoBold" FontSize="18" TextColor="#28113E"
+                           CharacterSpacing="1.5" HorizontalTextAlignment="Center" />
+                </Border>
+
+                <Label x:Name="NotaLabel" IsVisible="False" FontSize="13" TextColor="#8A8A8A" LineHeight="1.25"
+                       HorizontalTextAlignment="Center" Margin="0,14,0,0" />
+
+                <VerticalStackLayout Spacing="10" Margin="0,24,0,0">
+                    <Button x:Name="PrincipalButton" Clicked="OnPrincipalClicked"
+                            BackgroundColor="#F89A1C" TextColor="White" FontFamily="ComoBold" FontSize="17"
+                            CornerRadius="26" HeightRequest="52">
+                        <Button.Shadow>
+                            <Shadow x:Name="PrincipalSombra" Brush="#F89A1C" Opacity="0.35" Radius="12" Offset="0,4" />
+                        </Button.Shadow>
+                    </Button>
+                    <Button x:Name="SecundarioButton" Clicked="OnSecundarioClicked" IsVisible="False"
+                            BackgroundColor="White" TextColor="#5A5A5A" FontFamily="ComoSemiBold" FontSize="16"
+                            BorderColor="#DCDCDC" BorderWidth="1.5"
+                            CornerRadius="26" HeightRequest="50" />
+                </VerticalStackLayout>
+            </VerticalStackLayout>
+        </Border>
+    </Grid>
+</ContentPage>

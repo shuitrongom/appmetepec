@@ -115,9 +115,14 @@ public partial class VideoEvidenciaPage : ContentPage
         _fallo = true;
 
         Cargando.IsVisible = Cargando.IsRunning = false;
-        var abrir = await DisplayAlert("No se pudo reproducir",
-            "El video no se pudo reproducir en la app. ¿Quieres abrirlo con otra aplicación?",
-            "Abrir", "Cerrar");
+        var abrir = await DialogoPage.MostrarAsync(
+            Navigation,
+            titulo: "No se pudo reproducir",
+            mensaje: "El video no se pudo reproducir en la app.",
+            nota: "¿Quieres abrirlo con otra aplicación de tu teléfono?",
+            botonPrincipal: "Abrir con otra app",
+            botonSecundario: "Cerrar",
+            icono: "!");
         if (abrir)
         {
             try { await Launcher.Default.OpenAsync(_uri); } catch { /* sin app para abrirlo */ }

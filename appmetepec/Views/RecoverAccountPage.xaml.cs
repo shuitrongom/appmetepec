@@ -37,7 +37,7 @@ public partial class RecoverAccountPage : ContentPage
         var email = EmailEntry.Text?.Trim() ?? "";
         if (string.IsNullOrWhiteSpace(email) || !email.Contains('@') || !email.Contains('.'))
         {
-            await DisplayAlert("Correo inválido", "Captura un correo electrónico válido.", "Aceptar");
+            await AvisoAsync("Correo inválido", "Captura el correo electrónico con el que te registraste.", nota: "Ejemplo: nombre@correo.com");
             return;
         }
 
@@ -49,19 +49,19 @@ public partial class RecoverAccountPage : ContentPage
             var respuesta = await _api.SolicitarRecuperacionAsync(email);
             if (respuesta?.NoEncontrado == true)
             {
-                await DisplayAlert("Correo no registrado", respuesta.Mensaje, "Aceptar");
+                await AvisoAsync("Correo no registrado", respuesta.Mensaje, nota: "Verifica que sea el mismo correo con el que te registraste.", icono: "?");
                 return;
             }
 
             if (respuesta is null || string.IsNullOrWhiteSpace(respuesta.Token))
             {
-                await DisplayAlert("No se pudo continuar", "Intenta de nuevo mas tarde.", "Aceptar");
+                await AvisoAsync("No se pudo continuar", "Por el momento no pudimos procesar tu solicitud. Intenta de nuevo más tarde.", colores: DialogoPage.Rojo);
                 return;
             }
 
             if (respuesta.Bloqueado)
             {
-                await DisplayAlert("Demasiados intentos", respuesta.Mensaje, "Aceptar");
+                await AvisoAsync("Demasiados intentos", respuesta.Mensaje, colores: DialogoPage.Rojo);
                 return;
             }
 
@@ -74,7 +74,7 @@ public partial class RecoverAccountPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlert("No se pudo enviar el código", ErrorMessageHelper.Traducir(ex), "Aceptar");
+            await AvisoAsync("No se pudo enviar el código", ErrorMessageHelper.Traducir(ex), nota: "Revisa tu conexión a internet e intenta de nuevo.");
         }
         finally
         {
@@ -88,7 +88,7 @@ public partial class RecoverAccountPage : ContentPage
         var codigo = CodeEntry.Text?.Trim() ?? "";
         if (codigo.Length != 6 || !codigo.All(char.IsDigit))
         {
-            await DisplayAlert("Código inválido", "Captura el código de 6 dígitos que te enviamos por correo.", "Aceptar");
+            await AvisoAsync("Código inválido", "Captura el código de 6 dígitos que te enviamos por correo electrónico.", nota: "Si no lo ves, revisa tu carpeta de correo no deseado.");
             return;
         }
 
@@ -100,7 +100,7 @@ public partial class RecoverAccountPage : ContentPage
             var valido = await _api.VerificarCodigoRecuperacionAsync(_email, _token, codigo);
             if (!valido)
             {
-                await DisplayAlert("Código incorrecto", "El código es incorrecto o ya expiró.", "Aceptar");
+                await AvisoAsync("Código incorrecto", "El código es incorrecto o ya expiró.", nota: "Puedes solicitar uno nuevo con la opción de reenviar código.", colores: DialogoPage.Rojo);
                 return;
             }
 
@@ -110,7 +110,7 @@ public partial class RecoverAccountPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlert("No se pudo verificar el código", ErrorMessageHelper.Traducir(ex), "Aceptar");
+            await AvisoAsync("No se pudo verificar el código", ErrorMessageHelper.Traducir(ex), nota: "Revisa tu conexión a internet e intenta de nuevo.");
         }
         finally
         {
@@ -126,13 +126,13 @@ public partial class RecoverAccountPage : ContentPage
 
         if (nueva.Length < 6)
         {
-            await DisplayAlert("Contraseña inválida", "La contraseña debe tener al menos 6 caracteres.", "Aceptar");
+            await AvisoAsync("Contraseña muy corta", "Tu nueva contraseña debe tener al menos 6 caracteres.");
             return;
         }
 
         if (nueva != confirmar)
         {
-            await DisplayAlert("Las contraseñas no coinciden", "Verifica que ambas contraseñas sean iguales.", "Aceptar");
+            await AvisoAsync("Las contraseñas no coinciden", "Verifica que hayas escrito la misma contraseña en ambos campos.");
             return;
         }
 
@@ -144,7 +144,7 @@ public partial class RecoverAccountPage : ContentPage
             var error = await _api.RestablecerPasswordAsync(_email, _token, nueva);
             if (error is not null)
             {
-                await DisplayAlert("No se pudo restablecer la contraseña", error, "Aceptar");
+                await AvisoAsync("No se pudo restablecer la contraseña", error, colores: DialogoPage.Rojo);
                 return;
             }
 
@@ -153,7 +153,7 @@ public partial class RecoverAccountPage : ContentPage
             if (login is null)
             {
                 // La contraseña si se cambio; solo no se pudo autenticar en automatico.
-                await DisplayAlert("Listo", "Tu contraseña se actualizó correctamente. Inicia sesión con tu usuario y la nueva contraseña.", "Aceptar");
+                await AvisoAsync("¡Contraseña actualizada!", "Tu contraseña se actualizó correctamente.", nota: "Inicia sesión con tu usuario y tu nueva contraseña.", icono: "✓", colores: DialogoPage.Verde, boton: "Ir a iniciar sesión");
                 await Shell.Current.GoToAsync("..");
                 return;
             }
@@ -170,12 +170,12 @@ public partial class RecoverAccountPage : ContentPage
                 // No bloquea el acceso; ReportPage vuelve a intentarlo antes de crear un ticket.
             }
 
-            await DisplayAlert("Listo", "Tu contraseña se actualizó correctamente.", "Aceptar");
+            await AvisoAsync("¡Contraseña actualizada!", "Tu contraseña se actualizó correctamente. ¡Bienvenido de nuevo!", icono: "✓", colores: DialogoPage.Verde, boton: "Continuar");
             await Shell.Current.GoToAsync($"//{nameof(HomePage)}");
         }
         catch (Exception ex)
         {
-            await DisplayAlert("No se pudo restablecer la contraseña", ErrorMessageHelper.Traducir(ex), "Aceptar");
+            await AvisoAsync("No se pudo restablecer la contraseña", ErrorMessageHelper.Traducir(ex), nota: "Revisa tu conexión a internet e intenta de nuevo.");
         }
         finally
         {
@@ -199,7 +199,7 @@ public partial class RecoverAccountPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlert("No se pudo reenviar el código", ErrorMessageHelper.Traducir(ex), "Aceptar");
+            await AvisoAsync("No se pudo reenviar el código", ErrorMessageHelper.Traducir(ex), nota: "Revisa tu conexión a internet e intenta de nuevo.");
         }
     }
 
@@ -240,6 +240,11 @@ public partial class RecoverAccountPage : ContentPage
         CodePanel.IsVisible = false;
         EmailPanel.IsVisible = true;
     }
+
+    // Aviso de un solo boton con el estilo de la app (DialogoPage). Naranja con "!" por defecto.
+    private Task AvisoAsync(string titulo, string? mensaje, string? nota = null, string icono = "!",
+        (Color Acento, Color Tenue)? colores = null, string boton = "Entendido") =>
+        DialogoPage.MostrarAsync(Navigation, titulo, mensaje ?? "", boton, nota: nota, icono: icono, colores: colores);
 
     private async void OnBackToLoginTapped(object sender, TappedEventArgs e)
     {

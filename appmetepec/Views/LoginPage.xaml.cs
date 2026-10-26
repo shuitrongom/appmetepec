@@ -27,7 +27,12 @@ public partial class LoginPage : ContentPage
 
         if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
         {
-            await DisplayAlert("Datos incompletos", "Captura usuario y contraseña.", "Aceptar");
+            await DialogoPage.MostrarAsync(
+                Navigation,
+                titulo: "Datos incompletos",
+                mensaje: "Captura tu usuario y tu contraseña para iniciar sesión.",
+                botonPrincipal: "Entendido",
+                icono: "!");
             return;
         }
 
@@ -71,10 +76,14 @@ public partial class LoginPage : ContentPage
             if (verificado && idCiudadano is null)
             {
                 _preferences.Logout();
-                await DisplayAlert(
-                    "Acceso no permitido",
-                    "Esta aplicación es exclusiva para ciudadanos. Esta cuenta no tiene un perfil de ciudadano asociado.",
-                    "Aceptar");
+                await DialogoPage.MostrarAsync(
+                    Navigation,
+                    titulo: "Acceso no permitido",
+                    mensaje: "Esta aplicación es exclusiva para ciudadanos.",
+                    nota: "La cuenta con la que intentas entrar no tiene un perfil de ciudadano asociado.",
+                    botonPrincipal: "Entendido",
+                    icono: "!",
+                    colores: DialogoPage.Rojo);
                 return;
             }
 
@@ -91,7 +100,13 @@ public partial class LoginPage : ContentPage
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[Login] {ex.GetType().Name}: {ex.Message}");
-            await DisplayAlert("No se pudo conectar", ErrorMessageHelper.Traducir(ex), "Aceptar");
+            await DialogoPage.MostrarAsync(
+                Navigation,
+                titulo: "No se pudo conectar",
+                mensaje: ErrorMessageHelper.Traducir(ex),
+                nota: "Revisa tu conexión a internet e intenta de nuevo.",
+                botonPrincipal: "Entendido",
+                icono: "!");
         }
         finally
         {
@@ -111,12 +126,16 @@ public partial class LoginPage : ContentPage
             var identidad = await _api.IdentificarUsuarioAsync(credential);
             if (identidad is { Existe: true })
             {
-                var saludo = string.IsNullOrWhiteSpace(identidad.NombreCorto) ? "" : $" {identidad.NombreCorto}";
-                var irARecuperar = await DisplayAlert(
-                    "Acceso denegado",
-                    $"Usuario o contraseña incorrectos. ¿Eres{saludo}? Si no recuerdas tu contraseña, puedes recuperar tu cuenta.",
-                    "Recuperar cuenta",
-                    "Cancelar");
+                var tieneNombre = !string.IsNullOrWhiteSpace(identidad.NombreCorto);
+                var irARecuperar = await DialogoPage.MostrarAsync(
+                    Navigation,
+                    titulo: "Usuario o contraseña incorrectos",
+                    mensaje: tieneNombre ? "La contraseña no coincide con la cuenta de:" : "La contraseña no coincide con la cuenta.",
+                    destacado: tieneNombre ? identidad.NombreCorto : null,
+                    nota: "¿Eres tú y no recuerdas tu contraseña? Puedes recuperar tu cuenta con tu correo electrónico.",
+                    botonPrincipal: "Recuperar cuenta",
+                    botonSecundario: "Intentar de nuevo",
+                    icono: "?");
 
                 if (irARecuperar && !string.IsNullOrWhiteSpace(identidad.Email))
                 {
@@ -131,7 +150,13 @@ public partial class LoginPage : ContentPage
             // Si falla la identificacion (sin conexion, etc.), se cae al mensaje generico de abajo.
         }
 
-        await DisplayAlert("Acceso denegado", "Usuario o contraseña incorrectos.", "Aceptar");
+        await DialogoPage.MostrarAsync(
+            Navigation,
+            titulo: "Acceso denegado",
+            mensaje: "El usuario o la contraseña son incorrectos. Verifica tus datos e intenta de nuevo.",
+            botonPrincipal: "Entendido",
+            icono: "!",
+            colores: DialogoPage.Rojo);
     }
 
     // Best-effort: nunca bloquea ni retrasa el login por falta de permiso, GPS apagado o

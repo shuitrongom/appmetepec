@@ -334,6 +334,10 @@ public sealed class BackendRegisterRequest
 
     [JsonPropertyName("telefonomovil")]
     public string? Telefonomovil { get; set; }
+
+    // El ciudadano confirmo ("Si, soy yo") que el registro existente con ese correo es suyo.
+    [JsonPropertyName("confirmarVinculacion")]
+    public bool ConfirmarVinculacion { get; set; }
 }
 
 public sealed class BackendRegistroResponse
@@ -350,6 +354,17 @@ public sealed class BackendRegistroUsuarioDto
 public sealed class ErrorResponse
 {
     public string? error { get; set; }
+
+    // Registro: ya existe un ciudadano (dado de alta en la web) con ese correo; preguntar si es el.
+    public bool requiereVinculacion { get; set; }
+    public string? nombre { get; set; }
+}
+
+// Registro con un correo que ya tiene un ciudadano dado de alta en la web (sin cuenta): la pagina
+// pregunta "¿Eres tu?" mostrando el nombre enmascarado y, si confirma, reintenta vinculando.
+public sealed class VinculacionRequeridaException(string nombreEnmascarado, string mensaje) : Exception(mensaje)
+{
+    public string NombreEnmascarado { get; } = nombreEnmascarado;
 }
 
 public sealed class ErrorsResponse
@@ -584,6 +599,9 @@ public sealed class BackendTicketDto
     public string? Descestatus { get; set; }
     public string? Colorestatus { get; set; }
     public string? Claveestatus { get; set; }
+    // El estatus permite la encuesta de solucion (casilla "Permite encuesta" del catalogo de
+    // estatus en la web). Con una API anterior llega en false (ver TicketDetailPage).
+    public bool PermiteEncuesta { get; set; }
     public string? Descservicio { get; set; }
     public string? Dependencia { get; set; }
     public int Idciudadano { get; set; }
