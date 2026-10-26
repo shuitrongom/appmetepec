@@ -102,8 +102,12 @@ public partial class TicketDetailPage : ContentPage
             return false;
         }
 
+        // Se ofrece si el estatus tiene "Permite encuesta" en el catalogo (configurable desde la
+        // web, p. ej. CERRADO). RESUELTO se conserva como respaldo para una API anterior que aun no
+        // manda PermiteEncuesta.
         if (_ticket is null ||
-            !string.Equals(_ticket.Claveestatus, AppConstants.ClaveEstatusResuelto, StringComparison.OrdinalIgnoreCase))
+            !(_ticket.PermiteEncuesta
+              || string.Equals(_ticket.Claveestatus, AppConstants.ClaveEstatusResuelto, StringComparison.OrdinalIgnoreCase)))
         {
             return false;
         }

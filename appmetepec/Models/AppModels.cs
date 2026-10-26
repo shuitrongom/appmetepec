@@ -599,6 +599,9 @@ public sealed class BackendTicketDto
     public string? Descestatus { get; set; }
     public string? Colorestatus { get; set; }
     public string? Claveestatus { get; set; }
+    // El estatus permite la encuesta de solucion (casilla "Permite encuesta" del catalogo de
+    // estatus en la web). Con una API anterior llega en false (ver TicketDetailPage).
+    public bool PermiteEncuesta { get; set; }
     public string? Descservicio { get; set; }
     public string? Dependencia { get; set; }
     public int Idciudadano { get; set; }

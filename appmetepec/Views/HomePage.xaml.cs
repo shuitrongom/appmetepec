@@ -17,6 +17,7 @@ public partial class HomePage : ContentPage
     private readonly PreferencesService _preferences;
     private readonly PushRegistrationService _pushRegistration;
     private readonly EventosService _eventos;
+    private readonly AperturaTicketPushService _aperturaTicketPush;
     private bool _bannerTimerStarted;
     private bool _paginaVisible;
     private bool _isDrawerOpen;
@@ -28,12 +29,13 @@ public partial class HomePage : ContentPage
     // solo se veia uno; ahora se conservan todos para poder ofrecer el selector).
     private List<BackendEventoDto> _eventosActivos = [];
 
-    public HomePage(ReportCatalogService catalog, MetepecApiService api, NavigationState navigationState, PreferencesService preferences, PushRegistrationService pushRegistration, EventosService eventos)
+    public HomePage(ReportCatalogService catalog, MetepecApiService api, NavigationState navigationState, PreferencesService preferences, PushRegistrationService pushRegistration, EventosService eventos, AperturaTicketPushService aperturaTicketPush)
     {
         InitializeComponent();
         _catalog = catalog;
         _api = api;
         _navigationState = navigationState;
+        _aperturaTicketPush = aperturaTicketPush;
         _preferences = preferences;
         _pushRegistration = pushRegistration;
         _eventos = eventos;
@@ -66,6 +68,12 @@ public partial class HomePage : ContentPage
     {
         base.OnAppearing();
         _paginaVisible = true;
+        // Se toco una notificacion de un reporte (respuesta o invitacion a la encuesta): se abre ese
+        // reporte y no se sigue (al regresar a Home, OnAppearing vuelve a correr completo).
+        if (await _aperturaTicketPush.ProcesarPendienteAsync())
+        {
+            return;
+        }
         // Se reintenta en cada OnAppearing mientras no se haya podido traer el catalogo del API
         // (sin conexion al abrir la app, por ejemplo).
         if (!_categoriesLoaded)
