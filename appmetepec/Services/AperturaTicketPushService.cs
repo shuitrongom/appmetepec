@@ -13,6 +13,7 @@ public sealed class AperturaTicketPushService
     private readonly PreferencesService _preferences;
     private readonly NavigationState _navigationState;
     private int? _idTicketPendiente;
+    private bool _pendienteEsEncuesta;
     private bool _procesando;
 
     public AperturaTicketPushService(MetepecApiService api, PreferencesService preferences, NavigationState navigationState)
@@ -26,6 +27,7 @@ public sealed class AperturaTicketPushService
     {
         if (datos is null || !datos.TryGetValue("idTicket", out var valor) || !int.TryParse(valor, out var idTicket)) return;
         _idTicketPendiente = idTicket;
+        _pendienteEsEncuesta = datos.TryGetValue("encuesta", out var encuesta) && encuesta == "1";
         MainThread.BeginInvokeOnMainThread(async () => await ProcesarPendienteAsync());
     }
 
@@ -46,6 +48,7 @@ public sealed class AperturaTicketPushService
             if (ticket is null) return false; // No es de este ciudadano o ya no existe.
 
             _navigationState.SelectedTicket = ticket;
+            _navigationState.OfrecerEncuestaAlEntrar = _pendienteEsEncuesta;
             await Shell.Current.GoToAsync(nameof(TicketDetailPage));
             return true;
         }

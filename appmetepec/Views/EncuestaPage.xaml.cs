@@ -12,7 +12,6 @@ public partial class EncuestaPage : ContentPage
 
     private BackendTicketDto? _ticket;
     private BackendTipoEncuestaDto? _tipoEncuesta;
-    private bool? _ticketResuelto;
 
     private readonly Dictionary<int, int> _calificaciones = new();
     private readonly Dictionary<int, bool> _siNoRespuestas = new();
@@ -72,11 +71,6 @@ public partial class EncuestaPage : ContentPage
                 PreguntasContainer.Children.Add(CrearControlPregunta(pregunta));
             }
 
-            // Si venimos con un ticket real, la pregunta de "¿se resolvio?" se muestra junto con
-            // las demas preguntas de la encuesta (un solo formulario, un solo envio) en vez de
-            // ser un paso aparte antes de la encuesta.
-            ResueltoBorder.IsVisible = _ticket is not null;
-            _ticketResuelto = null;
         }
         catch (Exception ex)
         {
@@ -201,29 +195,11 @@ public partial class EncuestaPage : ContentPage
         noButton.TextColor = !valor ? Colors.White : ThemedHeadingColor();
     }
 
-    private void OnResueltoSiClicked(object sender, EventArgs e) => SeleccionarResuelto(true);
-
-    private void OnResueltoNoClicked(object sender, EventArgs e) => SeleccionarResuelto(false);
-
-    private void SeleccionarResuelto(bool resuelto)
-    {
-        _ticketResuelto = resuelto;
-        ResueltoSiButton.BackgroundColor = resuelto ? Color.FromArgb("#4CAF50") : ThemedNeutralButtonBackground();
-        ResueltoSiButton.TextColor = resuelto ? Colors.White : ThemedHeadingColor();
-        ResueltoNoButton.BackgroundColor = resuelto == false ? Color.FromArgb("#C62828") : ThemedNeutralButtonBackground();
-        ResueltoNoButton.TextColor = resuelto == false ? Colors.White : ThemedHeadingColor();
-    }
 
     private async void OnEnviarClicked(object sender, EventArgs e)
     {
         if (_tipoEncuesta is null)
         {
-            return;
-        }
-
-        if (_ticket is not null && _ticketResuelto is null)
-        {
-            await AvisoAsync("Falta un dato", "Antes de enviar, indícanos si tu problema se resolvió.", icono: "?");
             return;
         }
 
@@ -272,37 +248,11 @@ public partial class EncuestaPage : ContentPage
 
             await _api.SubmitEncuestaAsync(request);
 
-            // El cierre/apertura del ticket se resuelve hasta aqui, junto con el envio de la
-            // encuesta completa (un solo formulario, un solo submit) -- asi el ticket nunca se
-            // cierra antes de que el ciudadano de verdad termine y envie la encuesta. Por ahora
-            // no se reabren tickets desde la app (ReabrirTicketAsync se deja construido pero sin
-            // usar aqui): si no se resolvio, se manda a levantar un reporte nuevo.
-            if (_ticket is not null && _ticketResuelto == true)
-            {
-                try
-                {
-                    await _api.ConfirmarResolucionTicketAsync(_ticket.Id);
-                }
-                catch (Exception ex)
-                {
-                    await AvisoAsync("Encuesta enviada", "Tu encuesta se registró, pero no se pudo confirmar el cierre de tu reporte.", nota: ErrorMessageHelper.Traducir(ex));
-                    await Shell.Current.GoToAsync("..");
-                    return;
-                }
-
-                await AvisoAsync("¡Gracias por tu opinión!", "Tu encuesta fue registrada y tu reporte quedó cerrado.", icono: "✓", colores: DialogoPage.Verde, boton: "Aceptar");
-                await Shell.Current.GoToAsync("..");
-            }
-            else if (_ticket is not null && _ticketResuelto == false)
-            {
-                await AvisoAsync("¡Gracias por tu opinión!", "Tu encuesta fue registrada.", nota: "Levanta un reporte nuevo para el problema que sigue pendiente y le daremos seguimiento.", icono: "✓", colores: DialogoPage.Verde, boton: "Aceptar");
-                await Shell.Current.GoToAsync($"//{nameof(HomePage)}");
-            }
-            else
-            {
-                await AvisoAsync("¡Gracias por tu opinión!", "Tu encuesta fue registrada correctamente.", icono: "✓", colores: DialogoPage.Verde, boton: "Aceptar");
-                await Shell.Current.GoToAsync("..");
-            }
+            // Solo se guarda la encuesta: el estatus del ticket lo maneja unicamente la Gerencia desde
+            // la web (antes la pregunta fija "¿Tu problema se resolvio?" podia cerrar el reporte; se
+            // quito -- si se necesita, se da de alta como pregunta del catalogo de la encuesta).
+            await AvisoAsync("¡Gracias por tu opinión!", "Tu encuesta fue registrada correctamente.", icono: "✓", colores: DialogoPage.Verde, boton: "Aceptar");
+            await Shell.Current.GoToAsync("..");
         }
         catch (Exception ex)
         {
