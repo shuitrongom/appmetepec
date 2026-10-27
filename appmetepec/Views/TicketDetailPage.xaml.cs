@@ -55,7 +55,18 @@ public partial class TicketDetailPage : ContentPage
         FolioLabel.Text = $"Folio {_ticket.FolioMostrar}  •  {_ticket.Fechaalta:dd/MM/yyyy HH:mm}";
 
         await LoadObservacionesAsync(_ticket.Id);
-        IniciarTemporizadorEncuestaPendiente();
+
+        // Entro tocando el push de la encuesta: se ofrece de inmediato. Si no, al salir del reporte
+        // (o tras EsperaEncuestaPendiente en la pantalla).
+        if (_navigationState.OfrecerEncuestaAlEntrar)
+        {
+            _navigationState.OfrecerEncuestaAlEntrar = false;
+            _ = VerificarEncuestaPendienteAsync();
+        }
+        else
+        {
+            IniciarTemporizadorEncuestaPendiente();
+        }
     }
 
     protected override void OnDisappearing()
@@ -128,9 +139,22 @@ public partial class TicketDetailPage : ContentPage
 
             _encuestaPromptMostrado = true;
 
-            // Se navega directo a la encuesta: ahi mismo se pregunta "¿Tu problema se
-            // resolvio?" antes de las preguntas de satisfaccion (con opcion de "Ahora no"),
-            // asi que preguntar aqui tambien era redundante.
+            // Aviso antes de abrir la encuesta (se repite en cada visita al reporte mientras no la
+            // conteste). "Ahora no" deja seguir: al salir regresa normal.
+            var contestar = await DialogoPage.MostrarAsync(
+                Navigation,
+                titulo: "Tu opinión es importante",
+                mensaje: "Tu reporte fue atendido. ¿Nos ayudas contestando una breve encuesta sobre la solución?",
+                destacado: $"Folio {_ticket.FolioMostrar}",
+                nota: "Te tomará menos de un minuto.",
+                botonPrincipal: "Contestar encuesta",
+                botonSecundario: "Ahora no",
+                icono: "★");
+            if (!contestar)
+            {
+                return false;
+            }
+
             _navigationState.EncuestaClave = AppConstants.ClaveEncuestaSolucionTicket;
             await Shell.Current.GoToAsync(nameof(EncuestaPage));
             return true;

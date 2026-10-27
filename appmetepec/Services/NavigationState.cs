@@ -9,6 +9,9 @@ public sealed class NavigationState
     public BackendArticuloConocimientoDto? SelectedArticulo { get; set; }
     public BackendTicketDto? SelectedTicket { get; set; }
     public string? EncuestaClave { get; set; }
+    // El reporte se abrio desde el push de la encuesta (AperturaTicketPushService): TicketDetailPage
+    // ofrece la encuesta de inmediato en vez de esperar a que el ciudadano salga del reporte.
+    public bool OfrecerEncuestaAlEntrar { get; set; }
     // Precarga el correo en RecoverAccountPage cuando se llega desde "este correo ya existe" en el registro.
     public string? RecoverAccountEmail { get; set; }
 
