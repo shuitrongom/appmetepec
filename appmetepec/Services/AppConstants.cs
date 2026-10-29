@@ -25,7 +25,8 @@ public static class AppConstants
     public const string TwilioAccountSid = "";
     public const string TwilioAuthToken = "";
     //8069 es PRD (productivo), 8070 es QA
-    public const string MetepecBackendUrl = "https://dess-ti.ddns.net:8069/api";
+    // 1.5.3 apunta a QA (8070) para probar DisponibleEnApp. Volver a 8069 (PRD) antes del release productivo.
+    public const string MetepecBackendUrl = "https://dess-ti.ddns.net:8070/api";
 
     // Fichas de la app en las tiendas (boton "Actualizar" del aviso de version nueva, ver
     // SplashViewModel). Android usa el ApplicationId; iOS necesita el ID numerico de App Store
